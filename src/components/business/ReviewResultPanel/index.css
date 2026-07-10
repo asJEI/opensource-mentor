@@ -1,0 +1,241 @@
+/* ============================================
+   ReviewResultPanel 组件样式
+   ============================================ */
+
+.review-result-panel {
+  display: flex;
+  background: var(--bg-white);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  min-height: 400px;
+}
+
+/* 左侧 Tab 栏 */
+.review-result-panel__tabs {
+  width: 160px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--rule);
+  padding: 12px 0;
+  background: var(--bg-soft);
+}
+
+.review-result-panel__tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  position: relative;
+}
+
+.review-result-panel__tab:hover {
+  background: var(--bg-hover);
+  color: var(--ink-2);
+}
+
+.review-result-panel__tab--active {
+  background: var(--bg-white);
+  color: var(--ink);
+  font-weight: 600;
+  border-left-color: var(--accent);
+}
+
+.review-result-panel__tab-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.review-result-panel__tab-label {
+  flex: 1;
+}
+
+.review-result-panel__tab-count {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: var(--bg-white);
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+
+.review-result-panel__tab--active .review-result-panel__tab-count {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+/* 右侧内容区 */
+.review-result-panel__content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.review-result-panel__content-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+/* 问题列表 */
+.review-issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 表扬列表 */
+.review-praise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.praise-card {
+  background: var(--green-soft);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.praise-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.praise-card__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.praise-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.praise-card__file {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.praise-card__desc {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.praise-card__code {
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12.5px;
+  color: #065f46;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.praise-card__why {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(16, 185, 129, 0.2);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.praise-card__why strong {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* 提示列表 */
+.review-tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tip-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--rule-soft);
+  transition: all 0.15s ease;
+}
+
+.tip-card:hover {
+  border-color: var(--rule);
+  background: var(--bg-hover);
+}
+
+.tip-card__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.tip-card__content {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  padding-top: 3px;
+}
+
+/* 空状态 */
+.review-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.review-empty__icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.review-empty__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.review-empty__desc {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 280px;
+  line-height: 1.5;
+}

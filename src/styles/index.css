@@ -1,0 +1,12 @@
+/* ============================================
+   OpenSource Mentor - Global Styles Entry Point
+   Import order: variables → animations → global → components → layout → landing → pages
+   ============================================ */
+
+@import "./variables.css";
+@import "./animations.css";
+@import "./global.css";
+@import "./components.css";
+@import "./layout.css";
+@import "./landing.css";
+@import "./pages.css";

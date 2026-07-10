@@ -1,0 +1,125 @@
+/* ============================================
+   IssueContextCard 组件样式
+   ============================================ */
+
+.issue-context-card {
+  background: var(--bg-white);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.issue-context-card__left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.issue-context-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.issue-context-card__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.issue-context-card__number {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.issue-context-card__bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.issue-context-card__labels {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.issue-context-card__repo {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.issue-context-card__repo svg {
+  width: 12px;
+  height: 12px;
+}
+
+.issue-context-card__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.issue-context-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.issue-context-card__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.issue-context-card__time {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.issue-context-card__time svg {
+  width: 12px;
+  height: 12px;
+}
+
+.issue-context-card__contributing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.issue-context-card__contributing svg {
+  width: 12px;
+  height: 12px;
+}

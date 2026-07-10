@@ -1,0 +1,269 @@
+/* ============================================
+   ReviewIssueCard 组件样式
+   ============================================ */
+
+.review-issue-card {
+  background: var(--bg-white);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.review-issue-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.review-issue-card--expanded {
+  border-color: var(--rule);
+}
+
+/* 卡片头部（折叠态可见） */
+.review-issue-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.review-issue-card__header:hover {
+  background: var(--bg-hover);
+}
+
+/* 严重程度色条 */
+.review-issue-card__severity-bar {
+  width: 4px;
+  border-radius: 2px;
+  align-self: stretch;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.review-issue-card__severity-bar--critical {
+  background: var(--red);
+}
+
+.review-issue-card__severity-bar--high {
+  background: #f97316;
+}
+
+.review-issue-card__severity-bar--medium {
+  background: var(--yellow);
+}
+
+.review-issue-card__severity-bar--low {
+  background: var(--muted-2);
+}
+
+.review-issue-card__severity-bar--suggestion {
+  background: var(--accent);
+}
+
+/* 主体内容 */
+.review-issue-card__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-issue-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.review-issue-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.review-issue-card__category {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: var(--bg-soft);
+  color: var(--muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.review-issue-card__desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* 右侧元信息 */
+.review-issue-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.review-issue-card__file-info {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+  font-family: ui-monospace, Consolas, monospace;
+  line-height: 1.4;
+}
+
+.review-issue-card__file-path {
+  opacity: 0.8;
+}
+
+.review-issue-card__file-line {
+  font-weight: 500;
+}
+
+.review-issue-card__toggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.review-issue-card__toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.review-issue-card--expanded .review-issue-card__toggle {
+  transform: rotate(180deg);
+}
+
+/* 展开内容区 */
+.review-issue-card__expand {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease;
+}
+
+.review-issue-card--expanded .review-issue-card__expand {
+  max-height: 2000px;
+}
+
+.review-issue-card__body {
+  padding: 0 16px 16px 16px;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-left: 18px;
+}
+
+/* 详情区块 */
+.review-issue-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-issue-section__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.review-issue-section__icon {
+  font-size: 14px;
+}
+
+.review-issue-section__content {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  padding-left: 22px;
+}
+
+/* 代码块 */
+.review-issue-code {
+  background: #1e293b;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-left: 22px;
+}
+
+.review-issue-code--suggestion {
+  border: 1px solid var(--green);
+  position: relative;
+}
+
+.review-issue-code__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.review-issue-code__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--green);
+  font-weight: 600;
+}
+
+.review-issue-code__pre {
+  padding: 12px;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.review-issue-code__code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #e2e8f0;
+  white-space: pre;
+}
+
+/* 导师小课堂 */
+.review-issue-lesson {
+  background: var(--accent-soft-2);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-left: 22px;
+}
+
+.review-issue-lesson__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-2);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-issue-lesson__text {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+/* 底部操作 */
+.review-issue-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+  margin-left: 22px;
+}

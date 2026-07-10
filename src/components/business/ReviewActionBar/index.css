@@ -1,0 +1,61 @@
+/* ============================================
+   ReviewActionBar 组件样式
+   ============================================ */
+
+.review-action-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-white);
+  border-top: 1px solid var(--rule);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 20;
+}
+
+.review-action-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.review-action-bar__status-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.review-action-bar__status-text {
+  font-size: 14px;
+  color: var(--ink-2);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-action-bar__status-text--running {
+  color: var(--accent);
+}
+
+.review-action-bar__status-text--completed {
+  color: var(--green);
+}
+
+.review-action-bar__status-text--failed {
+  color: var(--red);
+}
+
+.review-action-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.review-action-bar__btn {
+  min-width: 160px;
+}

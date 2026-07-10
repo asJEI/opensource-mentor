@@ -1,0 +1,141 @@
+import { create } from 'zustand'
+import type { Roadmap, RoadmapPhase, RoadmapProgress, RoadmapStepStatus } from '@/types'
+import { aiService } from '@/services'
+
+/**
+ * 计算路线图进度
+ */
+function calculateProgress(phases: RoadmapPhase[]): RoadmapProgress {
+  const totalSteps = phases.length
+  const completedSteps = phases.filter((s) => s.status === 'completed').length
+  const percentage = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
+  const currentStepIndex = phases.findIndex((s) => s.status === 'current')
+  const currentStep = currentStepIndex >= 0 ? currentStepIndex : 0
+
+  return {
+    currentStep,
+    totalSteps,
+    completedSteps,
+    percentage,
+  }
+}
+
+/**
+ * 路线图状态 Store
+ * 管理贡献路线图的阶段、进度和加载状态
+ */
+interface RoadmapState {
+  /** 路线图完整数据 */
+  roadmap: Roadmap | null
+  /** 路线图阶段列表（从 roadmap.phases 派生） */
+  steps: RoadmapPhase[]
+  /** 路线图进度 */
+  progress: RoadmapProgress
+  /** 是否正在加载路线图 */
+  isLoading: boolean
+  /** 加载错误信息 */
+  error: string | null
+  /** 用户水平 */
+  userLevel: 'beginner' | 'intermediate' | 'advanced'
+
+  // ---- Actions ----
+  /**
+   * 加载/生成路线图
+   * 调用 aiService.generateRoadmap
+   */
+  loadRoadmap: (owner: string, repo: string, userLevel?: 'beginner' | 'intermediate' | 'advanced') => Promise<void>
+  /** 进入下一阶段 */
+  nextStep: () => void
+  /** 重置进度 */
+  resetProgress: () => void
+  /**
+   * 更新指定阶段的状态
+   */
+  updateStepStatus: (stepId: string, status: RoadmapStepStatus) => void
+  /** 设置用户水平 */
+  setUserLevel: (level: 'beginner' | 'intermediate' | 'advanced') => void
+}
+
+const initialProgress: RoadmapProgress = {
+  currentStep: 0,
+  totalSteps: 0,
+  completedSteps: 0,
+  percentage: 0,
+}
+
+export const useRoadmapStore = create<RoadmapState>((set, get) => ({
+  roadmap: null,
+  steps: [],
+  progress: initialProgress,
+  isLoading: false,
+  error: null,
+  userLevel: 'beginner',
+
+  loadRoadmap: async (owner: string, repo: string, userLevel = 'beginner') => {
+    set({ isLoading: true, error: null, userLevel })
+    try {
+      const roadmap = await aiService.generateRoadmap(owner, repo, userLevel)
+      const steps = roadmap.phases
+      // 标记第一步为当前步骤
+      if (steps.length > 0) {
+        steps[0].status = 'current'
+      }
+      const progress = calculateProgress(steps)
+      set({ roadmap, steps, progress, isLoading: false })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '路线图生成失败，请稍后重试'
+      set({ isLoading: false, error: message })
+    }
+  },
+
+  nextStep: () => {
+    const { steps } = get()
+    const currentIndex = steps.findIndex((s) => s.status === 'current')
+
+    if (currentIndex === -1 || currentIndex >= steps.length - 1) {
+      return
+    }
+
+    const newSteps = steps.map((step, index) => {
+      if (index === currentIndex) {
+        return { ...step, status: 'completed' as RoadmapStepStatus }
+      }
+      if (index === currentIndex + 1) {
+        return { ...step, status: 'current' as RoadmapStepStatus }
+      }
+      return step
+    })
+
+    const progress = calculateProgress(newSteps)
+    set({ steps: newSteps, progress })
+  },
+
+  resetProgress: () => {
+    const { steps } = get()
+    if (steps.length === 0) return
+
+    const newSteps = steps.map((step, index) => ({
+      ...step,
+      status: (index === 0 ? 'current' : 'pending') as RoadmapStepStatus,
+      tasks: step.tasks.map((task) => ({ ...task, completed: false })),
+    }))
+
+    const progress = calculateProgress(newSteps)
+    set({ steps: newSteps, progress })
+  },
+
+  updateStepStatus: (stepId: string, status: RoadmapStepStatus) => {
+    const { steps } = get()
+    const newSteps = steps.map((step) =>
+      step.id === stepId ? { ...step, status } : step,
+    )
+    const progress = calculateProgress(newSteps)
+    set({ steps: newSteps, progress })
+  },
+
+  setUserLevel: (level: 'beginner' | 'intermediate' | 'advanced') => {
+    set({ userLevel: level })
+  },
+}))
+
+export default useRoadmapStore

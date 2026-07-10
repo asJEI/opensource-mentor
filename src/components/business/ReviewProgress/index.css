@@ -1,0 +1,211 @@
+/* ============================================
+   ReviewProgress 组件样式
+   ============================================ */
+
+.review-progress {
+  background: var(--bg-white);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.review-progress__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.review-progress__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.review-progress__icon--running {
+  background: var(--accent-soft);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.review-progress__icon--completed {
+  background: var(--green-soft);
+}
+
+.review-progress__icon--failed {
+  background: var(--red-soft);
+}
+
+.review-progress__icon--queued {
+  background: var(--yellow-soft);
+}
+
+.review-progress__icon--idle {
+  background: var(--bg-soft);
+}
+
+.review-progress__title-group {
+  flex: 1;
+}
+
+.review-progress__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.review-progress__subtitle {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 进度条 */
+.review-progress__bar-wrap {
+  margin-bottom: 16px;
+}
+
+.review-progress__bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.review-progress__bar-percent {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.review-progress__bar {
+  height: 8px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.review-progress__bar-fill {
+  height: 100%;
+  background: var(--gradient);
+  border-radius: var(--radius-full);
+  transition: width 0.5s ease;
+}
+
+.review-progress__bar-fill--failed {
+  background: var(--red);
+}
+
+/* 阶段列表 */
+.review-progress__phases {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.review-progress__phase {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  font-size: 12px;
+  color: var(--muted);
+  transition: all 0.3s ease;
+}
+
+.review-progress__phase--running {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.review-progress__phase--completed {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.review-progress__phase--failed {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.review-progress__phase-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted-2);
+  flex-shrink: 0;
+}
+
+.review-progress__phase--running .review-progress__phase-dot {
+  background: var(--accent);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.review-progress__phase--completed .review-progress__phase-dot {
+  background: var(--green);
+}
+
+.review-progress__phase--failed .review-progress__phase-dot {
+  background: var(--red);
+}
+
+/* 导师寄语 */
+.review-progress__mentor-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--accent-soft-2);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.review-progress__mentor-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.review-progress__mentor-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  padding-top: 6px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0);
+  }
+}
