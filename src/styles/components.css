@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    Component Styles
    ============================================ */
 
@@ -929,4 +929,94 @@
   font-size: 12px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+/* ---------- Next Step Card ---------- */
+.next-step-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(168, 85, 247, 0.1) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.next-step-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient);
+}
+
+.next-step-content {
+  flex: 1;
+}
+
+.next-step-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.next-step-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.next-step-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.next-step-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  background: var(--gradient);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  white-space: nowrap;
+}
+
+.next-step-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.next-step-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .next-step-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .next-step-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

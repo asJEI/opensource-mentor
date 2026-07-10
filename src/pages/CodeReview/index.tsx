@@ -6,6 +6,7 @@ import {
   ReviewProgress,
   ReviewResultPanel,
   ReviewActionBar,
+  NextStepCard,
 } from '@/components/business'
 import { useCodeReviewStore, useRepositoryStore, useToastStore } from '@/store'
 
@@ -367,6 +368,19 @@ const CodeReview = () => {
             status={status}
             onFixCode={handleFixCode}
             onGeneratePr={handleGeneratePr}
+          />
+        )}
+
+        {/* 下一步引导：审查完成后引导去生成 PR */}
+        {status === 'completed' && result && (
+          <NextStepCard
+            currentStep={3}
+            totalSteps={4}
+            title="AI 审查完成！"
+            description="代码审查已完成，下一步生成专业的 PR 描述，让你的贡献更易被合并"
+            buttonText="生成 PR 描述"
+            nextPath="/pr-generator"
+            onClick={handleGeneratePr}
           />
         )}
       </div>

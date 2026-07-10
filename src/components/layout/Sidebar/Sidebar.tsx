@@ -36,14 +36,14 @@ const navGroups: NavGroup[] = [
         badge: '新',
       },
       {
-        id: 'pr-generator',
-        label: 'PR 生成器',
-        icon: <Icon d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18M2 2l7.586 7.586M11 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />,
-      },
-      {
         id: 'code-review',
         label: '代码审查',
         icon: <Icon d="M9 12h6M12 9v6M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.68.94 6.36 2.64L21 3v9h-9" />,
+      },
+      {
+        id: 'pr-generator',
+        label: 'PR 生成器',
+        icon: <Icon d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18M2 2l7.586 7.586M11 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />,
       },
     ],
   },
@@ -101,12 +101,12 @@ const Sidebar = () => {
   // 从当前路径获取活动页面
   const getActivePage = (): string => {
     const path = location.pathname
-    if (path === '/' || path === '/dashboard' || path.startsWith('/dashboard')) return 'dashboard'
+    if (path === '/dashboard' || path.startsWith('/dashboard')) return 'dashboard'
     if (path === '/issues' || path.startsWith('/issues')) return 'issues'
     if (path === '/pr-generator' || path.startsWith('/pr-generator')) return 'pr-generator'
     if (path === '/code-review' || path.startsWith('/code-review')) return 'code-review'
     if (path === '/roadmap' || path.startsWith('/roadmap')) return 'roadmap'
-    return 'dashboard'
+    return ''
   }
 
   const activePage = getActivePage()
@@ -116,7 +116,7 @@ const Sidebar = () => {
     const validPages: AppSubPage[] = ['dashboard', 'issues', 'pr-generator', 'code-review', 'roadmap']
     if (validPages.includes(id as AppSubPage)) {
       setCurrentAppPage(id as AppSubPage)
-      navigate(id === 'dashboard' ? '/' : `/${id}`)
+      navigate(`/${id}`)
     }
   }
 

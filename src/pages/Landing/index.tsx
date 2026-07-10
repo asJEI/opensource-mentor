@@ -234,6 +234,17 @@ function HeroSection() {
     navigate('/dashboard')
   }
 
+  const handleViewDemo = () => {
+    const el = document.getElementById('preview')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  const handleQuickDemo = () => {
+    navigate('/dashboard')
+  }
+
   return (
     <section className="hero" id="hero">
       {/* 浮动渐变 blob */}
@@ -266,11 +277,18 @@ function HeroSection() {
 
         {/* CTA 按钮 */}
         <div className="hero-cta">
-          <button className="btn btn-primary btn-lg" onClick={handleStartFree}>
-            免费开始
+          <button className="btn btn-primary btn-lg hero-cta-main" onClick={handleQuickDemo}>
+            <span className="hero-cta-main-icon">⚡</span>
+            5 分钟体验完整流程
             <ArrowRightIcon />
           </button>
-          <button className="btn btn-secondary btn-lg">
+        </div>
+        <div className="hero-cta-secondary">
+          <button className="btn btn-ghost" onClick={handleStartFree}>
+            免费开始
+          </button>
+          <span className="hero-cta-divider">·</span>
+          <button className="btn btn-ghost" onClick={handleViewDemo}>
             查看演示
           </button>
         </div>

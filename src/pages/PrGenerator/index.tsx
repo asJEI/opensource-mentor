@@ -221,6 +221,41 @@ const PrGenerator = () => {
             />
           </Card>
         </div>
+
+        {/* 完成引导：PR 生成后展示完成祝贺 */}
+        {resultStatus === 'success' && prDraft && (
+          <div className="next-step-card">
+            <div className="next-step-content">
+              <div className="next-step-badge">
+                🎉 步骤 4 / 4 · 全部完成！
+              </div>
+              <div className="next-step-title">恭喜，你的第一个开源贡献已就绪！</div>
+              <div className="next-step-desc">
+                复制上方 PR 标题和描述，到 GitHub 提交你的 Pull Request 吧。
+                感谢你为开源社区做出的贡献！
+              </div>
+            </div>
+            <button
+              className="next-step-btn"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            >
+              返回顶部
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="12" y1="19" x2="12" y2="5" />
+                <polyline points="5 12 12 5 19 12" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     </AppLayout>
   )

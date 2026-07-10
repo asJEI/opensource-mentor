@@ -64,3 +64,6 @@ export type { ReviewIssueCardProps } from './ReviewIssueCard'
 // 审查操作栏
 export { default as ReviewActionBar } from './ReviewActionBar'
 export type { ReviewActionBarProps } from './ReviewActionBar'
+
+// 下一步引导卡片
+export { NextStepCard } from './NextStepCard'

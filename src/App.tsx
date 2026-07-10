@@ -1,5 +1,6 @@
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import Landing from '@/pages/Landing'
 import Dashboard from '@/pages/Dashboard'
 import Issues from '@/pages/Issues'
 import PrGenerator from '@/pages/PrGenerator'
@@ -22,7 +23,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
  * 路由配置组件
  * 使用 react-router-dom 的 Routes/Route 模式
  * 支持页面切换动画和全局 Toast
- * 默认打开即为工作台（Dashboard）
+ * 默认打开为落地页（Landing），引导用户了解产品价值后进入应用
  */
 function App() {
   const location = useLocation()
@@ -35,18 +36,25 @@ function App() {
   return (
     <div className="app">
       <Routes location={location} key={location.pathname}>
+        {/* 落地页 - 首屏，展示产品价值 */}
         <Route
           path="/"
+          element={
+            <PageTransition>
+              <Landing />
+            </PageTransition>
+          }
+        />
+        {/* 工作台 / 仓库分析 */}
+        <Route
+          path="/dashboard"
           element={
             <PageTransition>
               <Dashboard />
             </PageTransition>
           }
         />
-        <Route
-          path="/dashboard"
-          element={<Navigate to="/" replace />}
-        />
+        {/* Issue 推荐 */}
         <Route
           path="/issues"
           element={
@@ -55,6 +63,7 @@ function App() {
             </PageTransition>
           }
         />
+        {/* PR 生成器 */}
         <Route
           path="/pr-generator"
           element={
@@ -63,6 +72,7 @@ function App() {
             </PageTransition>
           }
         />
+        {/* 学习路线 */}
         <Route
           path="/roadmap"
           element={
@@ -71,6 +81,7 @@ function App() {
             </PageTransition>
           }
         />
+        {/* 代码审查 */}
         <Route
           path="/code-review"
           element={

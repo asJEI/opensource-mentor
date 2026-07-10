@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
-import { IssueRow, IssueExplainModal } from '@/components/business'
+import { IssueRow, IssueExplainModal, NextStepCard } from '@/components/business'
 import { useRepositoryStore, useIssueExplainStore, useToastStore, useCodeReviewStore } from '@/store'
 import type { RecommendedIssue, DifficultyLevel } from '@/types'
 
@@ -75,7 +75,10 @@ const Issues = () => {
   } = useIssueExplainStore()
 
   // 从 code review store 获取设置选中 Issue 的方法
-  const setSelectedIssue = useCodeReviewStore((s) => s.setSelectedIssue)
+  const { selectedIssue, setSelectedIssue } = useCodeReviewStore((s) => ({
+    selectedIssue: s.selectedIssue,
+    setSelectedIssue: s.setSelectedIssue,
+  }))
 
   const showToast = useToastStore((s) => s.showToast)
 
@@ -334,6 +337,18 @@ const Issues = () => {
           loading={explainStatus === 'loading'}
           error={explainError}
         />
+
+        {/* 下一步引导：选择 Issue 后引导去代码审查 */}
+        {selectedIssue && (
+          <NextStepCard
+            currentStep={2}
+            totalSteps={4}
+            title="已选择 Issue！"
+            description={`已选中「${selectedIssue.title.slice(0, 30)}${selectedIssue.title.length > 30 ? '...' : ''}」，下一步进入 AI 代码审查`}
+            buttonText="开始代码审查"
+            nextPath="/code-review"
+          />
+        )}
       </div>
     </AppLayout>
   )

@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { useToastStore, useRepositoryStore } from '@/store'
+import { NextStepCard } from '@/components/business'
 import type { RepoAnalysis, DifficultyLevel } from '@/types'
 
 // ==================== 图标组件 ====================
@@ -49,22 +50,6 @@ const BotIcon = () => (
     <circle cx="9" cy="14" r="1" />
     <circle cx="15" cy="14" r="1" />
     <path d="M9 18h6" />
-  </svg>
-)
-
-const GitPullRequestIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="18" cy="18" r="3" />
-    <circle cx="6" cy="6" r="3" />
-    <path d="M13 6h3a2 2 0 0 1 2 2v7" />
-    <line x1="6" y1="9" x2="6" y2="21" />
-  </svg>
-)
-
-const AwardIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="8" r="6" />
-    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
   </svg>
 )
 
@@ -178,6 +163,20 @@ function isBeginnerFriendly(analysis: RepoAnalysis): boolean {
   return level === 'very-friendly' || level === 'friendly' || level === 'moderate'
 }
 
+/**
+ * 新手友好度等级中文映射
+ */
+function getFriendlyLabel(level?: string): string {
+  const map: Record<string, string> = {
+    'very-friendly': '非常友好',
+    'friendly': '友好',
+    'moderate': '适中',
+    'challenging': '有挑战',
+    'hard': '较难',
+  }
+  return map[level || ''] || '未知'
+}
+
 // ==================== Dashboard 页面 ====================
 const Dashboard = () => {
   const showToast = useToastStore((s) => s.showToast)
@@ -283,35 +282,35 @@ const Dashboard = () => {
         {/* 统计行 */}
         <div className="stat-row">
           <StatCard
-            icon={<CodeIcon />}
-            iconClass="purple"
-            label="已分析仓库"
-            value="3"
-            change="本周 +1"
+            icon={<StarIcon />}
+            iconClass="yellow"
+            label="GitHub Stars"
+            value={currentRepo ? currentRepo.stars.toLocaleString() : '--'}
+            change={currentRepo ? `Forks ${currentRepo.forks.toLocaleString()}` : '等待分析'}
             changeUp={true}
           />
           <StatCard
             icon={<IssueIcon />}
             iconClass="green"
             label="推荐 Issue"
-            value={recommendedIssues.length > 0 ? String(recommendedIssues.length) : '126'}
-            change={analysis ? `匹配度 ${Math.round((analysis.confidence || 0) * 100)}%` : '匹配度 92%'}
+            value={recommendedIssues.length > 0 ? String(recommendedIssues.length) : '--'}
+            change={analysis ? `匹配度 ${Math.round((analysis.confidence || 0) * 100)}%` : 'AI 智能匹配'}
             changeUp={true}
           />
           <StatCard
-            icon={<GitPullRequestIcon />}
+            icon={<SparklesIcon />}
+            iconClass="purple"
+            label="新手友好度"
+            value={analysis ? getFriendlyLabel(analysis.beginnerFriendliness?.level) : '--'}
+            change={analysis ? `评分 ${analysis.beginnerFriendliness?.score || 0}/10` : 'AI 评估中'}
+            changeUp={true}
+          />
+          <StatCard
+            icon={<ZapIcon />}
             iconClass="blue"
-            label="已提交 PR"
-            value="7"
-            change="合并 5 个"
-            changeUp={true}
-          />
-          <StatCard
-            icon={<AwardIcon />}
-            iconClass="yellow"
-            label="贡献等级"
-            value="贡献者"
-            change="距离下一等级 30%"
+            label="贡献领域"
+            value={analysis?.contributionAreas?.length ? String(analysis.contributionAreas.length) : '--'}
+            change={analysis?.domains?.length ? `${analysis.domains.slice(0, 2).join('、')}${analysis.domains.length > 2 ? '等' : ''}` : '分析中...'}
             changeUp={true}
           />
         </div>
@@ -568,6 +567,18 @@ const Dashboard = () => {
             )}
           </Card>
         </div>
+
+        {/* 下一步引导：分析完成后引导去 Issue 推荐 */}
+        {hasAnalyzed && (
+          <NextStepCard
+            currentStep={1}
+            totalSteps={4}
+            title="仓库分析完成！"
+            description="AI 已为你分析完仓库，下一步看看为你推荐了哪些适合新手的 Issue"
+            buttonText="查看推荐 Issue"
+            nextPath="/issues"
+          />
+        )}
       </div>
     </AppLayout>
   )
