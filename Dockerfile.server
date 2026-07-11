@@ -1,0 +1,22 @@
+# 后端服务 Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app/server
+
+# 安装后端依赖
+COPY server/package*.json ./
+RUN npm ci
+
+# 复制后端源码
+COPY server/ ./
+
+# 编译 TypeScript
+RUN npm run build
+
+# 生产环境
+ENV NODE_ENV=production
+ENV PORT=3001
+
+EXPOSE 3001
+
+CMD ["node", "dist/app.js"]

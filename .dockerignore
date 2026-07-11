@@ -1,0 +1,34 @@
+# 依赖
+node_modules
+server/node_modules
+
+# 构建产物（Docker 内构建）
+dist
+server/dist
+
+# 环境变量文件（敏感信息，不打进镜像）
+.env
+server/.env
+*.local
+
+# 日志
+logs
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# 文档
+README.md
+*.md

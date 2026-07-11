@@ -1,0 +1,49 @@
+services:
+  # 前端 (Nginx 托管静态文件 + API 反向代理)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_USE_MOCK=${VITE_USE_MOCK:-true}
+        - VITE_GITHUB_TOKEN=${VITE_GITHUB_TOKEN:-}
+        - VITE_LLM_API_KEY=${VITE_LLM_API_KEY:-}
+        - VITE_LLM_MODEL=${VITE_LLM_MODEL:-deepseek-chat}
+    ports:
+      - "8082:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # 后端服务 (Express)
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - GITHUB_API_BASE_URL=${GITHUB_API_BASE_URL:-https://api.github.com}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-deepseek}
+      - LLM_API_BASE_URL=${LLM_API_BASE_URL:-https://api.deepseek.com}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - LLM_TIMEOUT=${LLM_TIMEOUT:-60000}
+    expose:
+      - "3001"
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  app-network:
+    driver: bridge
