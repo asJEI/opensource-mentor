@@ -56,9 +56,10 @@ const navGroups: NavGroup[] = [
         icon: <Icon d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7" />,
       },
       {
-        id: 'stats',
-        label: '成长统计',
-        icon: <Icon d="M9 19V13M15 19V5M21 21H3" />,
+        id: 'ai-mentor',
+        label: 'AI 导师',
+        icon: <Icon d="M12 8V4H8m8 4V4m-4 8v4m-4-4h8M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7" />,
+        badge: '新',
       },
     ],
   },
@@ -106,6 +107,7 @@ const Sidebar = () => {
     if (path === '/pr-generator' || path.startsWith('/pr-generator')) return 'pr-generator'
     if (path === '/code-review' || path.startsWith('/code-review')) return 'code-review'
     if (path === '/roadmap' || path.startsWith('/roadmap')) return 'roadmap'
+    if (path === '/ai-mentor' || path.startsWith('/ai-mentor')) return 'ai-mentor'
     return ''
   }
 
@@ -113,7 +115,7 @@ const Sidebar = () => {
 
   const handleNavClick = (id: string) => {
     // 仅在 id 匹配 AppSubPage 时切换，其余项保留为展示用
-    const validPages: AppSubPage[] = ['dashboard', 'issues', 'pr-generator', 'code-review', 'roadmap']
+    const validPages: AppSubPage[] = ['dashboard', 'issues', 'pr-generator', 'code-review', 'roadmap', 'ai-mentor']
     if (validPages.includes(id as AppSubPage)) {
       setCurrentAppPage(id as AppSubPage)
       navigate(`/${id}`)

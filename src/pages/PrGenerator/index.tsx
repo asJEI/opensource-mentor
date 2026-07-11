@@ -39,20 +39,19 @@ const AlertTriangleIcon = ({ style }: { style?: React.CSSProperties }) => (
 
 // ==================== PrGenerator 页面 ====================
 const PrGenerator = () => {
-  const {
-    prType,
-    summary,
-    linkedIssue,
-    prDraft,
-    isGenerating,
-    error,
-    currentOwner,
-    currentRepo,
-    setPrType,
-    setSummary,
-    setLinkedIssue,
-    generatePr,
-  } = usePrStore()
+  // 分开调用 store 避免无限重渲染
+  const prType = usePrStore((s) => s.prType)
+  const summary = usePrStore((s) => s.summary)
+  const linkedIssue = usePrStore((s) => s.linkedIssue)
+  const prDraft = usePrStore((s) => s.prDraft)
+  const isGenerating = usePrStore((s) => s.isGenerating)
+  const error = usePrStore((s) => s.error)
+  const currentOwner = usePrStore((s) => s.currentOwner)
+  const currentRepo = usePrStore((s) => s.currentRepo)
+  const setPrType = usePrStore((s) => s.setPrType)
+  const setSummary = usePrStore((s) => s.setSummary)
+  const setLinkedIssue = usePrStore((s) => s.setLinkedIssue)
+  const generatePr = usePrStore((s) => s.generatePr)
   const showToast = useToastStore((s) => s.showToast)
 
   const handleTypeSelect = (type: PrType) => {

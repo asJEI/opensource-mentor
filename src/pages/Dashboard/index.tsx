@@ -181,23 +181,40 @@ function getFriendlyLabel(level?: string): string {
 const Dashboard = () => {
   const showToast = useToastStore((s) => s.showToast)
 
-  // 从 store 获取数据
-  const {
-    currentRepo,
-    analysis,
-    recommendedIssues,
-    analysisStatus,
-    issuesStatus,
-    analysisError,
-    issuesError,
-    analyzeRepo,
-    loadRecommendedIssues,
-    currentOwner,
-    currentRepoName,
-  } = useRepositoryStore()
+  // 从 store 获取数据（分开调用避免无限重渲染）
+  const currentRepo = useRepositoryStore((s) => s.currentRepo)
+  const analysis = useRepositoryStore((s) => s.analysis)
+  const recommendedIssues = useRepositoryStore((s) => s.recommendedIssues)
+  const analysisStatus = useRepositoryStore((s) => s.analysisStatus)
+  const issuesStatus = useRepositoryStore((s) => s.issuesStatus)
+  const analysisError = useRepositoryStore((s) => s.analysisError)
+  const issuesError = useRepositoryStore((s) => s.issuesError)
+  const analyzeRepo = useRepositoryStore((s) => s.analyzeRepo)
+  const loadRecommendedIssues = useRepositoryStore((s) => s.loadRecommendedIssues)
+  const currentOwner = useRepositoryStore((s) => s.currentOwner)
+  const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
 
   // 输入框初始值从 store 读取（支持页面切换和刷新后保持）
   const [repoInput, setRepoInput] = useState(`${currentOwner}/${currentRepoName}`)
+
+  // 首次访问引导（localStorage 记录，关闭后不再显示）
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try {
+      return !localStorage.getItem('opensource-mentor:onboarding-done')
+    } catch {
+      return true
+    }
+  })
+
+  // 关闭引导
+  const handleDismissOnboarding = () => {
+    setShowOnboarding(false)
+    try {
+      localStorage.setItem('opensource-mentor:onboarding-done', 'true')
+    } catch {
+      // ignore
+    }
+  }
 
   // 是否正在加载（分析或 Issue 任一在加载）
   const isLoading = analysisStatus === 'loading' || issuesStatus === 'loading'
@@ -278,6 +295,68 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* 首次使用引导 */}
+        {showOnboarding && (
+          <div className="onboarding-card">
+            <div className="onboarding-header">
+              <div className="onboarding-title">
+                <SparklesIcon />
+                欢迎使用 Open Source Mentor！
+              </div>
+              <button
+                className="onboarding-close"
+                onClick={handleDismissOnboarding}
+                title="关闭引导"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <p className="onboarding-desc">
+              只需四步，开启你的开源贡献之旅：
+            </p>
+            <div className="onboarding-steps">
+              <div className="onboarding-step active">
+                <div className="step-number">1</div>
+                <div className="step-info">
+                  <div className="step-title">仓库分析</div>
+                  <div className="step-desc">AI 分析项目难度与技术栈</div>
+                </div>
+              </div>
+              <div className="step-arrow">→</div>
+              <div className="onboarding-step">
+                <div className="step-number">2</div>
+                <div className="step-info">
+                  <div className="step-title">Issue 推荐</div>
+                  <div className="step-desc">匹配最适合你的入门任务</div>
+                </div>
+              </div>
+              <div className="step-arrow">→</div>
+              <div className="onboarding-step">
+                <div className="step-number">3</div>
+                <div className="step-info">
+                  <div className="step-title">代码审查</div>
+                  <div className="step-desc">AI 导师帮你检查代码质量</div>
+                </div>
+              </div>
+              <div className="step-arrow">→</div>
+              <div className="onboarding-step">
+                <div className="step-number">4</div>
+                <div className="step-info">
+                  <div className="step-title">学习路线</div>
+                  <div className="step-desc">系统提升开源贡献能力</div>
+                </div>
+              </div>
+            </div>
+            <div className="onboarding-tip">
+              <InfoIcon />
+              <span>当前正在为你分析示例仓库 <strong>{displayFullName}</strong>，稍等片刻即可开始探索～</span>
+            </div>
+          </div>
+        )}
 
         {/* 统计行 */}
         <div className="stat-row">

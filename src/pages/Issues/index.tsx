@@ -51,52 +51,50 @@ const Issues = () => {
   const [timeFilter, setTimeFilter] = useState('all')
   const [sortBy, setSortBy] = useState('match')
 
-  // 从 repository store 获取数据
-  const {
-    recommendedIssues,
-    issuesStatus,
-    issuesError,
-    selectIssue,
-    loadRecommendedIssues,
-    currentOwner,
-    currentRepoName,
-  } = useRepositoryStore()
+  // 从 repository store 获取数据（分开调用避免无限重渲染）
+  const recommendedIssues = useRepositoryStore((s) => s.recommendedIssues)
+  const issuesStatus = useRepositoryStore((s) => s.issuesStatus)
+  const issuesError = useRepositoryStore((s) => s.issuesError)
+  const currentOwner = useRepositoryStore((s) => s.currentOwner)
+  const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
+  const loadRecommendedIssues = useRepositoryStore((s) => s.loadRecommendedIssues)
+  const selectIssue = useRepositoryStore((s) => s.selectIssue)
 
-  // 从 issue explain store 获取弹窗状态
-  const {
-    currentExplain,
-    explainStatus,
-    explainError,
-    modalVisible,
-    currentIssue,
-    explainIssue,
-    openModal,
-    closeModal,
-  } = useIssueExplainStore()
+  // 从 issue explain store 获取弹窗状态（分开调用避免无限重渲染）
+  const currentExplain = useIssueExplainStore((s) => s.currentExplain)
+  const explainStatus = useIssueExplainStore((s) => s.explainStatus)
+  const explainError = useIssueExplainStore((s) => s.explainError)
+  const modalVisible = useIssueExplainStore((s) => s.modalVisible)
+  const currentIssue = useIssueExplainStore((s) => s.currentIssue)
+  const explainIssue = useIssueExplainStore((s) => s.explainIssue)
+  const openModal = useIssueExplainStore((s) => s.openModal)
+  const closeModal = useIssueExplainStore((s) => s.closeModal)
 
-  // 从 code review store 获取设置选中 Issue 的方法
-  const { selectedIssue, setSelectedIssue } = useCodeReviewStore((s) => ({
-    selectedIssue: s.selectedIssue,
-    setSelectedIssue: s.setSelectedIssue,
-  }))
+  // 从 code review store 获取选中的 Issue 和设置方法
+  const selectedIssue = useCodeReviewStore((s) => s.selectedIssue)
+  const setSelectedIssue = useCodeReviewStore((s) => s.setSelectedIssue)
 
   const showToast = useToastStore((s) => s.showToast)
 
   // 页面加载时自动加载推荐 Issue 列表
+  // 只在 idle 状态时加载，避免无限循环
   useEffect(() => {
-    const owner = currentOwner || 'microsoft'
-    const name = currentRepoName || 'vscode'
-    loadRecommendedIssues(owner, name)
-  }, [loadRecommendedIssues, currentOwner, currentRepoName])
+    if (issuesStatus === 'idle') {
+      const owner = currentOwner || 'microsoft'
+      const name = currentRepoName || 'vscode'
+      // 直接通过 getState 获取 action，避免依赖变化导致循环
+      useRepositoryStore.getState().loadRecommendedIssues(owner, name)
+    }
+  }, [issuesStatus, currentOwner, currentRepoName])
 
   // 监听加载状态，加载成功时显示通知
   useEffect(() => {
     if (issuesStatus === 'success') {
-      showToast('success', '加载完成', `已为你推荐 ${recommendedIssues.length} 个 Issue`)
+      useToastStore.getState().showToast('success', '加载完成', `已为你推荐 ${recommendedIssues.length} 个 Issue`)
     } else if (issuesStatus === 'error' && issuesError) {
-      showToast('error', '加载失败', issuesError)
+      useToastStore.getState().showToast('error', '加载失败', issuesError)
     }
-  }, [issuesStatus, issuesError, recommendedIssues.length, showToast])
+  }, [issuesStatus, issuesError, recommendedIssues.length])
 
   // 筛选逻辑
   const filteredIssues = useMemo(() => {

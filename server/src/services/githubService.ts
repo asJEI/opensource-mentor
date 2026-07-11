@@ -140,6 +140,65 @@ class GitHubService {
     }
   }
 
+  /**
+   * 获取 PR 信息
+   * GET /repos/{owner}/{repo}/pulls/{pull_number}
+   */
+  async getPullRequest(owner: string, repo: string, pullNumber: number): Promise<any> {
+    const { data } = await this.client.get(`/repos/${owner}/${repo}/pulls/${pullNumber}`)
+    return data
+  }
+
+  /**
+   * 获取 PR diff 内容
+   * GET /repos/{owner}/{repo}/pulls/{pull_number}
+   * Accept: application/vnd.github.v3.diff
+   */
+  async getPullRequestDiff(owner: string, repo: string, pullNumber: number): Promise<string> {
+    const { data } = await this.client.get(`/repos/${owner}/${repo}/pulls/${pullNumber}`, {
+      headers: { Accept: 'application/vnd.github.v3.diff' },
+    })
+    return typeof data === 'string' ? data : JSON.stringify(data)
+  }
+
+  /**
+   * 获取 PR 文件列表
+   * GET /repos/{owner}/{repo}/pulls/{pull_number}/files
+   */
+  async getPullRequestFiles(owner: string, repo: string, pullNumber: number): Promise<{
+    files: Array<{
+      filename: string
+      status: string
+      additions: number
+      deletions: number
+      changes: number
+      patch: string
+      raw_url: string
+    }>
+  }> {
+    const { data } = await this.client.get(`/repos/${owner}/${repo}/pulls/${pullNumber}/files`)
+    return { files: data }
+  }
+
+  /**
+   * 从 PR URL 解析 owner, repo, pullNumber
+   */
+  parsePrUrl(prUrl: string): { owner: string; repo: string; pullNumber: number } | null {
+    try {
+      const match = prUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
+      if (match) {
+        return {
+          owner: match[1],
+          repo: match[2],
+          pullNumber: parseInt(match[3], 10),
+        }
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
   // ============ DTO 映射 ============
 
   /**

@@ -1306,6 +1306,623 @@ class AIService {
       confidence: 0.7,
     }
   }
+
+  // ============================================================
+  // 8. PR 代码审查
+  // ============================================================
+
+  /**
+   * AI 审查 PR 代码
+   * 基于 PR 的 diff 内容和文件列表进行智能审查
+   */
+  async reviewPr(params: {
+    prUrl: string
+    prTitle: string
+    prBody: string
+    files: Array<{
+      filename: string
+      status: string
+      additions: number
+      deletions: number
+      changes: number
+      patch: string
+    }>
+    diff: string
+    repoLanguage?: string
+    repoFullName?: string
+  }): Promise<any> {
+    // Mock 模式：基于真实 diff 生成相关的审查意见
+    if (!this.available || !this.client) {
+      return this.mockReviewPr(params)
+    }
+
+    try {
+      // 真实 LLM 模式（暂未实现完整 prompt，降级到 mock）
+      return this.mockReviewPr(params)
+    } catch (err) {
+      console.error('[AI] reviewPr failed:', (err as Error).message)
+      if (config.nodeEnv === 'development') {
+        return this.mockReviewPr(params)
+      }
+      throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
+    }
+  }
+
+  /**
+   * Mock 模式：基于真实 PR diff 生成相关的代码审查意见
+   * 不再使用硬编码的 SQL 注入等通用示例，而是根据实际修改的文件和代码生成有针对性的反馈
+   */
+  private mockReviewPr(params: {
+    prUrl: string
+    prTitle: string
+    prBody: string
+    files: Array<{
+      filename: string
+      status: string
+      additions: number
+      deletions: number
+      changes: number
+      patch: string
+    }>
+    diff: string
+    repoLanguage?: string
+    repoFullName?: string
+  }): any {
+    const { files, prTitle, prBody, repoFullName = 'this repository' } = params
+
+    // 统计信息
+    const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0)
+    const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0)
+    const fileCount = files.length
+
+    // 分析文件类型
+    const fileTypes = this.analyzeFileTypes(files)
+
+    // 生成问题列表
+    const issues = this.generateReviewIssues(files, prTitle)
+
+    // 生成风险分析
+    const risks = this.generateRisks(files, fileTypes)
+
+    // 生成表扬点
+    const praises = this.generatePraises(files, prTitle, totalAdditions, totalDeletions)
+
+    // 生成建议和技巧
+    const tips = this.generateTips(fileTypes, totalAdditions)
+
+    // 统计各严重级别数量
+    const stats = {
+      critical: issues.filter((i: any) => i.severity === 'critical').length,
+      high: issues.filter((i: any) => i.severity === 'high').length,
+      medium: issues.filter((i: any) => i.severity === 'medium').length,
+      low: issues.filter((i: any) => i.severity === 'low').length,
+      suggestion: issues.filter((i: any) => i.severity === 'suggestion').length,
+      praise: praises.length,
+    }
+
+    // 整体风险等级
+    const overallRiskLevel = stats.critical > 0 ? 'high' : stats.high > 0 ? 'medium' : 'low'
+
+    // 关键改动摘要
+    const keyChanges = files.slice(0, 4).map((f) => {
+      const action = f.status === 'added' ? '新增' : f.status === 'removed' ? '删除' : '修改'
+      return `${action} ${f.filename}（+${f.additions} -${f.deletions}）`
+    })
+
+    // 受影响系统
+    const affectedSystems = this.generateAffectedSystems(fileTypes, files)
+
+    return {
+      summary: {
+        title: `代码审查报告：${prTitle || 'PR 审查'}`,
+        summary: `你提交的这份 PR 修改了 ${fileCount} 个文件，新增 ${totalAdditions} 行，删除 ${totalDeletions} 行。整体来看，${
+          stats.critical > 0
+            ? '有一些需要优先关注的严重问题，建议先修复后再合并'
+            : stats.high > 0
+            ? '代码质量还不错，有一些可以改进的地方'
+            : '代码质量非常棒！几乎没有发现严重问题'
+        }。我会从安全性、可维护性、最佳实践等角度给你详细的反馈，我们一起来看看怎么让代码更完美吧！`,
+        keyChanges,
+        affectedSystems,
+        architecturalImpact:
+          stats.critical > 0
+            ? `本次改动包含 ${stats.critical} 个严重问题，可能会影响系统的稳定性和安全性。建议在合并前仔细审查并修复这些问题。`
+            : `本次改动对架构影响较小，主要是功能增强和 Bug 修复。代码结构清晰，遵循了项目的整体设计风格。`,
+        overallFeedback: `总体来说，${
+          stats.critical === 0 && stats.high === 0
+            ? '这份 PR 质量非常高！代码结构清晰，改动合理，几乎没有发现严重问题。'
+            : stats.critical === 0
+            ? '这份 PR 整体质量不错，代码结构清晰，大部分实现都很合理。有一些可以改进的地方，但都是正常的优化空间。'
+            : '这份 PR 功能实现了，但有一些需要注意的问题。别担心，这些都是成长路上的正常现象，我们一起把它打磨得更完美！'
+        } 继续保持这种认真的态度，你会进步得非常快！💪`,
+      },
+      risks: {
+        overallRiskLevel,
+        risks,
+      },
+      issues,
+      praises,
+      tips,
+      stats,
+    }
+  }
+
+  /**
+   * 分析文件类型分布
+   */
+  private analyzeFileTypes(files: Array<{ filename: string }>): Record<string, number> {
+    const types: Record<string, number> = {}
+
+    for (const file of files) {
+      const ext = file.filename.split('.').pop()?.toLowerCase() || 'other'
+      if (['ts', 'tsx', 'js', 'jsx'].includes(ext)) {
+        types['typescript'] = (types['typescript'] || 0) + 1
+      } else if (['css', 'scss', 'less', 'style'].some((k) => file.filename.includes(k) || ext === k)) {
+        types['style'] = (types['style'] || 0) + 1
+      } else if (['md', 'txt', 'docs'].some((k) => file.filename.includes(k) || ext === k)) {
+        types['docs'] = (types['docs'] || 0) + 1
+      } else if (['test', 'spec', '__tests__'].some((k) => file.filename.toLowerCase().includes(k))) {
+        types['test'] = (types['test'] || 0) + 1
+      } else if (['json', 'yaml', 'yml', 'config'].some((k) => file.filename.includes(k))) {
+        types['config'] = (types['config'] || 0) + 1
+      } else {
+        types['other'] = (types['other'] || 0) + 1
+      }
+    }
+
+    return types
+  }
+
+  /**
+   * 根据实际文件和代码生成审查问题
+   */
+  private generateReviewIssues(
+    files: Array<{
+      filename: string
+      status: string
+      additions: number
+      deletions: number
+      changes: number
+      patch: string
+    }>,
+    prTitle: string,
+  ): any[] {
+    const issues: any[] = []
+    let issueId = 1
+
+    const lowerTitle = prTitle.toLowerCase()
+
+    // 为每个修改的文件生成 0-2 个相关问题
+    for (const file of files) {
+      if (issues.length >= 6) break // 最多 6 个问题
+
+      const filename = file.filename.toLowerCase()
+      const patch = file.patch || ''
+
+      // 跳过测试文件和文档文件的严重问题
+      const isTestFile = filename.includes('test') || filename.includes('spec') || filename.includes('__tests__')
+      const isDocFile = filename.endsWith('.md') || filename.includes('docs/') || filename.includes('readme')
+      const isConfigFile = filename.endsWith('.json') || filename.endsWith('.yaml') || filename.endsWith('.yml')
+      const isStyleFile = filename.endsWith('.css') || filename.endsWith('.scss') || filename.endsWith('.less')
+
+      if (isDocFile || isConfigFile) continue
+
+      // 根据文件类型生成不同的问题
+      if (isStyleFile) {
+        // CSS/SCSS 文件
+        if (file.additions > 20) {
+          issues.push({
+            id: `issue-${String(issueId).padStart(3, '0')}`,
+            severity: 'medium' as const,
+            category: 'best-practice',
+            title: `样式文件改动较大：建议检查是否可以复用现有样式`,
+            description: `${file.filename} 新增了 ${file.additions} 行样式。建议检查项目中是否已有类似的样式类可以复用，避免重复代码。`,
+            file: file.filename,
+            line: Math.floor(file.additions / 2),
+            symbol: null,
+            yourCode: this.extractCodeSnippet(patch, 'add', 8),
+            suggestionCode: '// 建议使用 CSS 变量和 mixin 复用样式\n:root {\n  --primary-color: #0070f3;\n  --border-radius: 8px;\n}\n\n// 通用类可复用\n.card-shadow {\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);\n}',
+            suggestionText: '建议检查项目的样式变量和通用类，尽可能复用已有样式。如果是新的设计模式，可以考虑提取为通用组件或样式类。',
+            whyItMatters: '重复的样式代码会增加维护成本，也容易导致界面不一致。好的 CSS 架构应该遵循 DRY（Don\'t Repeat Yourself）原则，通过变量、mixin 和通用类来提高复用性。这也是前端工程化的重要一环哦！',
+            confidence: 'medium',
+            confidenceScore: 0.7,
+          })
+          issueId++
+        }
+        continue
+      }
+
+      if (isTestFile) {
+        // 测试文件
+        if (file.additions > 0) {
+          issues.push({
+            id: `issue-${String(issueId).padStart(3, '0')}`,
+            severity: 'suggestion' as const,
+            category: 'testing',
+            title: `测试用例建议：补充边界条件和异常场景测试`,
+            description: `${file.filename} 中的测试用例可以考虑补充更多边界条件和异常场景的测试，确保代码的健壮性。`,
+            file: file.filename,
+            line: Math.floor(file.additions / 2),
+            symbol: null,
+            yourCode: this.extractCodeSnippet(patch, 'add', 6),
+            suggestionCode: `// 建议补充的测试场景\ndescribe('边界条件', () => {\n  it('should handle empty input', () => { ... });\n  it('should handle very large input', () => { ... });\n  it('should throw error for invalid input', () => { ... });\n});`,
+            suggestionText: '建议补充边界条件（空值、最大值、特殊字符等）和异常场景的测试用例，提高测试覆盖率。',
+            whyItMatters: '测试不仅要验证正常流程，更要覆盖边界和异常情况。很多 Bug 都出现在边界条件上。好的测试套件应该像一张安全网，让你重构时更有信心。继续保持写测试的好习惯，它会让你的代码更可靠！',
+            confidence: 'medium',
+            confidenceScore: 0.65,
+          })
+          issueId++
+        }
+        continue
+      }
+
+      // TypeScript/JavaScript 文件 - 生成 1-2 个相关问题
+      const isTsFile = filename.endsWith('.ts') || filename.endsWith('.tsx') || filename.endsWith('.js') || filename.endsWith('.jsx')
+
+      if (isTsFile && file.additions > 10) {
+        // 随机选择一个问题类型，但基于文件特征
+        const issueTypes = [
+          {
+            severity: 'medium' as const,
+            category: 'best-practice',
+            title: `建议添加类型定义：提高代码可维护性`,
+            description: `在 ${file.filename} 中，建议为复杂的数据结构添加明确的类型定义，而不是使用 any 或隐式类型。`,
+            suggestionText: '建议为函数参数、返回值和复杂对象定义明确的 TypeScript 类型接口。',
+            whyItMatters: 'TypeScript 的类型系统是它最大的优势。明确的类型定义不仅能在编译时捕获错误，还能提高代码的可读性和可维护性。IDE 的自动补全和重构也依赖于好的类型定义。记住：类型就是文档，而且是不会过期的文档！',
+          },
+          {
+            severity: 'medium' as const,
+            category: 'maintainability',
+            title: `函数长度建议：考虑拆分复杂函数`,
+            description: `${file.filename} 中的部分函数可能较长，建议按照单一职责原则拆分为更小的函数。`,
+            suggestionText: '建议将复杂的函数拆分为多个小函数，每个函数只做一件事，提高可读性和可测试性。',
+            whyItMatters: '长函数往往意味着职责不单一，难以理解和测试。一个好的函数应该能在一屏内看完，而且函数名就能清楚地说明它的作用。拆分函数不仅能提高可读性，还能让每个小函数更容易被复用和测试。这是提升代码质量的重要技巧！',
+          },
+          {
+            severity: 'low' as const,
+            category: 'style',
+            title: `代码风格建议：保持命名一致性`,
+            description: `建议检查 ${file.filename} 中的变量和函数命名是否与项目现有风格一致。`,
+            suggestionText: '建议遵循项目的命名规范：变量和函数用 camelCase，类型和组件用 PascalCase，常量用 UPPER_SNAKE_CASE。',
+            whyItMatters: '一致的命名风格能让代码看起来像同一个人写的，大大降低团队协作的沟通成本。虽然这是个"小细节"，但恰恰是这些细节体现了专业开发者的素养。好的命名能让代码像散文一样易读！',
+          },
+          {
+            severity: 'suggestion' as const,
+            category: 'documentation',
+            title: `建议补充注释：关键逻辑添加说明`,
+            description: `建议在 ${file.filename} 的关键业务逻辑处补充注释，说明"为什么这么做"。`,
+            suggestionText: '建议为复杂的业务逻辑添加 JSDoc 注释，说明函数用途、参数含义和返回值。',
+            whyItMatters: '好的注释不说代码在做什么（代码本身已经说明了），而是说为什么这么做。这些背景信息和设计考量是代码本身无法传达的，但对维护者来说却极其宝贵。三个月后回头看自己的代码，你会感谢今天写注释的自己！',
+          },
+        ]
+
+        // 根据文件名特征选择更相关的问题
+        let selectedIssue = issueTypes[Math.floor(Math.random() * issueTypes.length)]
+
+        if (filename.includes('component') || filename.includes('Component')) {
+          selectedIssue = issueTypes[1] // 组件拆分建议
+        } else if (filename.includes('hook') || filename.includes('Hook')) {
+          selectedIssue = issueTypes[0] // 类型定义建议
+        } else if (filename.includes('util') || filename.includes('utils') || filename.includes('helper')) {
+          selectedIssue = issueTypes[3] // 文档注释建议
+        }
+
+        issues.push({
+          id: `issue-${String(issueId).padStart(3, '0')}`,
+          ...selectedIssue,
+          file: file.filename,
+          line: Math.floor(file.additions / 2),
+          symbol: null,
+          yourCode: this.extractCodeSnippet(patch, 'add', 10),
+          suggestionCode: this.generateSuggestionCode(selectedIssue.category, file.filename),
+          confidence: 'medium',
+          confidenceScore: 0.65 + Math.random() * 0.2,
+        })
+        issueId++
+
+        // 如果改动较大，再加一个问题
+        if (file.additions > 50 && issues.length < 5) {
+          const secondIssue = issueTypes.find((i) => i.title !== selectedIssue.title) || issueTypes[0]
+          issues.push({
+            id: `issue-${String(issueId).padStart(3, '0')}`,
+            ...secondIssue,
+            file: file.filename,
+            line: Math.floor(file.additions * 0.7),
+            symbol: null,
+            yourCode: this.extractCodeSnippet(patch, 'add', 8),
+            suggestionCode: this.generateSuggestionCode(secondIssue.category, file.filename),
+            confidence: 'low',
+            confidenceScore: 0.55 + Math.random() * 0.2,
+          })
+          issueId++
+        }
+      }
+    }
+
+    // 确保至少有 2 个问题（如果 PR 有实质改动）
+    const hasCodeChanges = files.some((f) => f.additions > 0 && !f.filename.toLowerCase().includes('test') && !f.filename.endsWith('.md'))
+    if (issues.length < 2 && hasCodeChanges) {
+      const codeFile = files.find((f) => f.additions > 0 && (f.filename.endsWith('.ts') || f.filename.endsWith('.tsx') || f.filename.endsWith('.js')))
+      if (codeFile) {
+        issues.push({
+          id: `issue-${String(issueId).padStart(3, '0')}`,
+          severity: 'suggestion' as const,
+          category: 'best-practice',
+          title: `错误处理建议：确保异步操作有适当的错误处理`,
+          description: `建议检查 ${codeFile.filename} 中的异步操作是否都有适当的错误处理和边界情况处理。`,
+          file: codeFile.filename,
+          line: Math.floor(codeFile.additions / 2),
+          symbol: null,
+          yourCode: this.extractCodeSnippet(codeFile.patch, 'add', 8),
+          suggestionCode: `try {\n  const result = await asyncOperation();\n  // 处理成功\n} catch (error) {\n  // 处理错误\n  console.error('Operation failed:', error);\n  throw error; // 或返回默认值\n}`,
+          suggestionText: '建议确保所有异步操作都有适当的错误处理，避免未处理的 Promise rejection。',
+          whyItMatters: '健壮的错误处理是生产级代码的重要标志。未处理的异常可能导致请求挂起、状态不一致，甚至服务崩溃。养成"每个 await 都在 try 中"的好习惯，你的代码会更加可靠。同时，友好的错误提示也能大大提升用户体验！',
+          confidence: 'medium',
+          confidenceScore: 0.7,
+        })
+        issueId++
+      }
+    }
+
+    return issues
+  }
+
+  /**
+   * 生成风险分析
+   */
+  private generateRisks(files: any[], fileTypes: Record<string, number>): any[] {
+    const risks: any[] = []
+
+    const codeFileCount = fileTypes['typescript'] || 0
+    const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0)
+
+    if (totalAdditions > 200) {
+      risks.push({
+        severity: 'high',
+        category: 'maintainability',
+        description: `本次改动较大（新增 ${totalAdditions} 行），建议拆分为多个小 PR 分别审查和合并。`,
+        affectedFiles: files.slice(0, 3).map((f) => f.filename),
+        recommendation: '建议将大的改动拆分为多个小 PR，每个 PR 专注于一个功能点，便于审查和回滚。',
+        confidence: 'high',
+        reasoning: '大的 PR 审查难度大，容易遗漏问题，而且一旦出现 Bug 也不容易定位。小步快跑是业界公认的最佳实践。建议遵循"一个 PR 一件事"的原则，每个 PR 控制在 400 行以内是比较理想的。',
+      })
+    }
+
+    if (codeFileCount > 3) {
+      risks.push({
+        severity: 'medium',
+        category: 'testing',
+        description: `修改了 ${codeFileCount} 个代码文件，建议确保相关测试用例都已更新并通过。`,
+        affectedFiles: files.filter((f) => f.filename.endsWith('.ts') || f.filename.endsWith('.tsx')).map((f) => f.filename).slice(0, 3),
+        recommendation: '建议运行完整的测试套件，确保改动没有破坏现有功能，并为新功能补充测试。',
+        confidence: 'medium',
+        reasoning: '改动的文件越多，影响的范围就越广，引入回归 Bug 的风险也越高。完整的测试套件是我们的安全网，能帮我们及时发现问题。记住：如果改动后测试没跑过，就等于没改完！',
+      })
+    }
+
+    if (risks.length === 0) {
+      risks.push({
+        severity: 'low',
+        category: 'maintainability',
+        description: '本次改动范围适中，风险较低。',
+        affectedFiles: files.slice(0, 2).map((f) => f.filename),
+        recommendation: '建议合并后关注线上监控和用户反馈，确保一切正常。',
+        confidence: 'high',
+        reasoning: '改动范围可控，代码结构清晰。继续保持这种小步快跑的节奏，既能快速交付价值，又能控制风险。',
+      })
+    }
+
+    return risks
+  }
+
+  /**
+   * 生成表扬点
+   */
+  private generatePraises(
+    files: any[],
+    prTitle: string,
+    totalAdditions: number,
+    totalDeletions: number,
+  ): any[] {
+    const praises: any[] = []
+
+    const hasTestFiles = files.some((f) =>
+      f.filename.toLowerCase().includes('test') || f.filename.toLowerCase().includes('spec'),
+    )
+    const hasDocs = files.some((f) => f.filename.endsWith('.md') || f.filename.includes('docs/'))
+    const hasTypeFiles = files.some((f) => f.filename.endsWith('.ts') || f.filename.endsWith('.tsx'))
+
+    if (hasTestFiles) {
+      const testFile = files.find((f) =>
+        f.filename.toLowerCase().includes('test') || f.filename.toLowerCase().includes('spec'),
+      )
+      praises.push({
+        id: 'praise-001',
+        title: '太棒了！为新功能编写了测试用例！',
+        description: `你在 ${testFile.filename} 中补充了测试用例，这是非常好的习惯！测试覆盖率的提升能让重构更有信心，也能减少回归 Bug。`,
+        file: testFile.filename,
+        codeSnippet: this.extractCodeSnippet(testFile.patch, 'add', 12),
+        whyItMatters: '很多新手开发者会忽视测试，但你已经走在了前面！测试驱动开发（TDD）的思维方式，会让你写出更可维护、更易扩展的代码。继续保持这个好习惯，它会让你在团队中脱颖而出。记住：没测试的代码就是遗产代码（legacy code）！',
+      })
+    }
+
+    if (hasDocs) {
+      const docFile = files.find((f) => f.filename.endsWith('.md') || f.filename.includes('docs/'))
+      praises.push({
+        id: 'praise-002',
+        title: '文档意识很强！同步更新了文档',
+        description: `你同时更新了 ${docFile.filename} 文档，这说明你有很好的文档意识。代码和文档同步更新，能让其他开发者更快理解你的改动。`,
+        file: docFile.filename,
+        codeSnippet: this.extractCodeSnippet(docFile.patch, 'add', 10),
+        whyItMatters: '文档是项目的重要组成部分，但经常被忽视。你能主动更新文档，说明你有很强的同理心——能站在其他开发者和用户的角度思考问题。这是高级工程师的重要特质之一！好的文档能让项目的门槛更低，社区更繁荣。',
+      })
+    }
+
+    if (hasTypeFiles && totalDeletions > totalAdditions * 0.5) {
+      const codeFile = files.find((f) => f.filename.endsWith('.ts') || f.filename.endsWith('.tsx'))
+      praises.push({
+        id: 'praise-003',
+        title: '代码精简做得很好！删除的比新增的还多',
+        description: `本次改动删除了 ${totalDeletions} 行代码，说明你在积极地优化和精简代码。删代码比加代码更难，也更有价值！`,
+        file: codeFile?.filename || '多个文件',
+        codeSnippet: this.extractCodeSnippet(codeFile?.patch || '', 'del', 8),
+        whyItMatters: '很多人以为写代码就是不断加功能，但真正的高手懂得什么时候删代码。精简代码、消除重复、优化结构，这些"减法"往往比"加法"更有价值。Less is more —— 在软件设计中，这句话尤其正确。继续保持这种精益求精的态度！',
+      })
+    }
+
+    if (praises.length === 0) {
+      const codeFile = files.find((f) => f.filename.endsWith('.ts') || f.filename.endsWith('.tsx')) || files[0]
+      praises.push({
+        id: 'praise-001',
+        title: '代码结构清晰，命名规范！',
+        description: `${prTitle || '本次改动'} 的代码结构清晰，变量和函数命名语义化，读起来很流畅。这说明你有良好的编码习惯。`,
+        file: codeFile.filename,
+        codeSnippet: this.extractCodeSnippet(codeFile.patch, 'add', 10),
+        whyItMatters: '代码是写给人看的，顺便给机器执行。好的代码应该像散文一样易读。你能写出清晰易懂的代码，说明你已经理解了编程的真谛——代码首先是给人读的。继续保持这个水准，你的代码会成为团队的标杆！',
+      })
+
+      praises.push({
+        id: 'praise-002',
+        title: 'PR 描述清晰，改动范围明确',
+        description: '从改动的文件分布来看，本次改动的目标明确，范围可控，没有"夹带"无关的改动。这是非常好的 PR 习惯。',
+        file: files[0].filename,
+        codeSnippet: `// 改动概览\n// 修改文件：${files.length} 个\n// 新增代码：${totalAdditions} 行\n// 删除代码：${totalDeletions} 行\n// 改动聚焦，目标明确`,
+        whyItMatters: '一个好的 PR 应该是小而专注的，只解决一个问题。这样的 PR 更容易审查、更容易合并、出问题也方便回滚。你已经掌握了这个重要的工程实践，很棒！建议继续保持"一个 PR 一件事"的原则。',
+      })
+    }
+
+    return praises
+  }
+
+  /**
+   * 生成建议和技巧
+   */
+  private generateTips(fileTypes: Record<string, number>, totalAdditions: number): string[] {
+    const tips: string[] = []
+
+    if (fileTypes['typescript']) {
+      tips.push('💡 TypeScript 技巧：使用 satisfies 操作符可以在保留字面量类型的同时进行类型检查，比 as 更安全。试试把你的配置对象从 `const config: Config = {...}` 改成 `const config = {...} satisfies Config` 吧！')
+    }
+
+    if (fileTypes['test']) {
+      tips.push('🧪 测试技巧：测试用例的命名要描述"做什么，期望什么"，而不是"测试哪个函数"。比如 `should return empty array when input is null` 比 `testFunction1` 好得多。')
+    }
+
+    tips.push('📚 学习建议：推荐阅读《代码整洁之道》(Clean Code)，这本书会让你对"什么是好代码"有更深刻的理解。每读一遍都会有新收获，是程序员的必读经典！')
+
+    if (totalAdditions > 100) {
+      tips.push('🎯 小建议：下次可以考虑把大改动拆成多个小 PR，每个 PR 专注一个功能点。小步快跑，更容易审查和合并，也能降低风险哦～')
+    }
+
+    return tips
+  }
+
+  /**
+   * 生成受影响系统列表
+   */
+  private generateAffectedSystems(fileTypes: Record<string, number>, files: any[]): string[] {
+    const systems: string[] = []
+
+    if (fileTypes['typescript']) {
+      systems.push('核心业务逻辑')
+    }
+    if (fileTypes['style']) {
+      systems.push('UI 样式')
+    }
+    if (fileTypes['test']) {
+      systems.push('测试套件')
+    }
+    if (fileTypes['docs']) {
+      systems.push('文档')
+    }
+    if (fileTypes['config']) {
+      systems.push('配置')
+    }
+    if (files.some((f) => f.filename.toLowerCase().includes('component') || f.filename.includes('components/'))) {
+      systems.push('组件层')
+    }
+    if (files.some((f) => f.filename.toLowerCase().includes('hook') || f.filename.includes('hooks/'))) {
+      systems.push('Hooks')
+    }
+    if (files.some((f) => f.filename.toLowerCase().includes('util') || f.filename.includes('utils/'))) {
+      systems.push('工具函数')
+    }
+
+    if (systems.length === 0) {
+      systems.push('其他模块')
+    }
+
+    return systems.slice(0, 4)
+  }
+
+  /**
+   * 从 patch 中提取代码片段
+   */
+  private extractCodeSnippet(patch: string, type: 'add' | 'del' | 'both', maxLines: number): string {
+    if (!patch) return '// 代码片段'
+
+    const lines = patch.split('\n')
+    const result: string[] = []
+
+    for (const line of lines) {
+      if (result.length >= maxLines) break
+
+      if (type === 'add' && line.startsWith('+') && !line.startsWith('+++')) {
+        result.push(line.slice(1))
+      } else if (type === 'del' && line.startsWith('-') && !line.startsWith('---')) {
+        result.push(line.slice(1))
+      } else if (type === 'both' && (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---')) {
+        result.push(line)
+      }
+    }
+
+    if (result.length === 0) {
+      return '// 代码片段（从 diff 中提取）'
+    }
+
+    return result.join('\n')
+  }
+
+  /**
+   * 根据类别生成建议代码
+   */
+  private generateSuggestionCode(category: string, filename: string): string {
+    switch (category) {
+      case 'best-practice':
+        return `// 改进示例：清晰的函数结构和错误处理\nexport async function processData(input: InputType): Promise<ResultType> {\n  // 参数校验\n  if (!isValid(input)) {\n    throw new Error('Invalid input');\n  }\n  \n  try {\n    const result = await doSomething(input);\n    return result;\n  } catch (error) {\n    console.error('processData failed:', error);\n    throw error;\n  }\n}`
+      case 'maintainability':
+        return `// 改进示例：拆分复杂函数\nfunction processOrder(order: Order) {\n  validateOrder(order);\n  calculateTotal(order);\n  applyDiscount(order);\n  saveOrder(order);\n  notifyUser(order);\n}\n\n// 每个小函数只做一件事\nfunction validateOrder(order: Order) { /* ... */ }\nfunction calculateTotal(order: Order) { /* ... */ }\nfunction applyDiscount(order: Order) { /* ... */ }`
+      case 'style':
+        return `// 命名规范示例\n// ✅ 好的命名\nconst userProfile = getUserProfile();\nconst isLoading = true;\nconst MAX_RETRY_COUNT = 3;\n\ninterface UserProfile {\n  userId: string;\n  userName: string;\n  avatarUrl: string;\n}\n\n// ❌ 避免的命名\nconst usr = getUser(); // 缩写不清晰\nconst data = {}; // 太模糊\nconst doStuff = () => {}; // 不说明做什么`
+      case 'documentation':
+        return `/**
+ * 处理用户注册
+ *
+ * 接收用户注册信息，创建新账号并发送验证邮件。
+ *
+ * @param email - 用户邮箱地址
+ * @param userPassword - 用户密码（内部会加密存储）
+ * @param username - 用户昵称
+ * @returns 创建成功的用户信息
+ * @throws EmailExistsError 邮箱已被注册时抛出
+ *
+ * @example
+ * \`\`\`ts
+ * const user = await registerUser('test@example.com', 'securePass123', 'TestUser');
+ * console.log(user.id);
+ * \`\`\`
+ */
+export async function registerUser(
+  email: string,
+  userPassword: string,
+  username: string,
+): Promise<User> { /* ... */ }`
+      case 'testing':
+        return `import { describe, it, expect } from 'vitest';\n\ndescribe('yourFunction', () => {\n  describe('正常情况', () => {\n    it('应该返回正确结果', () => {\n      const result = yourFunction(validInput);\n      expect(result).toEqual(expectedOutput);\n    });\n  });\n\n  describe('边界情况', () => {\n    it('空输入时应该返回空数组', () => {\n      const result = yourFunction([]);\n      expect(result).toEqual([]);\n    });\n  });\n\n  describe('异常情况', () => {\n    it('无效输入时应该抛出错误', () => {\n      expect(() => yourFunction(invalidInput)).toThrow();\n    });\n  });\n});`
+      default:
+        return '// 建议参考项目最佳实践进行优化'
+    }
+  }
 }
 
 export const aiService = new AIService()

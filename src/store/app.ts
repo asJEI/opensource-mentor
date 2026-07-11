@@ -4,7 +4,7 @@ import { create } from 'zustand'
 export type AppPage = 'landing' | 'app'
 
 /** 应用内的子页面 */
-export type AppSubPage = 'dashboard' | 'issues' | 'pr-generator' | 'roadmap' | 'code-review'
+export type AppSubPage = 'dashboard' | 'issues' | 'pr-generator' | 'roadmap' | 'code-review' | 'ai-mentor'
 
 /** 主题类型 */
 export type AppTheme = 'light'

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout'
 import {
@@ -53,30 +53,52 @@ const AlertIcon = () => (
 // ==================== CodeReview 页面 ====================
 const CodeReview = () => {
   const navigate = useNavigate()
-  const {
-    status,
-    progress,
-    result,
-    error,
-    selectedIssue,
-    activeTab,
-    expandedIssueId,
-    setPrUrl,
-    startReview,
-    setActiveTab,
-    toggleIssue,
-    reset,
-  } = useCodeReviewStore()
+  // 分开调用 store 避免无限重渲染
+  const status = useCodeReviewStore((s) => s.status)
+  const progress = useCodeReviewStore((s) => s.progress)
+  const result = useCodeReviewStore((s) => s.result)
+  const error = useCodeReviewStore((s) => s.error)
+  const selectedIssue = useCodeReviewStore((s) => s.selectedIssue)
+  const activeTab = useCodeReviewStore((s) => s.activeTab)
+  const expandedIssueId = useCodeReviewStore((s) => s.expandedIssueId)
+  const setPrUrl = useCodeReviewStore((s) => s.setPrUrl)
+  const startReview = useCodeReviewStore((s) => s.startReview)
+  const setActiveTab = useCodeReviewStore((s) => s.setActiveTab)
+  const toggleIssue = useCodeReviewStore((s) => s.toggleIssue)
+  const reset = useCodeReviewStore((s) => s.reset)
 
-  const { currentRepo, currentOwner } = useRepositoryStore()
+  const currentRepo = useRepositoryStore((s) => s.currentRepo)
+  const currentOwner = useRepositoryStore((s) => s.currentOwner)
+  const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
+  const recommendedIssues = useRepositoryStore((s) => s.recommendedIssues)
+  const issuesStatus = useRepositoryStore((s) => s.issuesStatus)
+  const loadRecommendedIssues = useRepositoryStore((s) => s.loadRecommendedIssues)
+  const setSelectedIssue = useCodeReviewStore((s) => s.setSelectedIssue)
   const showToast = useToastStore((s) => s.showToast)
 
-  // 提交方式：pr 链接 / 粘贴 diff / 上传文件
+  // Demo 预设的 PR 链接
+  const DEMO_PR_URL = 'https://github.com/microsoft/vscode/pull/325329'
+
+  // 提交方式：pr 链接 / 粘贴 diff / 上传文件（后两者为未完成状态，仅作展示）
   const [submitMode, setSubmitMode] = useState<'pr' | 'diff' | 'file'>('pr')
   const [diffContent, setDiffContent] = useState('')
-  const [prUrlInput, setPrUrlInput] = useState('')
+  const [prUrlInput, setPrUrlInput] = useState(DEMO_PR_URL)
 
-  const repoName = `${currentOwner || 'microsoft'}/${currentRepo || 'vscode'}`
+  const repoName = `${currentOwner || 'microsoft'}/${currentRepoName || 'vscode'}`
+
+  // 空状态时自动加载推荐 Issue 列表，方便用户直接选择
+  useEffect(() => {
+    if (!selectedIssue && recommendedIssues.length === 0 && issuesStatus === 'idle') {
+      loadRecommendedIssues(currentOwner, currentRepoName, { perPage: 5 })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIssue])
+
+  // 直接选择 Issue，无需跳转
+  const handleSelectIssue = (issue: any) => {
+    setSelectedIssue(issue)
+    showToast('success', '已选择 Issue', `已选择 #${issue.number}，可以开始提交代码了`)
+  }
 
   // 开始审查
   const handleStartReview = () => {
@@ -87,12 +109,8 @@ const CodeReview = () => {
       }
       setPrUrl(prUrlInput.trim())
     } else if (submitMode === 'diff') {
-      if (!diffContent.trim()) {
-        showToast('error', '请粘贴代码 diff', '需要你的代码变更内容才能审查')
-        return
-      }
-      // diff 模式下用一个模拟的 PR URL（后端 mock 模式下不验证）
-      setPrUrl(`diff://${Date.now()}`)
+      showToast('info', '功能开发中', '粘贴 Diff 功能即将上线，敬请期待～')
+      return
     } else {
       showToast('info', '功能开发中', '文件上传功能即将上线，敬请期待～')
       return
@@ -145,14 +163,64 @@ const CodeReview = () => {
               <div className="empty-state__icon">
                 <AlertIcon />
               </div>
-              <h2>还没有选择 Issue</h2>
-              <p>代码审查需要针对具体的 Issue 和你提交的代码进行。</p>
-              <p>请先去 Issue 推荐页选一个感兴趣的 Issue，然后点击「去代码审查」。</p>
+              <h2>选择一个 Issue 开始代码审查</h2>
+              <p className="empty-desc">代码审查需要针对具体的 Issue 和你提交的代码进行。</p>
+              <p className="empty-desc">从下方推荐中选一个，或去 Issue 推荐页查看更多。</p>
+
+              {/* 推荐 Issue 快捷选择 */}
+              {issuesStatus === 'loading' && (
+                <div className="quick-issues-loading">
+                  <div className="loading-spinner" />
+                  <span>正在加载推荐 Issue...</span>
+                </div>
+              )}
+
+              {issuesStatus === 'success' && recommendedIssues.length > 0 && (
+                <div className="quick-issues">
+                  <div className="quick-issues-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    AI 为你推荐（Top {Math.min(5, recommendedIssues.length)}）
+                  </div>
+                  <div className="quick-issues-list">
+                    {recommendedIssues.slice(0, 5).map((issue) => (
+                      <div
+                        key={issue.id}
+                        className="quick-issue-card"
+                        onClick={() => handleSelectIssue(issue)}
+                      >
+                        <div className="quick-issue-header">
+                          <span className="quick-issue-number">#{issue.number}</span>
+                          <span className={`quick-issue-difficulty difficulty-${issue.difficulty || 'medium'}`}>
+                            {issue.difficulty === 'easy' ? '新手友好' : issue.difficulty === 'hard' ? '较有挑战' : '中等难度'}
+                          </span>
+                        </div>
+                        <div className="quick-issue-title">{issue.title}</div>
+                        <div className="quick-issue-meta">
+                          <span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" />
+                              <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            约 {issue.estimatedTime || 2} 小时
+                          </span>
+                          <span className="quick-issue-score">
+                            匹配度 {issue.recommendationScore ?? issue.matchScore ?? 0}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 className="btn btn-primary"
                 onClick={() => navigate('/issues')}
               >
-                去选择 Issue
+                查看更多 Issue
               </button>
             </div>
           </div>
@@ -218,9 +286,19 @@ const CodeReview = () => {
                 <div className="submit-card__title">
                   <UploadIcon />
                   提交你的代码
+                  <span className="demo-badge">Demo</span>
                 </div>
                 <div className="submit-card__subtitle">
                   把你为这个 Issue 写的代码交给 AI 导师检查一下吧
+                </div>
+              </div>
+
+              {/* Demo 说明 */}
+              <div className="demo-notice">
+                <div className="demo-notice__icon">💡</div>
+                <div className="demo-notice__content">
+                  <strong>Demo 版本说明</strong>
+                  <p>当前为演示版本，仅支持 PR 链接方式提交。已为你预设了示例 PR，点击「开始 AI 审查」即可体验完整流程。</p>
                 </div>
               </div>
 
@@ -234,18 +312,28 @@ const CodeReview = () => {
                   PR 链接
                 </button>
                 <button
-                  className={submitMode === 'diff' ? 'active' : ''}
-                  onClick={() => setSubmitMode('diff')}
+                  className={`mode-disabled ${submitMode === 'diff' ? 'active' : ''}`}
+                  onClick={() => {
+                    setSubmitMode('diff')
+                    showToast('info', '功能开发中', '粘贴 Diff 功能即将上线，敬请期待～')
+                  }}
+                  title="功能开发中，敬请期待"
                 >
                   <FileCodeIcon />
                   粘贴 Diff
+                  <span className="mode-tag">未完成</span>
                 </button>
                 <button
-                  className={submitMode === 'file' ? 'active' : ''}
-                  onClick={() => setSubmitMode('file')}
+                  className={`mode-disabled ${submitMode === 'file' ? 'active' : ''}`}
+                  onClick={() => {
+                    setSubmitMode('file')
+                    showToast('info', '功能开发中', '文件上传功能即将上线，敬请期待～')
+                  }}
+                  title="功能开发中，敬请期待"
                 >
                   <UploadIcon />
                   上传文件
+                  <span className="mode-tag">未完成</span>
                 </button>
               </div>
 
@@ -254,7 +342,7 @@ const CodeReview = () => {
                 <div className="submit-form">
                   <label className="form-label">
                     GitHub PR 链接
-                    <span className="form-hint">粘贴你提交的 Pull Request 链接</span>
+                    <span className="form-hint">输入 GitHub Pull Request 链接进行审查</span>
                   </label>
                   <input
                     type="text"
@@ -264,42 +352,26 @@ const CodeReview = () => {
                     onChange={(e) => setPrUrlInput(e.target.value)}
                   />
                   <div className="form-tip">
-                    💡 还没提交 PR？可以先「粘贴 Diff」让导师帮你检查一下
+                    💡 已为你预设了示例 PR，可直接点击下方按钮体验审查流程
                   </div>
                 </div>
               )}
 
-              {/* 粘贴 Diff 模式 */}
+              {/* 粘贴 Diff 模式（未完成） */}
               {submitMode === 'diff' && (
-                <div className="submit-form">
-                  <label className="form-label">
-                    代码 Diff 内容
-                    <span className="form-hint">粘贴 git diff 的输出内容</span>
-                  </label>
-                  <textarea
-                    className="form-textarea"
-                    placeholder={`diff --git a/src/file.ts b/src/file.ts\nindex abc1234..def5678 100644\n--- a/src/file.ts\n+++ b/src/file.ts\n@@ -1,3 +1,3 @@\n-旧代码\n+新代码`}
-                    rows={12}
-                    value={diffContent}
-                    onChange={(e) => setDiffContent(e.target.value)}
-                  />
-                  <div className="form-tip">
-                    💡 在终端运行 `git diff` 后复制输出粘贴到这里
-                  </div>
+                <div className="submit-form mode-disabled-content">
+                  <div className="mode-disabled-icon">🚧</div>
+                  <h4>粘贴 Diff 功能开发中</h4>
+                  <p>该功能即将上线，敬请期待～<br/>目前请使用 PR 链接方式提交代码审查。</p>
                 </div>
               )}
 
-              {/* 上传文件模式（占位） */}
+              {/* 上传文件模式（未完成） */}
               {submitMode === 'file' && (
-                <div className="submit-form">
-                  <div className="upload-placeholder">
-                    <UploadIcon />
-                    <p>拖拽文件到此处，或</p>
-                    <button className="btn btn-secondary" disabled>
-                      选择文件
-                    </button>
-                    <p className="upload-tip">支持 .diff / .patch / .zip 格式（功能开发中）</p>
-                  </div>
+                <div className="submit-form mode-disabled-content">
+                  <div className="mode-disabled-icon">🚧</div>
+                  <h4>文件上传功能开发中</h4>
+                  <p>该功能即将上线，敬请期待～<br/>目前请使用 PR 链接方式提交代码审查。</p>
                 </div>
               )}
 

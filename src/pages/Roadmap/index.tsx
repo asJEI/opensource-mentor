@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Button } from '@/components/ui'
-import { useRoadmapStore, useToastStore } from '@/store'
+import { useRoadmapStore, useToastStore, useRepositoryStore } from '@/store'
 import type { RoadmapPhase } from '@/types'
 
 // ==================== 图标组件 ====================
@@ -117,7 +117,9 @@ const userLevelOptions = [
 
 // ==================== ProgressOverview 组件 ====================
 function ProgressOverview() {
-  const { steps, progress, roadmap } = useRoadmapStore()
+  const steps = useRoadmapStore((s) => s.steps)
+  const progress = useRoadmapStore((s) => s.progress)
+  const roadmap = useRoadmapStore((s) => s.roadmap)
   const [animatedPercentage, setAnimatedPercentage] = useState(0)
 
   useEffect(() => {
@@ -191,7 +193,8 @@ function ProgressOverview() {
 
 // ==================== RoadmapTimeline 组件 ====================
 function RoadmapTimeline() {
-  const { steps, progress } = useRoadmapStore()
+  const steps = useRoadmapStore((s) => s.steps)
+  const progress = useRoadmapStore((s) => s.progress)
 
   // 计算时间线填充高度
   const fillPercentage = steps.length > 1
@@ -307,15 +310,18 @@ function TimelineCard({ phase }: { phase: RoadmapPhase }) {
 }
 
 // ==================== 用户水平选择器 ====================
-function UserLevelSelector() {
-  const { userLevel, setUserLevel, loadRoadmap, isLoading } = useRoadmapStore()
+function UserLevelSelector({ owner, repo }: { owner: string; repo: string }) {
+  const userLevel = useRoadmapStore((s) => s.userLevel)
+  const setUserLevel = useRoadmapStore((s) => s.setUserLevel)
+  const loadRoadmap = useRoadmapStore((s) => s.loadRoadmap)
+  const isLoading = useRoadmapStore((s) => s.isLoading)
   const showToast = useToastStore((s) => s.showToast)
 
   const handleLevelChange = async (level: 'beginner' | 'intermediate' | 'advanced') => {
     if (level === userLevel) return
     setUserLevel(level)
     showToast('info', '正在重新生成', `已切换到${userLevelOptions.find((o) => o.value === level)?.label}水平，正在生成新路线图...`)
-    await loadRoadmap('microsoft', 'vscode', level)
+    await loadRoadmap(owner, repo, level)
   }
 
   return (
@@ -360,23 +366,23 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 
 // ==================== Roadmap 页面 ====================
 const Roadmap = () => {
-  const {
-    roadmap,
-    steps,
-    progress,
-    isLoading,
-    error,
-    userLevel,
-    loadRoadmap,
-    nextStep,
-    resetProgress,
-  } = useRoadmapStore()
+  const roadmap = useRoadmapStore((s) => s.roadmap)
+  const steps = useRoadmapStore((s) => s.steps)
+  const progress = useRoadmapStore((s) => s.progress)
+  const isLoading = useRoadmapStore((s) => s.isLoading)
+  const error = useRoadmapStore((s) => s.error)
+  const userLevel = useRoadmapStore((s) => s.userLevel)
+  const loadRoadmap = useRoadmapStore((s) => s.loadRoadmap)
+  const nextStep = useRoadmapStore((s) => s.nextStep)
+  const resetProgress = useRoadmapStore((s) => s.resetProgress)
   const showToast = useToastStore((s) => s.showToast)
+  const currentOwner = useRepositoryStore((s) => s.currentOwner)
+  const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
 
   // 页面加载时自动调用 loadRoadmap
   useEffect(() => {
     if (steps.length === 0 && !isLoading && !error) {
-      loadRoadmap('microsoft', 'vscode', userLevel)
+      loadRoadmap(currentOwner, currentRepoName, userLevel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -412,7 +418,7 @@ const Roadmap = () => {
   }
 
   const handleRetry = () => {
-    loadRoadmap('microsoft', 'vscode', userLevel)
+    loadRoadmap(currentOwner, currentRepoName, userLevel)
   }
 
   const currentStep = steps.find((s) => s.status === 'current')
@@ -453,7 +459,7 @@ const Roadmap = () => {
           <h1>{roadmap?.title || '开源贡献学习路线'}</h1>
           <p>{roadmap?.description || '按照路线图逐步推进，开启你的开源之旅'}</p>
           {/* 用户水平选择器 */}
-          <UserLevelSelector />
+          <UserLevelSelector owner={currentOwner} repo={currentRepoName} />
         </div>
 
         {/* 进度总览卡 */}

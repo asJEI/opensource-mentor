@@ -6,6 +6,7 @@ import Issues from '@/pages/Issues'
 import PrGenerator from '@/pages/PrGenerator'
 import Roadmap from '@/pages/Roadmap'
 import CodeReview from '@/pages/CodeReview'
+import AiMentor from '@/pages/AiMentor'
 import { ToastContainer } from '@/components/ui'
 
 /**
@@ -87,6 +88,15 @@ function App() {
           element={
             <PageTransition>
               <CodeReview />
+            </PageTransition>
+          }
+        />
+        {/* AI 导师 */}
+        <Route
+          path="/ai-mentor"
+          element={
+            <PageTransition>
+              <AiMentor />
             </PageTransition>
           }
         />
