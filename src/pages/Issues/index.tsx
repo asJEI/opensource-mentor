@@ -74,8 +74,6 @@ const Issues = () => {
   const selectedIssue = useCodeReviewStore((s) => s.selectedIssue)
   const setSelectedIssue = useCodeReviewStore((s) => s.setSelectedIssue)
 
-  const showToast = useToastStore((s) => s.showToast)
-
   // 页面加载时自动加载推荐 Issue 列表
   // 只在 idle 状态时加载，避免无限循环
   useEffect(() => {

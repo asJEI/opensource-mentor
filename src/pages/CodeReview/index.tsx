@@ -67,7 +67,6 @@ const CodeReview = () => {
   const toggleIssue = useCodeReviewStore((s) => s.toggleIssue)
   const reset = useCodeReviewStore((s) => s.reset)
 
-  const currentRepo = useRepositoryStore((s) => s.currentRepo)
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
   const recommendedIssues = useRepositoryStore((s) => s.recommendedIssues)
@@ -81,7 +80,6 @@ const CodeReview = () => {
 
   // 提交方式：pr 链接 / 粘贴 diff / 上传文件（后两者为未完成状态，仅作展示）
   const [submitMode, setSubmitMode] = useState<'pr' | 'diff' | 'file'>('pr')
-  const [diffContent, setDiffContent] = useState('')
   const [prUrlInput, setPrUrlInput] = useState(DEMO_PR_URL)
 
   const repoName = `${currentOwner || 'microsoft'}/${currentRepoName || 'vscode'}`
