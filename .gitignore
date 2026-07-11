@@ -22,6 +22,9 @@ build
 .env.development
 .env.production
 .env.*
+!.env.example
+!.env.docker.example
+!server/.env.example
 
 # Editor directories and files
 .vscode/*
