@@ -378,14 +378,19 @@ const Roadmap = () => {
   const showToast = useToastStore((s) => s.showToast)
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
+  const roadmapOwner = useRoadmapStore((s) => s.currentOwner)
+  const roadmapRepo = useRoadmapStore((s) => s.currentRepo)
 
-  // 页面加载时自动调用 loadRoadmap
+  // 页面加载时或仓库变化时自动调用 loadRoadmap
   useEffect(() => {
-    if (steps.length === 0 && !isLoading && !error) {
+    const currentRepoKey = `${currentOwner}/${currentRepoName}`
+    const roadmapRepoKey = `${roadmapOwner}/${roadmapRepo}`
+    // 如果路线图对应的仓库和当前仓库不一致，重新加载
+    if (currentRepoKey !== roadmapRepoKey && currentOwner && currentRepoName) {
       loadRoadmap(currentOwner, currentRepoName, userLevel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentOwner, currentRepoName])
 
   const handleNext = () => {
     const currentIndex = steps.findIndex((s) => s.status === 'current')

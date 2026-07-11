@@ -37,6 +37,10 @@ interface RoadmapState {
   error: string | null
   /** 用户水平 */
   userLevel: 'beginner' | 'intermediate' | 'advanced'
+  /** 当前路线图所属的仓库 owner */
+  currentOwner: string
+  /** 当前路线图所属的仓库名 */
+  currentRepo: string
 
   // ---- Actions ----
   /**
@@ -70,9 +74,11 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   isLoading: false,
   error: null,
   userLevel: 'beginner',
+  currentOwner: '',
+  currentRepo: '',
 
   loadRoadmap: async (owner: string, repo: string, userLevel = 'beginner') => {
-    set({ isLoading: true, error: null, userLevel })
+    set({ isLoading: true, error: null, userLevel, currentOwner: owner, currentRepo: repo })
     try {
       const roadmap = await aiService.generateRoadmap(owner, repo, userLevel)
       const steps = roadmap.phases
