@@ -1146,6 +1146,7 @@
 .timeline {
   position: relative;
   padding-top: 20px;
+  overflow-x: hidden;
 }
 
 .timeline-line {
@@ -1183,6 +1184,8 @@
 .timeline-side {
   width: 50%;
   padding: 0 40px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .timeline-side.left {
@@ -1247,6 +1250,10 @@
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.55;
   transform: translateY(8px);
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .timeline-item.completed .timeline-card,
@@ -1280,6 +1287,8 @@
   font-weight: 700;
   margin-bottom: 8px;
   letter-spacing: -0.01em;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .timeline-card p {
@@ -1287,6 +1296,8 @@
   color: var(--muted);
   line-height: 1.6;
   margin-bottom: 12px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .card-tasks {
@@ -1300,6 +1311,14 @@
   padding: 4px 0;
   font-size: 13px;
   color: var(--ink-2);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.card-task span:last-child {
+  min-width: 0;
+  flex: 1;
 }
 
 .card-task-icon {
