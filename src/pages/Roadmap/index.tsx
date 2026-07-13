@@ -282,7 +282,7 @@ function TimelineCard({ phase }: { phase: RoadmapPhase }) {
             <span className="card-task-icon">
               <CheckIcon />
             </span>
-            {task.text}
+            <span className="card-task-text">{task.text}</span>
           </li>
         ))}
       </ul>
