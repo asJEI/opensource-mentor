@@ -2,8 +2,14 @@ import { useState, useEffect } from 'react'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Button } from '@/components/ui'
-import { useRoadmapStore, useToastStore, useRepositoryStore } from '@/store'
-import type { RoadmapPhase } from '@/types'
+import {
+  selectUserProfileContext,
+  useRepositoryStore,
+  useRoadmapStore,
+  useToastStore,
+  useUserStore,
+} from '@/store'
+import type { ExperienceLevel, RoadmapPhase } from '@/types'
 
 // ==================== 图标组件 ====================
 const BookOpenIcon = () => (
@@ -109,10 +115,10 @@ const phaseIcons: Record<number, React.ReactNode> = {
 }
 
 // ==================== 用户水平选项 ====================
-const userLevelOptions = [
-  { value: 'beginner' as const, label: '入门级', desc: '刚接触开源' },
-  { value: 'intermediate' as const, label: '中级', desc: '有一定经验' },
-  { value: 'advanced' as const, label: '高级', desc: '经验丰富' },
+const experienceLevelOptions = [
+  { value: 'beginner' as const, label: '第一次接触开源', desc: '从基础流程开始' },
+  { value: 'some_experience' as const, label: '写过一些代码', desc: '有基础开发经验' },
+  { value: 'project_experience' as const, label: '有完整项目经验', desc: '可跳过部分基础阶段' },
 ]
 
 // ==================== ProgressOverview 组件 ====================
@@ -311,29 +317,35 @@ function TimelineCard({ phase }: { phase: RoadmapPhase }) {
 
 // ==================== 用户水平选择器 ====================
 function UserLevelSelector({ owner, repo }: { owner: string; repo: string }) {
-  const userLevel = useRoadmapStore((s) => s.userLevel)
-  const setUserLevel = useRoadmapStore((s) => s.setUserLevel)
+  const profile = useUserStore((s) => s.profile)
+  const completeProfileSetup = useUserStore((s) => s.completeProfileSetup)
   const loadRoadmap = useRoadmapStore((s) => s.loadRoadmap)
   const isLoading = useRoadmapStore((s) => s.isLoading)
   const showToast = useToastStore((s) => s.showToast)
 
-  const handleLevelChange = async (level: 'beginner' | 'intermediate' | 'advanced') => {
-    if (level === userLevel) return
-    setUserLevel(level)
-    showToast('info', '正在重新生成', `已切换到${userLevelOptions.find((o) => o.value === level)?.label}水平，正在生成新路线图...`)
-    await loadRoadmap(owner, repo, level)
+  const handleLevelChange = async (level: ExperienceLevel) => {
+    if (level === profile.experienceLevel) return
+    completeProfileSetup({
+      programmingLanguages: profile.programmingLanguages,
+      experienceLevel: level,
+      interests: profile.interests,
+      goals: profile.goals,
+    })
+    void useRepositoryStore.getState().loadRecommendedIssues(owner, repo)
+    showToast('info', '正在重新生成', `已切换到${experienceLevelOptions.find((o) => o.value === level)?.label}，正在生成新路线图...`)
+    await loadRoadmap(owner, repo)
   }
 
   return (
     <div className="user-level-selector">
       <span className="user-level-label">你的水平：</span>
       <div className="user-level-options">
-        {userLevelOptions.map((option) => (
+        {experienceLevelOptions.map((option) => (
           <button
             key={option.value}
             className={clsx(
               'user-level-option',
-              userLevel === option.value && 'active',
+              profile.experienceLevel === option.value && 'active',
               isLoading && 'disabled',
             )}
             onClick={() => handleLevelChange(option.value)}
@@ -371,26 +383,23 @@ const Roadmap = () => {
   const progress = useRoadmapStore((s) => s.progress)
   const isLoading = useRoadmapStore((s) => s.isLoading)
   const error = useRoadmapStore((s) => s.error)
-  const userLevel = useRoadmapStore((s) => s.userLevel)
   const loadRoadmap = useRoadmapStore((s) => s.loadRoadmap)
   const nextStep = useRoadmapStore((s) => s.nextStep)
   const resetProgress = useRoadmapStore((s) => s.resetProgress)
   const showToast = useToastStore((s) => s.showToast)
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
-  const roadmapOwner = useRoadmapStore((s) => s.currentOwner)
-  const roadmapRepo = useRoadmapStore((s) => s.currentRepo)
+  const profileSignature = useUserStore((s) =>
+    JSON.stringify(selectUserProfileContext(s)),
+  )
 
-  // 页面加载时或仓库变化时自动调用 loadRoadmap
+  // 页面加载、仓库变化或用户画像变化时，交由 Store 判断是否需要重新生成
   useEffect(() => {
-    const currentRepoKey = `${currentOwner}/${currentRepoName}`
-    const roadmapRepoKey = `${roadmapOwner}/${roadmapRepo}`
-    // 如果路线图对应的仓库和当前仓库不一致，重新加载
-    if (currentRepoKey !== roadmapRepoKey && currentOwner && currentRepoName) {
-      loadRoadmap(currentOwner, currentRepoName, userLevel)
+    if (currentOwner && currentRepoName) {
+      loadRoadmap(currentOwner, currentRepoName)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOwner, currentRepoName])
+  }, [currentOwner, currentRepoName, profileSignature])
 
   const handleNext = () => {
     const currentIndex = steps.findIndex((s) => s.status === 'current')
@@ -423,7 +432,7 @@ const Roadmap = () => {
   }
 
   const handleRetry = () => {
-    loadRoadmap(currentOwner, currentRepoName, userLevel)
+    loadRoadmap(currentOwner, currentRepoName)
   }
 
   const currentStep = steps.find((s) => s.status === 'current')

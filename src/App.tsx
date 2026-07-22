@@ -7,6 +7,7 @@ import PrGenerator from '@/pages/PrGenerator'
 import Roadmap from '@/pages/Roadmap'
 import CodeReview from '@/pages/CodeReview'
 import AiMentor from '@/pages/AiMentor'
+import Settings from '@/pages/Settings'
 import { ToastContainer } from '@/components/ui'
 
 /**
@@ -97,6 +98,15 @@ function App() {
           element={
             <PageTransition>
               <AiMentor />
+            </PageTransition>
+          }
+        />
+        {/* 偏好设置 */}
+        <Route
+          path="/settings"
+          element={
+            <PageTransition>
+              <Settings />
             </PageTransition>
           }
         />

@@ -2,7 +2,13 @@ import express from 'express'
 import cors from 'cors'
 import { config } from './config'
 import routes from './routes'
-import { requestLogger, errorHandler, notFoundHandler } from './middlewares'
+import {
+  aiRequestContext,
+  errorHandler,
+  githubRequestContext,
+  notFoundHandler,
+  requestLogger,
+} from './middlewares'
 
 const app = express()
 
@@ -10,6 +16,8 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 app.use(requestLogger)
+app.use(githubRequestContext)
+app.use(aiRequestContext)
 
 // 路由
 app.use('/api', routes)

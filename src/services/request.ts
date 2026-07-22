@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import { useSettingsStore } from '@/store/settings'
 
 /**
  * 统一响应格式（与后端对齐）
@@ -22,6 +23,20 @@ const bffService: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+bffService.interceptors.request.use(
+  (requestConfig: InternalAxiosRequestConfig) => {
+    const { githubConfig } = useSettingsStore.getState()
+    if (
+      githubConfig.mode === 'custom' &&
+      githubConfig.token &&
+      !requestConfig.headers['X-User-GitHub-Token']
+    ) {
+      requestConfig.headers['X-User-GitHub-Token'] = githubConfig.token
+    }
+    return requestConfig
+  },
+)
 
 bffService.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
@@ -78,48 +93,6 @@ export function bffGet<T = unknown>(url: string, config?: AxiosRequestConfig): P
 /** BFF POST */
 export function bffPost<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
   return bffService.post<T, T>(url, data, config)
-}
-
-// ============================================================
-// GitHub API 实例（保留，供直接调用 GitHub 用）
-// ============================================================
-
-const githubService: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_GITHUB_API_BASE_URL || 'https://api.github.com',
-  timeout: 15000,
-  headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/vnd.github.v3+json',
-  },
-})
-
-githubService.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = import.meta.env.VITE_GITHUB_TOKEN
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    console.error('[GitHub Request Error]', error)
-    return Promise.reject(error)
-  },
-)
-
-githubService.interceptors.response.use(
-  (response: AxiosResponse) => response.data,
-  (error) => {
-    const status = error.response?.status
-    const message = error.response?.data?.message || error.message || 'GitHub 请求失败'
-    console.error(`[GitHub ${status || 'Error'}] ${message}`)
-    return Promise.reject(new Error(message))
-  },
-)
-
-/** GitHub GET */
-export function githubGet<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
-  return githubService.get<T, T>(url, config)
 }
 
 // ============================================================

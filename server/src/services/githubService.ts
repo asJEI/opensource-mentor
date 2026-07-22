@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
 import { config } from '../config'
+import { getRequestGitHubToken } from '../middlewares'
 import { Repository, Issue, IssueLabel } from '../types'
 import {
   GitHubError,
@@ -27,10 +28,11 @@ class GitHubService {
       },
     })
 
-    // 请求拦截器：添加 Token
+    // 请求级用户 Token 优先；未提供时保持平台默认模式
     this.client.interceptors.request.use((requestConfig) => {
-      if (config.github.token) {
-        requestConfig.headers.Authorization = `Bearer ${config.github.token}`
+      const token = getRequestGitHubToken() || config.github.token
+      if (token) {
+        requestConfig.headers.Authorization = `Bearer ${token}`
       }
       return requestConfig
     })
@@ -42,6 +44,19 @@ class GitHubService {
         throw this.handleError(error)
       },
     )
+  }
+
+  async testConnection(): Promise<{
+    login: string
+    name: string | null
+    avatarUrl: string
+  }> {
+    const { data } = await this.client.get('/user')
+    return {
+      login: data.login,
+      name: data.name || null,
+      avatarUrl: data.avatar_url || '',
+    }
   }
 
   /**

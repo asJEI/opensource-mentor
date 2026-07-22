@@ -67,3 +67,6 @@ export type { ReviewActionBarProps } from './ReviewActionBar'
 
 // 下一步引导卡片
 export { NextStepCard } from './NextStepCard'
+
+// 首次用户画像问卷
+export { default as ProfileOnboarding } from './ProfileOnboarding'

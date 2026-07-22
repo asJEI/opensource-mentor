@@ -90,6 +90,8 @@ export interface RecommendedIssue extends Issue {
   estimatedTime?: number
   /** AI 推荐理由（旧字段，单条字符串） */
   aiReasoning?: string
+  /** 与当前用户画像匹配的理由 */
+  matchReasons?: string[]
   /** 推荐理由列表（可解释性） */
   recommendationReasons?: string[]
   /** 匹配度细分项（旧版） */

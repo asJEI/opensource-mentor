@@ -35,9 +35,62 @@ const analyzeRepoSchema = z.object({
   repo: z.string().min(1, 'repo 不能为空'),
 })
 
+const userProfileSchema = z.object({
+  profileSetupStatus: z
+    .enum(['not_started', 'completed', 'skipped'])
+    .default('skipped'),
+  programmingLanguages: z
+    .array(
+      z.enum([
+        'javascript',
+        'typescript',
+        'python',
+        'java',
+        'go',
+        'rust',
+        'cpp',
+        'other',
+      ]),
+    )
+    .default([]),
+  experienceLevel: z
+    .enum(['beginner', 'some_experience', 'project_experience'])
+    .default('beginner'),
+  interests: z
+    .array(
+      z.enum([
+        'frontend',
+        'backend',
+        'documentation',
+        'testing',
+        'devops',
+        'ai',
+        'other',
+      ]),
+    )
+    .default([]),
+  goals: z
+    .array(
+      z.enum([
+        'first_contribution',
+        'find_beginner_friendly_issues',
+        'improve_engineering',
+        'learn_new_technology',
+      ]),
+    )
+    .default([]),
+})
+
 const recommendIssuesSchema = z.object({
   owner: z.string().min(1, 'owner 不能为空'),
   repo: z.string().min(1, 'repo 不能为空'),
+  userProfile: userProfileSchema.default({
+    profileSetupStatus: 'skipped',
+    programmingLanguages: [],
+    experienceLevel: 'beginner',
+    interests: [],
+    goals: [],
+  }),
   state: z.enum(['open', 'closed', 'all']).optional().default('open'),
   labels: z.string().optional(),
   perPage: z.number().min(1).max(100).optional().default(20),
@@ -55,7 +108,9 @@ const generatePrSchema = z.object({
 const generateRoadmapSchema = z.object({
   owner: z.string().min(1, 'owner 不能为空'),
   repo: z.string().min(1, 'repo 不能为空'),
-  userLevel: z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'),
+  userProfile: userProfileSchema.optional(),
+  // 兼容旧客户端；新请求统一使用 userProfile
+  userLevel: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
 })
 
 const chatSchema = z.object({
@@ -75,6 +130,20 @@ const chatSchema = z.object({
 // ============================================================
 // Controller 方法
 // ============================================================
+
+/** POST /api/ai/test-connection */
+export const testAIConnection = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await aiService.testConnection()
+    res.json(success(result))
+  } catch (error) {
+    next(error)
+  }
+}
 
 /**
  * POST /api/ai/explain
@@ -186,7 +255,7 @@ export const recommendIssues = async (
   next: NextFunction,
 ) => {
   try {
-    const { owner, repo, state, labels, perPage, page } =
+    const { owner, repo, userProfile, state, labels, perPage, page } =
       recommendIssuesSchema.parse(req.body)
 
     // 1. 获取仓库信息
@@ -201,7 +270,11 @@ export const recommendIssues = async (
     })
 
     // 3. AI 推荐打分
-    const recommendation = await aiService.recommendIssues(repository, issues)
+    const recommendation = await aiService.recommendIssues(
+      repository,
+      issues,
+      userProfile,
+    )
 
     res.json(success(recommendation))
   } catch (err) {
@@ -251,7 +324,20 @@ export const generateRoadmap = async (
   next: NextFunction,
 ) => {
   try {
-    const { owner, repo, userLevel } = generateRoadmapSchema.parse(req.body)
+    const body = generateRoadmapSchema.parse(req.body)
+    const { owner, repo } = body
+    const userProfile = body.userProfile ?? {
+      profileSetupStatus: body.userLevel ? 'completed' as const : 'skipped' as const,
+      programmingLanguages: [],
+      experienceLevel:
+        body.userLevel === 'advanced'
+          ? 'project_experience' as const
+          : body.userLevel === 'intermediate'
+            ? 'some_experience' as const
+            : 'beginner' as const,
+      interests: [],
+      goals: [],
+    }
 
     // 1. 获取仓库信息
     const repository = await githubService.getRepository(owner, repo)
@@ -282,7 +368,7 @@ export const generateRoadmap = async (
     const roadmap = await aiService.generateRoadmap({
       repository,
       readme,
-      userLevel,
+      userProfile,
       goodFirstIssues,
     })
 

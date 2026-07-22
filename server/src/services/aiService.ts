@@ -11,7 +11,10 @@ import {
   Roadmap,
   ChatMessage,
   ChatResponse,
+  UserProfileContext,
+  AIProviderConfig,
 } from '../types'
+import { getRequestAIConfig } from '../middlewares'
 import {
   issueExplainPrompt,
   repoAnalysisPrompt,
@@ -59,12 +62,70 @@ class AIService {
     return this.available
   }
 
+  private getRuntime(): {
+    client: AxiosInstance | null
+    model: string
+    isCustom: boolean
+  } {
+    const requestConfig = getRequestAIConfig()
+    if (requestConfig?.mode === 'custom') {
+      return {
+        client: this.createClient(requestConfig),
+        model: requestConfig.model,
+        isCustom: true,
+      }
+    }
+    return {
+      client: this.client,
+      model: config.llm.model,
+      isCustom: false,
+    }
+  }
+
+  private createClient(providerConfig: AIProviderConfig): AxiosInstance {
+    return axios.create({
+      baseURL: providerConfig.baseUrl!.replace(/\/+$/, ''),
+      timeout: config.llm.timeout,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${providerConfig.apiKey}`,
+      },
+    })
+  }
+
+  async testConnection(): Promise<{
+    success: boolean
+    message: string
+    model: string
+    latencyMs: number
+  }> {
+    const runtime = this.getRuntime()
+    if (!runtime.client) {
+      throw new AppError('平台 AI API 尚未配置', 503)
+    }
+
+    const startedAt = Date.now()
+    await runtime.client.post('/chat/completions', {
+      model: runtime.model,
+      messages: [{ role: 'user', content: 'Reply with OK.' }],
+      max_tokens: 5,
+      temperature: 0,
+    })
+    return {
+      success: true,
+      message: 'AI API 连接成功',
+      model: runtime.model,
+      latencyMs: Date.now() - startedAt,
+    }
+  }
+
   // ============================================================
   // 1. Issue 解释
   // ============================================================
 
   async explainIssue(repository: Repository, issue: Issue): Promise<IssueExplain> {
-    if (!this.available || !this.client) {
+    const runtime = this.getRuntime()
+    if (!runtime.client) {
       return this.mockExplain(repository, issue)
     }
 
@@ -79,12 +140,12 @@ class AIService {
         issueNumber: issue.number,
       })
 
-      const content = await this.callLLM(prompt)
+      const content = await this.callLLM(prompt, 0.7, runtime)
       const parsed = this.parseJsonSafely(content)
       return this.validateExplainResult(parsed)
     } catch (err) {
       console.error('[AI] explainIssue failed:', (err as Error).message)
-      if (config.nodeEnv === 'development') {
+      if (!runtime.isCustom && config.nodeEnv === 'development') {
         return this.mockExplain(repository, issue)
       }
       throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
@@ -100,7 +161,8 @@ class AIService {
    * 综合技术栈、活跃度、新人友好度等维度
    */
   async analyzeRepository(repository: Repository, readme: string): Promise<RepoAnalysis> {
-    if (!this.available || !this.client) {
+    const runtime = this.getRuntime()
+    if (!runtime.client) {
       return this.mockAnalyzeRepo(repository)
     }
 
@@ -119,12 +181,12 @@ class AIService {
         readme,
       })
 
-      const content = await this.callLLM(prompt)
+      const content = await this.callLLM(prompt, 0.7, runtime)
       const parsed = this.parseJsonSafely(content)
       return this.validateRepoAnalysisResult(parsed)
     } catch (err) {
       console.error('[AI] analyzeRepository failed:', (err as Error).message)
-      if (config.nodeEnv === 'development') {
+      if (!runtime.isCustom && config.nodeEnv === 'development') {
         return this.mockAnalyzeRepo(repository)
       }
       throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
@@ -142,9 +204,11 @@ class AIService {
   async recommendIssues(
     repository: Repository,
     issues: Issue[],
+    userProfile: UserProfileContext,
   ): Promise<IssueRecommendation> {
-    if (!this.available || !this.client) {
-      return this.mockRecommendIssues(repository, issues)
+    const runtime = this.getRuntime()
+    if (!runtime.client) {
+      return this.mockRecommendIssues(repository, issues, userProfile)
     }
 
     try {
@@ -152,6 +216,8 @@ class AIService {
         repoName: repository.fullName,
         repoLanguage: repository.language,
         repoDescription: repository.description,
+        repoTopics: repository.topics,
+        userProfile,
         issues: issues.map((issue) => ({
           number: issue.number,
           title: issue.title,
@@ -164,13 +230,13 @@ class AIService {
         })),
       })
 
-      const content = await this.callLLM(prompt)
+      const content = await this.callLLM(prompt, 0.7, runtime)
       const parsed = this.parseJsonSafely(content)
-      return this.validateRecommendationResult(parsed, issues)
+      return this.validateRecommendationResult(parsed, issues, userProfile)
     } catch (err) {
       console.error('[AI] recommendIssues failed:', (err as Error).message)
-      if (config.nodeEnv === 'development') {
-        return this.mockRecommendIssues(repository, issues)
+      if (!runtime.isCustom && config.nodeEnv === 'development') {
+        return this.mockRecommendIssues(repository, issues, userProfile)
       }
       throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
     }
@@ -191,7 +257,8 @@ class AIService {
       additionalContext?: string
     },
   ): Promise<PrDraft> {
-    if (!this.available || !this.client) {
+    const runtime = this.getRuntime()
+    if (!runtime.client) {
       return this.mockGeneratePrDraft(repository, issue, options)
     }
 
@@ -207,12 +274,12 @@ class AIService {
         additionalContext: options?.additionalContext,
       })
 
-      const content = await this.callLLM(prompt)
+      const content = await this.callLLM(prompt, 0.7, runtime)
       const parsed = this.parseJsonSafely(content)
       return this.validatePrDraftResult(parsed, issue)
     } catch (err) {
       console.error('[AI] generatePrDraft failed:', (err as Error).message)
-      if (config.nodeEnv === 'development') {
+      if (!runtime.isCustom && config.nodeEnv === 'development') {
         return this.mockGeneratePrDraft(repository, issue, options)
       }
       throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
@@ -229,13 +296,14 @@ class AIService {
   async generateRoadmap(params: {
     repository: Repository
     readme: string
-    userLevel: 'beginner' | 'intermediate' | 'advanced'
+    userProfile: UserProfileContext
     goodFirstIssues: Issue[]
   }): Promise<Roadmap> {
-    const { repository, readme, userLevel, goodFirstIssues } = params
+    const { repository, readme, userProfile, goodFirstIssues } = params
+    const runtime = this.getRuntime()
 
-    if (!this.available || !this.client) {
-      return this.mockGenerateRoadmap(repository, userLevel, goodFirstIssues)
+    if (!runtime.client) {
+      return this.mockGenerateRoadmap(repository, userProfile, goodFirstIssues)
     }
 
     try {
@@ -245,7 +313,7 @@ class AIService {
         repoLanguage: repository.language,
         repoTopics: repository.topics,
         stars: repository.stars,
-        userLevel,
+        userProfile,
         readme,
         goodFirstIssues: goodFirstIssues.map((i) => ({
           number: i.number,
@@ -254,13 +322,13 @@ class AIService {
         })),
       })
 
-      const content = await this.callLLM(prompt, 0.8)
+      const content = await this.callLLM(prompt, 0.8, runtime)
       const parsed = this.parseJsonSafely(content)
       return this.validateRoadmapResult(parsed)
     } catch (err) {
       console.error('[AI] generateRoadmap failed:', (err as Error).message)
-      if (config.nodeEnv === 'development') {
-        return this.mockGenerateRoadmap(repository, userLevel, goodFirstIssues)
+      if (!runtime.isCustom && config.nodeEnv === 'development') {
+        return this.mockGenerateRoadmap(repository, userProfile, goodFirstIssues)
       }
       throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
     }
@@ -280,8 +348,9 @@ class AIService {
     userMessage: string
   }): Promise<ChatResponse> {
     const { repository, messages, userMessage } = params
+    const runtime = this.getRuntime()
 
-    if (!this.available || !this.client) {
+    if (!runtime.client) {
       return this.mockChat(repository, userMessage)
     }
 
@@ -304,8 +373,8 @@ class AIService {
         { role: 'user' as const, content: userMessage },
       ]
 
-      const { data } = await this.client.post('/chat/completions', {
-        model: config.llm.model,
+      const { data } = await runtime.client.post('/chat/completions', {
+        model: runtime.model,
         messages: openAIMessages,
         temperature: 0.7,
         top_p: 0.9,
@@ -327,7 +396,7 @@ class AIService {
       }
     } catch (err) {
       console.error('[AI] chat failed:', (err as Error).message)
-      if (config.nodeEnv === 'development') {
+      if (!runtime.isCustom && config.nodeEnv === 'development') {
         return this.mockChat(repository, userMessage)
       }
       throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
@@ -374,9 +443,13 @@ class AIService {
   /**
    * 调用 LLM（统一封装，便于复用）
    */
-  private async callLLM(userPrompt: string, temperature = 0.7): Promise<string> {
-    const { data } = await this.client!.post('/chat/completions', {
-      model: config.llm.model,
+  private async callLLM(
+    userPrompt: string,
+    temperature: number,
+    runtime: { client: AxiosInstance | null; model: string },
+  ): Promise<string> {
+    const { data } = await runtime.client!.post('/chat/completions', {
+      model: runtime.model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -497,6 +570,7 @@ class AIService {
   private validateRecommendationResult(
     parsed: Record<string, unknown>,
     issues: Issue[],
+    userProfile: UserProfileContext,
   ): IssueRecommendation {
     const items = (parsed.items as unknown[]) || []
 
@@ -506,12 +580,30 @@ class AIService {
         const index = Number(item.index)
         const originalIssue = issues[index] || issues[0]
         const matchDetails = (item.matchDetails as Record<string, unknown>) || {}
+        const matchScore =
+          Number(item.matchScore ?? item.recommendationScore) || 50
+        const parsedReasons = this.ensureStringArray(
+          item.matchReasons ?? item.recommendationReasons,
+        )
+        const matchReasons =
+          userProfile.profileSetupStatus !== 'completed'
+            ? ['这是一个适合开源新手的 Issue。']
+            : parsedReasons.length > 0
+              ? parsedReasons
+              : ['该 Issue 与你当前填写的画像具有一定匹配度']
 
         return {
           ...originalIssue,
-          recommendationScore: Number(item.recommendationScore) || 50,
+          difficulty: this.ensureEnum(
+            item.difficulty,
+            ['easy', 'medium', 'hard'],
+            'medium',
+          ),
+          matchScore,
+          matchReasons,
+          recommendationScore: matchScore,
           confidence: Number(item.confidence) || 0.6,
-          recommendationReasons: this.ensureStringArray(item.recommendationReasons),
+          recommendationReasons: matchReasons,
           matchDetails: {
             difficultyMatch: Number(matchDetails.difficultyMatch) || 50,
             skillMatch: Number(matchDetails.skillMatch) || 50,
@@ -526,7 +618,10 @@ class AIService {
     return {
       items: scoredIssues,
       total: scoredIssues.length,
-      summary: String(parsed.summary || '已为你筛选出适合新人的 Issue'),
+      summary:
+        userProfile.profileSetupStatus === 'completed'
+          ? String(parsed.summary || '已结合你的画像筛选 Issue')
+          : '用户未提供个性化画像，已按纯新手标准筛选 Issue。',
     }
   }
 
@@ -790,8 +885,36 @@ class AIService {
   private mockRecommendIssues(
     repository: Repository,
     issues: Issue[],
+    userProfile: UserProfileContext,
   ): IssueRecommendation {
+    const hasPersonalProfile = userProfile.profileSetupStatus === 'completed'
+    const repositoryLanguageAliases: Record<string, UserProfileContext['programmingLanguages'][number]> = {
+      javascript: 'javascript',
+      typescript: 'typescript',
+      python: 'python',
+      java: 'java',
+      go: 'go',
+      rust: 'rust',
+      c: 'cpp',
+      'c++': 'cpp',
+    }
+    const repositoryLanguage = repository.language
+      ? repositoryLanguageAliases[repository.language.toLowerCase()]
+      : undefined
+    const hasLanguageMatch =
+      hasPersonalProfile &&
+      repositoryLanguage !== undefined &&
+      userProfile.programmingLanguages.includes(repositoryLanguage)
+    const languageLabel = repository.language || '当前仓库语言'
+
     const scored = issues.map((issue, index) => {
+      const issueText = [
+        issue.title,
+        issue.body || '',
+        ...issue.labels.map((label) => label.name),
+      ]
+        .join(' ')
+        .toLowerCase()
       const hasGoodFirstLabel = issue.labels.some((l) =>
         l.name.toLowerCase().includes('good first'),
       )
@@ -803,6 +926,36 @@ class AIService {
       const hasComments = issue.comments > 0
       const isRecent =
         new Date().getTime() - new Date(issue.updatedAt).getTime() < 1000 * 60 * 60 * 24 * 30
+      const interestMatches: Array<{
+        value: UserProfileContext['interests'][number]
+        label: string
+        keywords: string[]
+      }> = [
+        { value: 'frontend', label: '前端', keywords: ['frontend', 'react', 'vue', 'css', ' ui '] },
+        { value: 'backend', label: '后端', keywords: ['backend', 'server', 'api', 'database'] },
+        { value: 'documentation', label: '文档', keywords: ['documentation', 'docs', 'readme'] },
+        { value: 'testing', label: '测试', keywords: ['test', 'testing', 'coverage'] },
+        { value: 'devops', label: 'DevOps', keywords: ['devops', 'ci', 'docker', 'workflow'] },
+        { value: 'ai', label: 'AI', keywords: [' ai ', 'llm', 'model', 'prompt'] },
+      ]
+      const matchedInterest = hasPersonalProfile
+        ? interestMatches.find(
+            (interest) =>
+              userProfile.interests.includes(interest.value) &&
+              interest.keywords.some((keyword) => issueText.includes(keyword)),
+          )
+        : undefined
+      const difficulty: RecommendedIssue['difficulty'] =
+        hasGoodFirstLabel || hasDocLabel
+          ? 'easy'
+          : /\b(architecture|refactor|performance|breaking)\b/.test(issueText)
+            ? 'hard'
+            : 'medium'
+      const difficultyMatch = {
+        beginner: { easy: 92, medium: 58, hard: 28 },
+        some_experience: { easy: 78, medium: 88, hard: 55 },
+        project_experience: { easy: 62, medium: 88, hard: 78 },
+      }[userProfile.experienceLevel][difficulty]
 
       let score = 50
       if (hasGoodFirstLabel) score += 25
@@ -811,9 +964,65 @@ class AIService {
       if (hasBugLabel) score += 5
       if (isRecent) score += 5
       if (hasComments) score += 5
+      if (hasLanguageMatch) score += 8
+      if (matchedInterest) score += 10
+      score += Math.round((difficultyMatch - 60) / 5)
+      if (
+        hasPersonalProfile &&
+        (userProfile.goals.includes('first_contribution') ||
+          userProfile.goals.includes('find_beginner_friendly_issues')) &&
+        difficulty === 'easy'
+      ) {
+        score += 6
+      }
+      if (
+        hasPersonalProfile &&
+        userProfile.goals.includes('improve_engineering') &&
+        (hasBugLabel || issueText.includes('test'))
+      ) {
+        score += 5
+      }
+      if (
+        hasPersonalProfile &&
+        userProfile.goals.includes('learn_new_technology') &&
+        repositoryLanguage !== undefined &&
+        userProfile.programmingLanguages.length > 0 &&
+        !userProfile.programmingLanguages.includes(repositoryLanguage)
+      ) {
+        score += 4
+      }
+      if (
+        userProfile.experienceLevel === 'beginner' &&
+        difficulty === 'hard'
+      ) {
+        score -= 20
+      }
       score = Math.min(100, Math.max(0, score + (index % 5) * 2 - 4))
 
       const reasons: string[] = []
+      if (!hasPersonalProfile) {
+        reasons.push('这是一个适合开源新手的 Issue。')
+      }
+      if (hasLanguageMatch) {
+        reasons.push(`该仓库主要使用 ${languageLabel}，与你填写的编程语言匹配`)
+      }
+      if (matchedInterest) {
+        reasons.push(`属于你感兴趣的${matchedInterest.label}方向`)
+      }
+      if (
+        hasPersonalProfile &&
+        userProfile.goals.includes('first_contribution') &&
+        difficulty === 'easy'
+      ) {
+        reasons.push('难度符合你完成第一次开源贡献的目标')
+      }
+      if (
+        hasPersonalProfile &&
+        userProfile.goals.includes('improve_engineering') &&
+        (hasBugLabel || issueText.includes('test'))
+      ) {
+        reasons.push('包含调试或测试实践，有助于提升工程能力')
+      }
       if (hasGoodFirstLabel) reasons.push('标有 good first issue 标签，官方推荐新人入手')
       if (hasDocLabel) reasons.push('文档类改动，门槛较低，适合新人')
       if (hasHelpLabel) reasons.push('维护者标记为需要帮助，欢迎贡献')
@@ -823,12 +1032,21 @@ class AIService {
 
       return {
         ...issue,
+        difficulty,
+        matchScore: score,
+        matchReasons: reasons,
         recommendationScore: score,
         confidence: 0.65,
         recommendationReasons: reasons,
         matchDetails: {
-          difficultyMatch: hasGoodFirstLabel || hasDocLabel ? 85 : 60,
-          skillMatch: hasDocLabel ? 90 : 65,
+          difficultyMatch,
+          skillMatch: hasLanguageMatch
+            ? 92
+            : matchedInterest
+              ? 82
+            : hasPersonalProfile && userProfile.programmingLanguages.length > 0
+              ? 48
+              : 60,
           impactScore: hasBugLabel ? 75 : 60,
           activityScore: isRecent ? 80 : 55,
           beginnerFriendlyScore: hasGoodFirstLabel ? 90 : hasDocLabel ? 80 : 55,
@@ -841,7 +1059,9 @@ class AIService {
     return {
       items: scored,
       total: scored.length,
-      summary: `已从 ${issues.length} 个 Issue 中为你筛选出适合新人入手的任务，优先推荐标有 good first issue 和文档类的 Issue。`,
+      summary: hasPersonalProfile
+        ? `已结合你的编程语言、开发经验、兴趣和学习目标，从 ${issues.length} 个 Issue 中完成匹配。`
+        : `用户未提供个性化画像，已从 ${issues.length} 个 Issue 中按纯新手标准筛选任务。`,
     }
   }
 
@@ -911,10 +1131,47 @@ class AIService {
 
   private mockGenerateRoadmap(
     repository: Repository,
-    userLevel: 'beginner' | 'intermediate' | 'advanced',
+    userProfile: UserProfileContext,
     goodFirstIssues: Issue[],
   ): Roadmap {
     const language = repository.language || 'JavaScript'
+    const hasPersonalProfile = userProfile.profileSetupStatus === 'completed'
+    const experienceLevel = hasPersonalProfile
+      ? userProfile.experienceLevel
+      : 'beginner'
+    const languageAliases: Record<string, UserProfileContext['programmingLanguages'][number]> = {
+      javascript: 'javascript',
+      typescript: 'typescript',
+      python: 'python',
+      java: 'java',
+      go: 'go',
+      rust: 'rust',
+      c: 'cpp',
+      'c++': 'cpp',
+    }
+    const repositoryLanguage = repository.language
+      ? languageAliases[repository.language.toLowerCase()]
+      : undefined
+    const knowsRepositoryLanguage =
+      hasPersonalProfile &&
+      repositoryLanguage !== undefined &&
+      userProfile.programmingLanguages.includes(repositoryLanguage)
+    const needsLanguageFoundation =
+      hasPersonalProfile &&
+      userProfile.goals.includes('learn_new_technology') &&
+      repositoryLanguage !== undefined &&
+      !knowsRepositoryLanguage
+    const interestFocus = hasPersonalProfile
+      ? {
+          frontend: '优先阅读界面、组件和交互相关模块',
+          backend: '优先阅读 API、服务和数据处理模块',
+          documentation: '优先实践文档结构、示例和开发者指南改进',
+          testing: '优先理解测试框架并补充单元测试',
+          devops: '优先理解 CI、构建和部署流程',
+          ai: '优先阅读模型调用、Prompt 和 AI 功能模块',
+          other: '根据 Issue 标签选择最感兴趣的贡献方向',
+        }[userProfile.interests[0]]
+      : undefined
     const issueRefs = goodFirstIssues.slice(0, 3).map(
       (i) => `#${i.number} ${i.title.slice(0, 40)}`,
     )
@@ -1087,27 +1344,58 @@ class AIService {
       },
     ]
 
-    // 根据用户水平调整起点
+    // 根据统一用户画像调整起点
     let startIdx = 0
-    if (userLevel === 'intermediate') startIdx = 2
-    if (userLevel === 'advanced') startIdx = 4
+    if (experienceLevel === 'some_experience') startIdx = 1
+    if (experienceLevel === 'project_experience') startIdx = 3
 
     const adjustedPhases = phases.slice(startIdx).map((p, i) => ({
       ...p,
       phase: i + 1,
+      learningItems: [
+        ...p.learningItems,
+        ...(i === 0 && needsLanguageFoundation
+          ? [`补齐 ${language} 基础，并完成一个仓库内的小练习`]
+          : []),
+        ...(i === 0 && knowsRepositoryLanguage
+          ? [`直接使用已有的 ${language} 经验理解项目代码规范`]
+          : []),
+        ...(i === 0 && interestFocus ? [interestFocus] : []),
+      ],
     }))
+
+    const audienceDescription = {
+      beginner: '开源新手',
+      some_experience: '写过一些代码的开发者',
+      project_experience: '有完整项目经验的开发者',
+    }[experienceLevel]
+    const goalTip = hasPersonalProfile
+      ? {
+          first_contribution: '以合并第一个 PR 作为近期路线里程碑',
+          find_beginner_friendly_issues: '每个实践阶段先检查 good first issue 和 help wanted 标签',
+          improve_engineering: '优先选择包含测试、调试和 Code Review 的实践任务',
+          learn_new_technology: `记录 ${language} 与现有技术栈的差异，并用真实 Issue 验证学习成果`,
+        }[userProfile.goals[0]]
+      : '先完成一个文档或测试类小贡献，再进入代码修改'
 
     return {
       title: `${repository.fullName} 贡献者成长路线图`,
-      description: `这是一份专为 ${userLevel === 'beginner' ? '开源新手' : userLevel === 'intermediate' ? '有一定经验的开发者' : '资深开发者'} 定制的 ${repository.fullName} 项目学习路线图，从项目认知到成为活跃贡献者，循序渐进。`,
-      totalEstimatedTime: userLevel === 'beginner' ? '4-8 周' : userLevel === 'intermediate' ? '3-6 周' : '2-4 周',
+      description: hasPersonalProfile
+        ? `这是一份结合编程语言、兴趣和学习目标，为${audienceDescription}定制的 ${repository.fullName} 贡献路线。`
+        : `用户未提供个性化画像，本路线按纯新手标准从理解项目开始。`,
+      totalEstimatedTime:
+        experienceLevel === 'beginner'
+          ? '4-8 周'
+          : experienceLevel === 'some_experience'
+            ? '3-6 周'
+            : '2-4 周',
       phases: adjustedPhases,
       tips: [
+        goalTip,
         '不要急于求成，每个阶段都要动手实践',
         '遇到问题先搜索再提问，提问时提供足够的上下文',
         '积极参与社区讨论，不要害怕犯错',
         '定期回顾学习成果，调整学习计划',
-        '帮助新人是最好的学习方式',
         '保持耐心，开源贡献是长期的旅程',
       ],
       confidence: 0.7,

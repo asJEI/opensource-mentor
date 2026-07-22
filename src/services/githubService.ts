@@ -1,11 +1,26 @@
-import { bffGet } from './request'
-import type { Repository, Issue, IssueLabel } from '@/types'
+import { bffGet, bffPost } from './request'
+import type {
+  ConnectionTestResult,
+  Issue,
+  IssueLabel,
+  Repository,
+} from '@/types'
 
 // ============================================================
 // GitHub API 服务（通过 BFF 调用）
 // ============================================================
 
 class GithubService {
+  async testConnection(token?: string): Promise<ConnectionTestResult> {
+    return bffPost<ConnectionTestResult>(
+      '/github/test-connection',
+      {},
+      token
+        ? { headers: { 'X-User-GitHub-Token': token } }
+        : undefined,
+    )
+  }
+
   /**
    * 获取仓库信息
    * GET /api/repository?owner=xxx&repo=xxx

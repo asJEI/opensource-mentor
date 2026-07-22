@@ -6,9 +6,12 @@ import {
   generatePrDraft,
   generateRoadmap,
   chat,
+  testAIConnection,
 } from '../controllers/aiController'
 
 const router = Router()
+
+router.post('/test-connection', testAIConnection)
 
 // POST /api/ai/explain —— 解释 Issue
 router.post('/explain', explainIssue)

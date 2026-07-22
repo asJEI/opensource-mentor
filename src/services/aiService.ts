@@ -1,4 +1,5 @@
 import { bffPost } from './request'
+import { useSettingsStore } from '@/store/settings'
 import type {
   Issue,
   Repository,
@@ -9,6 +10,9 @@ import type {
   RepoAnalysis,
   IssueRecommendation,
   ChatResponse,
+  UserProfileContext,
+  AIProviderConfig,
+  ConnectionTestResult,
 } from '@/types'
 
 // ============================================================
@@ -16,12 +20,32 @@ import type {
 // ============================================================
 
 class AiService {
+  private withProviderConfig<T extends Record<string, unknown>>(
+    payload: T,
+  ): T & { aiProviderConfig?: AIProviderConfig } {
+    const { aiConfig } = useSettingsStore.getState()
+    return aiConfig.mode === 'custom'
+      ? { ...payload, aiProviderConfig: aiConfig }
+      : payload
+  }
+
+  async testConnection(
+    configOverride?: AIProviderConfig,
+  ): Promise<ConnectionTestResult> {
+    const aiProviderConfig =
+      configOverride ?? useSettingsStore.getState().aiConfig
+    return bffPost<ConnectionTestResult>(
+      '/ai/test-connection',
+      { aiProviderConfig },
+    )
+  }
+
   /**
    * AI 解释 Issue
    * POST /api/ai/explain
    */
   async explainIssue(issue: Issue, repo: Repository): Promise<IssueExplain> {
-    const data = await bffPost<any>('/ai/explain', {
+    const data = await bffPost<any>('/ai/explain', this.withProviderConfig({
       repository: {
         fullName: repo.fullName,
         description: repo.description,
@@ -34,7 +58,7 @@ class AiService {
         body: issue.body,
         labels: issue.labels.map((l) => ({ name: l.name, color: l.color })),
       },
-    })
+    }))
     return this.mapIssueExplain(data)
   }
 
@@ -46,7 +70,10 @@ class AiService {
     repository: Repository
     analysis: RepoAnalysis
   }> {
-    const data = await bffPost<any>('/ai/analyze-repo', { owner, repo })
+    const data = await bffPost<any>(
+      '/ai/analyze-repo',
+      this.withProviderConfig({ owner, repo }),
+    )
     return {
       repository: {
         id: String(data.repository.id),
@@ -80,6 +107,7 @@ class AiService {
   async recommendIssues(
     owner: string,
     repo: string,
+    userProfile: UserProfileContext,
     params?: {
       state?: 'open' | 'closed' | 'all'
       labels?: string
@@ -87,11 +115,12 @@ class AiService {
       page?: number
     },
   ): Promise<IssueRecommendation> {
-    const data = await bffPost<any>('/ai/recommend-issues', {
+    const data = await bffPost<any>('/ai/recommend-issues', this.withProviderConfig({
       owner,
       repo,
+      userProfile,
       ...params,
-    })
+    }))
     return this.mapIssueRecommendation(data)
   }
 
@@ -106,13 +135,13 @@ class AiService {
     prType?: string,
     additionalContext?: string,
   ): Promise<PrDraft> {
-    const data = await bffPost<any>('/ai/generate-pr', {
+    const data = await bffPost<any>('/ai/generate-pr', this.withProviderConfig({
       owner,
       repo,
       issueNumber,
       prType,
       additionalContext,
-    })
+    }))
     return this.mapPrDraft(data)
   }
 
@@ -123,13 +152,13 @@ class AiService {
   async generateRoadmap(
     owner: string,
     repo: string,
-    userLevel: 'beginner' | 'intermediate' | 'advanced' = 'beginner',
+    userProfile: UserProfileContext,
   ): Promise<Roadmap> {
-    const data = await bffPost<any>('/ai/generate-roadmap', {
+    const data = await bffPost<any>('/ai/generate-roadmap', this.withProviderConfig({
       owner,
       repo,
-      userLevel,
-    })
+      userProfile,
+    }))
     return this.mapRoadmap(data)
   }
 
@@ -143,12 +172,12 @@ class AiService {
     messages: ChatMessage[],
     message: string,
   ): Promise<ChatResponse> {
-    const data = await bffPost<any>('/ai/chat', {
+    const data = await bffPost<any>('/ai/chat', this.withProviderConfig({
       owner,
       repo,
       message,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    })
+    }))
     return {
       message: data.message,
       relatedIssues: data.relatedIssues || [],
@@ -208,9 +237,14 @@ class AiService {
         htmlUrl: item.htmlUrl || '',
         assignees: [],
         // 推荐字段
-        recommendationScore: item.recommendationScore || 0,
+        matchScore: item.matchScore ?? item.recommendationScore ?? 0,
+        recommendationScore: item.recommendationScore ?? item.matchScore ?? 0,
         confidence: item.confidence || 0.5,
-        recommendationReasons: item.recommendationReasons || [],
+        difficulty: item.difficulty || 'medium',
+        matchReasons:
+          item.matchReasons || item.recommendationReasons || [],
+        recommendationReasons:
+          item.recommendationReasons || item.matchReasons || [],
         matchDetails: item.matchDetails || {
           difficultyMatch: 50,
           skillMatch: 50,

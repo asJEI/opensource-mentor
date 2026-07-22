@@ -4,6 +4,7 @@
  * 所有 Prompt Engineering 集中在此，方便维护和优化
  * 设计参考: https://github.com/asJEI/PR-Review (confidence scoring, structured JSON, explainable reasons)
  */
+import type { UserProfileContext } from '../types'
 
 // ============================================================
 // 系统提示词
@@ -181,6 +182,8 @@ export const issueRecommendationPrompt = (params: {
   repoName: string
   repoLanguage: string | null
   repoDescription: string | null
+  repoTopics: string[]
+  userProfile: UserProfileContext
   issues: Array<{
     number: number
     title: string
@@ -192,7 +195,75 @@ export const issueRecommendationPrompt = (params: {
     author: string
   }>
 }): string => {
-  const { repoName, repoLanguage, repoDescription, issues } = params
+  const {
+    repoName,
+    repoLanguage,
+    repoDescription,
+    repoTopics,
+    userProfile,
+    issues,
+  } = params
+
+  const languageLabels: Record<
+    UserProfileContext['programmingLanguages'][number],
+    string
+  > = {
+    javascript: 'JavaScript',
+    typescript: 'TypeScript',
+    python: 'Python',
+    java: 'Java',
+    go: 'Go',
+    rust: 'Rust',
+    cpp: 'C/C++',
+    other: '其他',
+  }
+  const interestLabels: Record<
+    UserProfileContext['interests'][number],
+    string
+  > = {
+    frontend: '前端',
+    backend: '后端',
+    documentation: '文档',
+    testing: '测试',
+    devops: 'DevOps',
+    ai: 'AI',
+    other: '其他',
+  }
+  const goalLabels: Record<UserProfileContext['goals'][number], string> = {
+    first_contribution: '完成第一次开源贡献',
+    find_beginner_friendly_issues: '寻找适合新人的 Issue',
+    improve_engineering: '提升工程能力',
+    learn_new_technology: '学习新技术',
+  }
+  const experienceLabels: Record<
+    UserProfileContext['experienceLevel'],
+    string
+  > = {
+    beginner: '第一次接触开源',
+    some_experience: '写过一些代码',
+    project_experience: '有完整项目经验',
+  }
+  const hasPersonalProfile = userProfile.profileSetupStatus === 'completed'
+  const profileText = hasPersonalProfile
+    ? `- 开发经验: ${experienceLabels[userProfile.experienceLevel]}
+- 编程语言: ${
+        userProfile.programmingLanguages.length > 0
+          ? userProfile.programmingLanguages.map((item) => languageLabels[item]).join(', ')
+          : '未指定'
+      }
+- 兴趣方向: ${
+        userProfile.interests.length > 0
+          ? userProfile.interests.map((item) => interestLabels[item]).join(', ')
+          : '未指定'
+      }
+- 学习目标: ${
+        userProfile.goals.length > 0
+          ? userProfile.goals.map((item) => goalLabels[item]).join(', ')
+          : '未指定'
+      }`
+    : `- 用户未提供个性化画像，按“第一次接触开源”的纯新手评估
+- 不得声称用户掌握某种语言、技术或对某个方向感兴趣
+- 推荐理由应明确说明：“这是一个适合开源新手的 Issue。”`
 
   const issuesText = issues
     .map(
@@ -218,6 +289,10 @@ ${issue.body ? issue.body.slice(0, 500) : '（无内容）'}
 - 仓库: ${repoName}
 - 描述: ${repoDescription || '暂无'}
 - 主要语言: ${repoLanguage || '未知'}
+- Topics/技术领域: ${repoTopics.length > 0 ? repoTopics.join(', ') : '未知'}
+
+## 用户画像
+${profileText}
 
 ## 待评估 Issue 列表（共 ${issues.length} 个）
 ${issuesText}
@@ -225,14 +300,16 @@ ${issuesText}
 ## 评分维度说明
 请从以下 5 个维度为每个 Issue 打分（0-100 分）：
 
-1. **难度匹配 (difficultyMatch)**: Issue 本身的难度，越简单分数越高
+1. **难度匹配 (difficultyMatch)**: Issue 难度与用户经验是否匹配
    - good first issue / beginner 标签 → 高分
    - 文档/拼写/样式类 → 高分
-   - 涉及核心架构/复杂算法 → 低分
+   - 纯新手遇到核心架构/复杂算法 → 低分
+   - 有完整项目经验时，可适当提高中等工程任务的分数
 
-2. **技术匹配 (skillMatch)**: 需要的技术门槛，门槛越低分数越高
-   - 只需要基础语言知识 → 高分
-   - 需要深入理解项目架构 → 低分
+2. **技术匹配 (skillMatch)**: Issue 涉及的语言、文件和领域是否匹配画像
+   - 与用户编程语言和兴趣方向明确匹配 → 高分并说明证据
+   - 用户未提供语言或兴趣时，不得虚构匹配
+   - 仓库主语言只能作为参考，结合 Issue 标题、正文和标签判断
 
 3. **影响价值 (impactScore)**: 完成后的贡献价值和认可度
    - 有明确需求、被多人关注 → 高分
@@ -254,9 +331,10 @@ ${issuesText}
   "items": [
     {
       "index": Issue 在列表中的索引数字,
-      "recommendationScore": 综合推荐分数（0-100，整数）,
+      "difficulty": "easy | medium | hard",
+      "matchScore": 综合匹配分数（0-100，整数）,
       "confidence": 你对这个评分的置信度（0-1）,
-      "recommendationReasons": ["推荐理由，2-4 条，要具体"],
+      "matchReasons": ["画像匹配理由，2-4 条，要具体"],
       "matchDetails": {
         "difficultyMatch": 0-100 整数,
         "skillMatch": 0-100 整数,
@@ -269,12 +347,14 @@ ${issuesText}
 }
 
 ## 注意事项
-1. 站在新人的角度评估，优先考虑上手难度和学习价值
-2. recommendationReasons 要具体，如"标有 good first issue 标签"、"只涉及文档修改"等
-3. 分数要有区分度，不要都集中在 80-90 分
-4. 按 recommendationScore 从高到低排序返回
-5. 严格返回 JSON，不要有额外文字
-6. 所有内容使用中文`
+1. 同时考虑用户语言、经验、兴趣、目标以及仓库技术栈、Issue 难度和涉及领域
+2. matchReasons 要具体，如"该 Issue 使用 TypeScript"、"属于你感兴趣的前端方向"
+3. 只有画像中真实存在的信息才能写成“你掌握”或“你感兴趣”
+4. 用户未完成或跳过画像时，只按纯新手推荐，并至少包含“这是一个适合开源新手的 Issue。”
+5. 分数要有区分度，不要都集中在 80-90 分
+6. 按 matchScore 从高到低排序返回
+7. 严格返回 JSON，不要有额外文字
+8. 所有内容使用中文`
 }
 
 // ============================================================
@@ -368,7 +448,7 @@ export const roadmapPrompt = (params: {
   repoLanguage: string | null
   repoTopics: string[]
   stars: number
-  userLevel: 'beginner' | 'intermediate' | 'advanced'
+  userProfile: UserProfileContext
   readme: string
   goodFirstIssues: Array<{
     number: number
@@ -376,18 +456,64 @@ export const roadmapPrompt = (params: {
     labels: string[]
   }>
 }): string => {
-  const { repoName, repoDescription, repoLanguage, repoTopics, stars, userLevel, readme, goodFirstIssues } = params
+  const {
+    repoName,
+    repoDescription,
+    repoLanguage,
+    repoTopics,
+    stars,
+    userProfile,
+    readme,
+    goodFirstIssues,
+  } = params
 
   const readmeSnippet = readme ? readme.slice(0, 3000) : '（无 README）'
   const issuesText = goodFirstIssues.length > 0
     ? goodFirstIssues.map(i => `  - #${i.number} ${i.title} [${i.labels.join(', ')}]`).join('\n')
     : '  暂无 good first issue'
 
-  const levelDescription = {
-    beginner: '完全没有开源贡献经验，刚学会 Git 基本操作',
-    intermediate: '有一定编程经验，参与过 1-2 个小项目，了解 PR 流程',
-    advanced: '有丰富的开发经验，参与过多个开源项目，熟悉代码审查流程',
-  }[userLevel]
+  const experienceDescription = {
+    beginner: '第一次接触开源，需要从项目理解和贡献流程开始',
+    some_experience: '写过一些代码，可以较快进入代码阅读和简单实践',
+    project_experience: '有完整项目经验，可跳过基础编程和 Git 入门，直接进入工程贡献',
+  }[userProfile.experienceLevel]
+  const interestLabels: Record<
+    UserProfileContext['interests'][number],
+    string
+  > = {
+    frontend: '前端',
+    backend: '后端',
+    documentation: '文档',
+    testing: '测试',
+    devops: 'DevOps',
+    ai: 'AI',
+    other: '其他',
+  }
+  const goalLabels: Record<UserProfileContext['goals'][number], string> = {
+    first_contribution: '完成第一次开源贡献',
+    find_beginner_friendly_issues: '寻找适合新人的 Issue',
+    improve_engineering: '提升工程能力',
+    learn_new_technology: '学习新技术',
+  }
+  const hasPersonalProfile = userProfile.profileSetupStatus === 'completed'
+  const profileText = hasPersonalProfile
+    ? `- 开发经验: ${experienceDescription}
+- 编程语言: ${userProfile.programmingLanguages.join(', ') || '未指定'}
+- 兴趣方向: ${userProfile.interests.map((item) => interestLabels[item]).join(', ') || '未指定'}
+- 学习目标: ${userProfile.goals.map((item) => goalLabels[item]).join(', ') || '未指定'}`
+    : `- 用户未提供个性化画像，使用纯新手默认画像
+- 经验按“第一次接触开源”处理
+- 不得假设用户掌握特定语言或对特定方向感兴趣`
+  const phaseGuidance = hasPersonalProfile
+    ? {
+        beginner:
+          '生成 5-7 个阶段；前四个阶段依次覆盖理解项目、阅读 Issue、简单文档或测试贡献、第一次代码贡献',
+        some_experience:
+          '生成 4-6 个阶段；简化 Git 基础，但保留项目理解、Issue 分析和第一次真实贡献',
+        project_experience:
+          '生成 3-5 个阶段；跳过基础编程和 Git 教程，从架构理解、测试或 Bug 修复开始',
+      }[userProfile.experienceLevel]
+    : '生成 5-7 个阶段；按纯新手路径从理解项目和开源流程开始'
 
   return `你是一位资深开源贡献导师，擅长为不同水平的开发者定制开源项目学习路线图。
 
@@ -402,8 +528,8 @@ export const roadmapPrompt = (params: {
 - Topics: ${repoTopics.length > 0 ? repoTopics.join(', ') : '无'}
 - Stars: ${stars}
 
-## 用户水平
-${levelDescription}
+## 用户画像
+${profileText}
 
 ## 适合新人的 Issue
 ${issuesText}
@@ -436,14 +562,15 @@ ${readmeSnippet}
 }
 
 ## 注意事项
-1. 路线图要有 5-7 个阶段，循序渐进，难度逐步提升
-2. 第一阶段应该是了解项目和环境搭建，最后阶段应该是独立贡献和社区参与
+1. ${phaseGuidance}
+2. 路线必须根据经验、编程语言、兴趣和目标改变具体起点、学习内容与实践任务，不能只在标题中提及画像
 3. 每个阶段都要有推荐实践的 Issue（如果有 good first issue 优先推荐）
 4. 完成标准要可量化，如"能独立搭建开发环境并跑通测试"、"提交了第一个文档类 PR"
-5. 学习内容要具体，不要写"学习前端知识"，要写"学习 React Hooks 基本用法"
-6. 根据用户水平调整起点，beginner 从最基础开始，advanced 可以跳过入门阶段
-7. 严格返回 JSON，不要有额外文字
-8. 所有内容使用中文`
+5. 学习内容要结合仓库主要语言、Topics 和 README，具体到技术或实践动作
+6. 用户未掌握仓库语言且目标是学习新技术时，要加入语言补齐阶段；已掌握时不要重复基础教程
+7. 兴趣方向应影响优先实践类型，学习目标应影响路线完成里程碑
+8. 严格返回 JSON，不要有额外文字
+9. 所有内容使用中文`
 }
 
 // ============================================================

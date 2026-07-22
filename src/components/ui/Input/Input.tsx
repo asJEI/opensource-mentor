@@ -3,7 +3,7 @@ import clsx from 'clsx'
 
 export interface InputProps {
   /** 输入框类型 */
-  type?: 'text' | 'textarea' | 'select' | 'email'
+  type?: 'text' | 'password' | 'textarea' | 'select' | 'email'
   /** 值 */
   value: string
   /** 值变化回调 */
@@ -25,7 +25,7 @@ export interface InputProps {
 }
 
 /**
- * 输入框组件（支持 text / textarea / select / email）
+ * 输入框组件（支持 text / password / textarea / select / email）
  */
 export const Input: React.FC<InputProps> = ({
   type = 'text',

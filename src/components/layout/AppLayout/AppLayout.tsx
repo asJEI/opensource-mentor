@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Sidebar from '../Sidebar'
 import AppHeader from '../AppHeader'
+import ProfileOnboarding from '@/components/business/ProfileOnboarding'
 import type { BreadcrumbItem } from '../AppHeader'
 
 export interface AppLayoutProps {
@@ -17,6 +18,7 @@ const AppLayout = ({ children, breadcrumbs }: AppLayoutProps) => {
         <AppHeader breadcrumbs={breadcrumbs} />
         <div className="app-content">{children}</div>
       </main>
+      <ProfileOnboarding />
     </div>
   )
 }

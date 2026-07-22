@@ -4,11 +4,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - VITE_USE_MOCK=${VITE_USE_MOCK:-true}
-        - VITE_GITHUB_TOKEN=${VITE_GITHUB_TOKEN:-}
-        - VITE_LLM_API_KEY=${VITE_LLM_API_KEY:-}
-        - VITE_LLM_MODEL=${VITE_LLM_MODEL:-deepseek-chat}
     ports:
       - "8082:80"
     depends_on:

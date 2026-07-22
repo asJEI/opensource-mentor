@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Repository, RepoAnalysis, Issue, RecommendedIssue, LoadingState } from '@/types'
 import { repositoryService } from '@/services'
+import { selectUserProfileContext, useUserStore } from './user'
 
 // localStorage 键名
 const STORAGE_KEY = 'opensource-mentor:repository'
@@ -131,11 +132,20 @@ export const useRepositoryStore = create<RepositoryState>((set) => ({
   },
 
   loadRecommendedIssues: async (owner: string, name: string, params) => {
+    const userProfile = selectUserProfileContext(useUserStore.getState())
+    // 首次画像尚未处理时先不请求，避免默认结果覆盖用户刚填写后的个性化结果
+    if (userProfile.profileSetupStatus === 'not_started') return
+
     set({ issuesStatus: 'loading', issuesError: null, currentOwner: owner, currentRepoName: name })
     // 保存到 localStorage
     saveRepositoryToStorage(owner, name)
     try {
-      const recommendedIssues = await repositoryService.getRecommendedIssues(owner, name, params)
+      const recommendedIssues = await repositoryService.getRecommendedIssues(
+        owner,
+        name,
+        userProfile,
+        params,
+      )
       set({
         recommendedIssues,
         issues: recommendedIssues,

@@ -9,12 +9,6 @@ RUN npm ci
 
 # 复制前端源码并构建
 COPY . .
-ARG VITE_GITHUB_API_BASE_URL
-ARG VITE_GITHUB_TOKEN
-ARG VITE_LLM_API_BASE_URL
-ARG VITE_LLM_API_KEY
-ARG VITE_LLM_MODEL
-ARG VITE_USE_MOCK
 RUN npm run build
 
 # ---------- 运行阶段 ----------

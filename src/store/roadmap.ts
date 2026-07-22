@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Roadmap, RoadmapPhase, RoadmapProgress, RoadmapStepStatus } from '@/types'
 import { aiService } from '@/services'
+import { selectUserProfileContext, useUserStore } from './user'
 
 /**
  * 计算路线图进度
@@ -35,19 +36,19 @@ interface RoadmapState {
   isLoading: boolean
   /** 加载错误信息 */
   error: string | null
-  /** 用户水平 */
-  userLevel: 'beginner' | 'intermediate' | 'advanced'
   /** 当前路线图所属的仓库 owner */
   currentOwner: string
   /** 当前路线图所属的仓库名 */
   currentRepo: string
+  /** 生成当前缓存路线时使用的画像签名 */
+  profileSignature: string
 
   // ---- Actions ----
   /**
    * 加载/生成路线图
    * 调用 aiService.generateRoadmap
    */
-  loadRoadmap: (owner: string, repo: string, userLevel?: 'beginner' | 'intermediate' | 'advanced') => Promise<void>
+  loadRoadmap: (owner: string, repo: string) => Promise<void>
   /** 进入下一阶段 */
   nextStep: () => void
   /** 重置进度 */
@@ -56,8 +57,6 @@ interface RoadmapState {
    * 更新指定阶段的状态
    */
   updateStepStatus: (stepId: string, status: RoadmapStepStatus) => void
-  /** 设置用户水平 */
-  setUserLevel: (level: 'beginner' | 'intermediate' | 'advanced') => void
 }
 
 const initialProgress: RoadmapProgress = {
@@ -73,22 +72,57 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   progress: initialProgress,
   isLoading: false,
   error: null,
-  userLevel: 'beginner',
   currentOwner: '',
   currentRepo: '',
+  profileSignature: '',
 
-  loadRoadmap: async (owner: string, repo: string, userLevel = 'beginner') => {
-    set({ isLoading: true, error: null, userLevel, currentOwner: owner, currentRepo: repo })
+  loadRoadmap: async (owner: string, repo: string) => {
+    const userProfile = selectUserProfileContext(useUserStore.getState())
+    if (userProfile.profileSetupStatus === 'not_started') return
+
+    const profileSignature = JSON.stringify(userProfile)
+    const current = get()
+    if (
+      current.roadmap &&
+      !current.error &&
+      current.currentOwner === owner &&
+      current.currentRepo === repo &&
+      current.profileSignature === profileSignature
+    ) {
+      return
+    }
+
+    set({
+      isLoading: true,
+      error: null,
+      currentOwner: owner,
+      currentRepo: repo,
+      profileSignature,
+    })
     try {
-      const roadmap = await aiService.generateRoadmap(owner, repo, userLevel)
+      const roadmap = await aiService.generateRoadmap(
+        owner,
+        repo,
+        userProfile,
+      )
       const steps = roadmap.phases
       // 标记第一步为当前步骤
       if (steps.length > 0) {
         steps[0].status = 'current'
       }
       const progress = calculateProgress(steps)
+      if (
+        get().profileSignature !== profileSignature ||
+        get().currentOwner !== owner ||
+        get().currentRepo !== repo
+      ) return
       set({ roadmap, steps, progress, isLoading: false })
     } catch (err) {
+      if (
+        get().profileSignature !== profileSignature ||
+        get().currentOwner !== owner ||
+        get().currentRepo !== repo
+      ) return
       const message = err instanceof Error ? err.message : '路线图生成失败，请稍后重试'
       set({ isLoading: false, error: message })
     }
@@ -139,9 +173,6 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
     set({ steps: newSteps, progress })
   },
 
-  setUserLevel: (level: 'beginner' | 'intermediate' | 'advanced') => {
-    set({ userLevel: level })
-  },
 }))
 
 export default useRoadmapStore

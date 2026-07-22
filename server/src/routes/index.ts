@@ -3,6 +3,7 @@ import repositoryRoutes from './repository'
 import issuesRoutes from './issues'
 import aiRoutes from './ai.routes'
 import codeReviewRoutes from './codeReview'
+import githubRoutes from './github'
 import { success } from '../utils/response'
 
 const router = Router()
@@ -17,5 +18,6 @@ router.use('/repository', repositoryRoutes)
 router.use('/issues', issuesRoutes)
 router.use('/ai', aiRoutes)
 router.use('/code-review', codeReviewRoutes)
+router.use('/github', githubRoutes)
 
 export default router

@@ -54,8 +54,15 @@ export type {
 // 用户相关
 export type {
   UserProfile,
+  UserProfileFormData,
+  UserProfileContext,
+  UserProfileVersion,
+  ProgrammingLanguage,
+  ExperienceLevel,
+  ContributionInterest,
+  LearningGoal,
+  ProfileSetupStatus,
   UserPreferences,
-  SkillLevel,
   ContributionLevel,
 } from './user'
 
@@ -84,3 +91,12 @@ export type {
   ReviewJobRecord,
   ReviewTab,
 } from './codeReview'
+
+// API 设置
+export type {
+  ApiConfigMode,
+  GitHubApiConfig,
+  AIProvider,
+  AIProviderConfig,
+  ConnectionTestResult,
+} from './settings'

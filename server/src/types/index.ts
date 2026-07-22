@@ -161,10 +161,41 @@ export interface ContributionArea {
 // Issue 推荐打分
 // ============================================================
 
+export interface UserProfileContext {
+  profileSetupStatus: 'not_started' | 'completed' | 'skipped'
+  programmingLanguages: Array<
+    'javascript' | 'typescript' | 'python' | 'java' | 'go' | 'rust' | 'cpp' | 'other'
+  >
+  experienceLevel: 'beginner' | 'some_experience' | 'project_experience'
+  interests: Array<
+    'frontend' | 'backend' | 'documentation' | 'testing' | 'devops' | 'ai' | 'other'
+  >
+  goals: Array<
+    | 'first_contribution'
+    | 'find_beginner_friendly_issues'
+    | 'improve_engineering'
+    | 'learn_new_technology'
+  >
+}
+
+export interface AIProviderConfig {
+  mode: 'platform' | 'custom'
+  provider: 'deepseek' | 'openai-compatible'
+  baseUrl?: string
+  apiKey?: string
+  model: string
+}
+
 /**
  * 带推荐评分的 Issue
  */
 export interface RecommendedIssue extends Issue {
+  /** 对当前画像的综合匹配分 0-100 */
+  matchScore: number
+  /** 对当前画像的匹配理由 */
+  matchReasons: string[]
+  /** AI 评估的任务难度 */
+  difficulty: 'easy' | 'medium' | 'hard'
   /** 推荐分数 0-100 */
   recommendationScore: number
   /** 置信度 0-1 */

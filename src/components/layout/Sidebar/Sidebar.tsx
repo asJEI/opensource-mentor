@@ -108,14 +108,22 @@ const Sidebar = () => {
     if (path === '/code-review' || path.startsWith('/code-review')) return 'code-review'
     if (path === '/roadmap' || path.startsWith('/roadmap')) return 'roadmap'
     if (path === '/ai-mentor' || path.startsWith('/ai-mentor')) return 'ai-mentor'
+    if (path === '/settings' || path.startsWith('/settings')) return 'settings'
     return ''
   }
 
   const activePage = getActivePage()
 
   const handleNavClick = (id: string) => {
-    // 仅在 id 匹配 AppSubPage 时切换，其余项保留为展示用
-    const validPages: AppSubPage[] = ['dashboard', 'issues', 'pr-generator', 'code-review', 'roadmap', 'ai-mentor']
+    const validPages: AppSubPage[] = [
+      'dashboard',
+      'issues',
+      'pr-generator',
+      'code-review',
+      'roadmap',
+      'ai-mentor',
+      'settings',
+    ]
     if (validPages.includes(id as AppSubPage)) {
       setCurrentAppPage(id as AppSubPage)
       navigate(`/${id}`)

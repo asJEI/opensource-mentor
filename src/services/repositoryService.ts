@@ -6,6 +6,7 @@ import type {
   IssueRecommendation,
   IssueExplain,
   RecommendedIssue,
+  UserProfileContext,
 } from '@/types'
 
 // ============================================================
@@ -31,6 +32,7 @@ class RepositoryService {
   async getRecommendedIssues(
     owner: string,
     name: string,
+    userProfile: UserProfileContext,
     params?: {
       state?: 'open' | 'closed' | 'all'
       labels?: string
@@ -38,7 +40,12 @@ class RepositoryService {
       page?: number
     },
   ): Promise<RecommendedIssue[]> {
-    const result: IssueRecommendation = await aiService.recommendIssues(owner, name, params)
+    const result: IssueRecommendation = await aiService.recommendIssues(
+      owner,
+      name,
+      userProfile,
+      params,
+    )
     return result.items
   }
 

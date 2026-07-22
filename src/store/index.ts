@@ -28,7 +28,18 @@ export { useChatStore } from './chat'
 export { useToastStore } from './toast'
 
 // 用户状态
-export { useUserStore } from './user'
+export {
+  DEFAULT_USER_PROFILE,
+  selectUserProfileContext,
+  useUserStore,
+} from './user'
 
 // 代码审查状态
 export { useCodeReviewStore } from './codeReview'
+
+// API 配置
+export {
+  DEFAULT_AI_CONFIG,
+  DEFAULT_GITHUB_CONFIG,
+  useSettingsStore,
+} from './settings'
