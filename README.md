@@ -3,24 +3,24 @@
 > 每个开发者身边的 AI 开源导师，帮助你迈出参与开源的第一步。
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-18-61dafb?logo=react" alt="React" />
+  <img src="https://img.shields.io/badge/React-19-61dafb?logo=react" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Vite-8-646cff?logo=vite" alt="Vite" />
   <img src="https://img.shields.io/badge/Node.js-20-339933?logo=nodedotjs" alt="Node.js" />
   <img src="https://img.shields.io/badge/Docker-✓-2496ed?logo=docker" alt="Docker" />
-  <img src="https://img.shields.io/badge/TRAE-🤖-a855f7" alt="Built with TRAE" />
 </p>
 
 ---
 
-## 👋 关于这个项目
+## 👋 项目简介
 
-大家好，我是一名计算机科学与技术专业的大三学生，也是一名正在探索 AI 应用开发的独立开发者。
+很多开发者在面对 GitHub 上优秀的开源项目时，会产生参与兴趣，却因为学习成本过高最终放弃。最大的困难往往不是不会写代码，而是面对一个陌生仓库时不知道：
 
-过去一段时间，我一直在尝试将 AI 技术应用到真实开发场景中。在学习 GitHub 开源项目和参与技术社区的过程中，我发现很多新人并不是没有学习能力，而是不知道如何迈出参与开源的第一步。
+- 应该先看什么？
+- 哪些 Issue 适合自己？
+- 如何符合社区规范提交贡献？
 
-因此，我尝试使用 **TRAE** 将自己的想法快速转化成一个可以真实体验的产品 Demo。
-
-> **OpenSource Mentor = 每个开发者身边的 AI 开源导师**
+OpenSource Mentor 希望利用 AI 的理解和分析能力，把复杂的开源参与流程变成一条更加友好的学习路径，让 AI 不只是代码助手，也成为开发者成长过程中的导师。
 
 ---
 
@@ -47,21 +47,25 @@
 
 避免新人面对大量 Issue 无从选择。
 
-### ③ AI 开源贡献指导
+### ③ AI 代码审查
 
-围绕开源贡献流程提供辅助：
+围绕代码质量与贡献流程提供辅助：
 
 - 分析 Issue 需求
 - 提供代码修改思路
-- 指导 Pull Request 编写
+- 审查 Pull Request 改动
 
-帮助用户完成第一次开源贡献。
+帮助用户完成符合规范的开源贡献。
 
-### ④ 个性化学习路线
+### ④ PR 生成辅助
+
+根据 Issue 描述与代码上下文，辅助生成 Pull Request 的标题、描述与改动说明，让新手也能写出规范的 PR。
+
+### ⑤ 个性化学习路线
 
 根据项目特点和用户水平，生成定制化的开源贡献学习路径，引导用户从了解项目到提交 PR，逐步推进。
 
-### ⑤ AI 导师对话
+### ⑥ AI 导师对话
 
 随时向 AI 导师提问，解答关于项目、技术、贡献流程等各种问题。
 
@@ -71,11 +75,12 @@
 
 | 类别 | 技术 |
 |------|------|
-| 前端框架 | React 18 + TypeScript |
+| 前端框架 | React 19 + TypeScript |
 | 构建工具 | Vite |
+| 路由 | React Router |
 | 状态管理 | Zustand |
 | 后端框架 | Express.js |
-| 语言 | TypeScript |
+| 请求校验 | Zod |
 | AI 能力 | LLM API（DeepSeek 兼容 OpenAI 格式） |
 | 数据来源 | GitHub API |
 | 部署 | Docker + Nginx |
@@ -187,15 +192,22 @@ opensource-mentor/
 │   │   ├── Dashboard/      # 项目分析页
 │   │   ├── Issues/         # Issue 推荐页
 │   │   ├── CodeReview/     # 代码审查页
+│   │   ├── PrGenerator/    # PR 生成辅助页
 │   │   ├── Roadmap/        # 学习路线页
-│   │   └── AiMentor/       # AI 导师对话页
+│   │   ├── AiMentor/       # AI 导师对话页
+│   │   ├── Settings/       # 设置页
+│   │   └── Landing/        # 落地页
 │   ├── store/              # 状态管理（Zustand）
 │   ├── services/           # API 服务层
 │   └── styles/             # 全局样式
-├── server/                 # 后端源码
+├── server/                 # 后端源码（BFF 层）
 │   ├── src/
 │   │   ├── routes/         # API 路由
+│   │   ├── controllers/    # 控制器
 │   │   ├── services/       # 业务逻辑
+│   │   ├── middlewares/    # 中间件
+│   │   ├── utils/          # 工具与 Prompt
+│   │   ├── config/         # 配置
 │   │   └── app.ts          # 入口文件
 │   └── package.json
 ├── Dockerfile              # 前端 Dockerfile
@@ -207,84 +219,27 @@ opensource-mentor/
 
 ---
 
-## 💡 创作思路
-
-### 灵感来源
-
-这个项目来源于我自己学习 AI 开发以及探索 GitHub 开源项目时的真实体验。
-
-在尝试参与开源项目时，我发现最大的困难并不是不会写代码，而是面对一个陌生仓库时不知道：
-
-- 应该先看什么？
-- 哪些 Issue 适合自己？
-- 如何符合社区规范提交贡献？
-
-很多新人看到 GitHub 上优秀的开源项目，会产生参与兴趣，但最终因为学习成本过高而放弃。
+## 💡 设计思路
 
 ### 想解决的问题
 
-目前新人参与开源通常需要经历：
+新人参与开源通常需要经历：
 
 ```
 阅读 README → 理解项目结构 → 寻找 Issue → 学习开发规范 → 修改代码 → 提交 PR
 ```
 
-整个过程信息分散，需要大量经验积累。
-
-OpenSource Mentor 希望利用 AI 的理解和分析能力，把复杂的开源参与流程变成一个更加友好的学习路径。
+整个过程信息分散，需要大量经验积累。OpenSource Mentor 希望将这条路径上的关键节点交给 AI 辅助，让初次参与开源的开发者不再孤单。
 
 ### 为什么选择这个方向
 
-随着 AI Coding 工具的发展，代码生成越来越容易。
-
-但是未来开发者真正需要提升的能力，不只是生成代码，而是：
+随着 AI Coding 工具的发展，代码生成越来越容易。但未来开发者真正需要提升的能力，不只是生成代码，而是：
 
 - 理解真实项目
 - 学习工程规范
 - 参与团队协作
 
-因此，我希望探索 AI 在开发者成长和开源生态中的价值，让 AI 不只是代码助手，也成为开发者成长过程中的导师。
-
----
-
-## 🤖 与 TRAE 一起开发
-
-在开发 OpenSource Mentor 的过程中，我和 TRAE 的合作方式更像是一位产品搭档。
-
-最开始，我只是告诉 TRAE 我的想法：
-
-> "我希望做一个能够帮助新人参与 GitHub 开源项目的 AI 导师。"
-
-然后通过不断拆解需求，让 TRAE 帮助我完善：
-
-- 🎯 产品功能设计
-- 🎨 页面交互规划
-- 💻 前后端代码实现
-- 🔧 功能调试优化
-
-整个开发过程分为三个阶段：
-
-### 第一阶段：产品设计与需求拆解
-
-通过自然语言描述需求，让 TRAE 协助完成产品原型设计，明确目标用户、使用流程、核心功能和页面结构。
-
-### 第二阶段：AI 辅助开发
-
-使用 TRAE 完成前端页面搭建、组件开发、后端接口设计、GitHub API 接入以及 AI 分析流程实现。
-
-开发过程中，我不断通过自然语言描述需求：
-
-- "我希望这个页面增加什么功能"
-- "这个流程应该如何优化"
-- "这里出现的问题应该如何解决"
-
-然后结合实际运行效果持续迭代。
-
-### 第三阶段：测试、优化与部署
-
-完成基础功能后，通过 TRAE 继续进行 Bug 排查、UI 优化、交互调整和部署问题解决，最终完成在线 Demo 部署。
-
-> 它让我真正感受到，AI Coding 工具并不是简单生成代码，而是能够帮助开发者降低从"想法"到"产品"的距离。
+因此本项目希望探索 AI 在开发者成长和开源生态中的价值，让 AI 成为开源贡献路上的导师，而不仅仅是代码补全工具。
 
 ---
 
@@ -295,5 +250,5 @@ MIT License
 ---
 
 <p align="center">
-  Made with ❤️ and 🤖 TRAE
+  Made with ❤️
 </p>
