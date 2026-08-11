@@ -1,8 +1,9 @@
+import { useEffect } from 'react'
 import { AppLayout } from '@/components/layout'
 import { Card } from '@/components/ui'
 import PrTypeSelector from '@/components/business/PrTypeSelector'
 import PrResultPanel from '@/components/business/PrResultPanel'
-import { usePrStore, useToastStore } from '@/store'
+import { usePrStore, useRepositoryStore, useToastStore } from '@/store'
 import type { PrType } from '@/types'
 
 // ==================== 图标组件 ====================
@@ -51,8 +52,15 @@ const PrGenerator = () => {
   const setPrType = usePrStore((s) => s.setPrType)
   const setSummary = usePrStore((s) => s.setSummary)
   const setLinkedIssue = usePrStore((s) => s.setLinkedIssue)
+  const setCurrentRepository = usePrStore((s) => s.setCurrentRepository)
   const generatePr = usePrStore((s) => s.generatePr)
+  const repositoryOwner = useRepositoryStore((s) => s.currentOwner)
+  const repositoryName = useRepositoryStore((s) => s.currentRepoName)
   const showToast = useToastStore((s) => s.showToast)
+
+  useEffect(() => {
+    setCurrentRepository(repositoryOwner, repositoryName)
+  }, [repositoryOwner, repositoryName, setCurrentRepository])
 
   const handleTypeSelect = (type: PrType) => {
     setPrType(type)

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Roadmap, RoadmapPhase, RoadmapProgress, RoadmapStepStatus } from '@/types'
 import { aiService } from '@/services'
-import { selectUserProfileContext, useUserStore } from './user'
+import { getEffectiveUserProfileContext } from './user'
 
 /**
  * 计算路线图进度
@@ -77,8 +77,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   profileSignature: '',
 
   loadRoadmap: async (owner: string, repo: string) => {
-    const userProfile = selectUserProfileContext(useUserStore.getState())
-    if (userProfile.profileSetupStatus === 'not_started') return
+    const userProfile = getEffectiveUserProfileContext()
 
     const profileSignature = JSON.stringify(userProfile)
     const current = get()

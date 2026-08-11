@@ -223,6 +223,16 @@ export const selectUserProfileContext = (
   goals: state.profile.goals,
 })
 
+export const getEffectiveUserProfileContext = (): UserProfileContext => {
+  const profile = useUserStore.getState().profile
+  return selectUserProfileContext({
+    profile:
+      profile.profileSetupStatus === 'not_started'
+        ? createDefaultProfile('skipped', profile)
+        : profile,
+  })
+}
+
 function createDefaultProfile(
   status: ProfileSetupStatus,
   current?: UserProfile,
