@@ -43,3 +43,9 @@ Thumbs.db
 # Misc
 *.local
 coverage
+
+# Cloudflare / Wrangler
+.wrangler
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

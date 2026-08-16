@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
-import { IssueRow, IssueExplainModal, NextStepCard } from '@/components/business'
+import { IssueRow, IssueExplainModal, NextStepCard, AiPageError } from '@/components/business'
 import { useRepositoryStore, useIssueExplainStore, useToastStore, useCodeReviewStore } from '@/store'
 import type { RecommendedIssue, DifficultyLevel } from '@/types'
 
@@ -290,21 +290,16 @@ const Issues = () => {
             </div>
           </div>
         ) : issuesStatus === 'error' ? (
-          <div style={{ padding: '60px', textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ink-1)', marginBottom: '8px' }}>
-              加载失败
-            </div>
-            <div style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '20px' }}>
-              {issuesError || '加载 Issue 列表时出现错误，请稍后重试'}
-            </div>
-            <button
-              className="explain-btn"
-              onClick={() => loadRecommendedIssues(currentOwner || 'microsoft', currentRepoName || 'vscode')}
-            >
-              重新加载
-            </button>
-          </div>
+          <AiPageError
+            title="加载失败"
+            message={issuesError || '加载 Issue 列表时出现错误，请稍后重试'}
+            onRetry={() =>
+              loadRecommendedIssues(
+                currentOwner || 'microsoft',
+                currentRepoName || 'vscode',
+              )
+            }
+          />
         ) : (
           <div className="issues-list">
             <div className="issues-list-header">
@@ -317,7 +312,10 @@ const Issues = () => {
               ))
             ) : (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)' }}>
-                没有找到符合条件的 Issue
+                <p>没有找到符合条件的 Issue</p>
+                <p style={{ marginTop: 8, fontSize: 13 }}>
+                  可调整筛选条件，或返回工作台换一个仓库再试。
+                </p>
               </div>
             )}
           </div>
@@ -334,15 +332,15 @@ const Issues = () => {
           error={explainError}
         />
 
-        {/* 下一步引导：选择 Issue 后引导去代码审查 */}
+        {/* 下一步：Issue → 学习路线（旅程中段），也可稍后去做 Code Review */}
         {selectedIssue && (
           <NextStepCard
             currentStep={2}
-            totalSteps={4}
+            totalSteps={6}
             title="已选择 Issue！"
-            description={`已选中「${selectedIssue.title.slice(0, 30)}${selectedIssue.title.length > 30 ? '...' : ''}」，下一步进入 AI 代码审查`}
-            buttonText="开始代码审查"
-            nextPath="/code-review"
+            description={`已选中「${selectedIssue.title.slice(0, 30)}${selectedIssue.title.length > 30 ? '...' : ''}」。建议先生成学习路线，再继续 Mentoring 与 Review。`}
+            buttonText="生成学习路线"
+            nextPath="/roadmap"
           />
         )}
       </div>

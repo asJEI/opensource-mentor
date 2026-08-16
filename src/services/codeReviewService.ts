@@ -20,17 +20,13 @@ class CodeReviewService {
    * 创建审查任务
    * POST /api/code-review/reviews
    */
-  async createReview(prUrl: string): Promise<{
-    reviewId: string
-    status: ReviewStatus
-    progress: ReviewProgress
-  }> {
-    const data = await bffPost<any>('/code-review/reviews', { prUrl })
-    return {
-      reviewId: data.reviewId,
-      status: data.status as ReviewStatus,
-      progress: this.mapReviewProgress(data.progress),
-    }
+  async createReview(prUrl: string): Promise<ReviewJobRecord> {
+    const data = await bffPost<any>(
+      '/code-review/reviews',
+      { prUrl },
+      { timeout: 130_000 },
+    )
+    return this.mapReviewJobRecord(data)
   }
 
   /**
@@ -61,9 +57,14 @@ class CodeReviewService {
     return {
       percent: data.percent ?? 0,
       phases: {
-        summary: (data.phases?.summary as ReviewProgress['phases']['summary']) || 'pending',
-        risk: (data.phases?.risk as ReviewProgress['phases']['risk']) || 'pending',
-        comments: (data.phases?.comments as ReviewProgress['phases']['comments']) || 'pending',
+        summary:
+          (data.phases?.summary as ReviewProgress['phases']['summary']) ||
+          'pending',
+        risk:
+          (data.phases?.risk as ReviewProgress['phases']['risk']) || 'pending',
+        comments:
+          (data.phases?.comments as ReviewProgress['phases']['comments']) ||
+          'pending',
       },
       lastEventAt: data.lastEventAt || null,
     }

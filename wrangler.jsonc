@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "opensource-mentor",
+  "compatibility_date": "2026-08-14",
+  "main": "./worker/index.ts",
+  "assets": {
+    // directory is filled by @cloudflare/vite-plugin from the client build output
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    // Ensure /api/* always hits the Worker before static assets
+    "run_worker_first": ["/api/*"]
+  },
+  // Non-secret platform defaults only. Never put API keys here.
+  "vars": {
+    "GITHUB_API_BASE_URL": "https://api.github.com",
+    "DEFAULT_LLM_PROVIDER": "deepseek",
+    "DEFAULT_LLM_MODEL": "deepseek-v4-flash",
+    "DEFAULT_LLM_BASE_URL": "https://api.deepseek.com",
+    "LLM_TIMEOUT_MS": "60000"
+  },
+  "ratelimits": [
+    {
+      "name": "PLATFORM_AI_RATE_LIMITER",
+      "namespace_id": "2001",
+      "simple": {
+        "limit": 10,
+        "period": 60
+      }
+    }
+  ],
+  // Optional platform secrets (set via `wrangler secret put` or `.dev.vars`):
+  //   PLATFORM_LLM_API_KEY, PLATFORM_GITHUB_TOKEN
+  // Not marked `secrets.required` so Preview/PoC can deploy without platform keys.
+  // User BYOK stays request-scoped and is never stored as Worker Secrets.
+  // See DEPLOY-CLOUDFLARE.md for the production secrets checklist.
+  "observability": {
+    "enabled": true
+  }
+}

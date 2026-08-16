@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { PrType, PrDraft } from '@/types'
 import { aiService } from '@/services'
+import { getErrorMessage } from '@/services/errors'
 
 /**
  * PR 生成状态 Store
@@ -82,7 +83,7 @@ export const usePrStore = create<PrState>((set, get) => ({
       )
       set({ prDraft: draft, isGenerating: false })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'PR 生成失败，请稍后重试'
+      const message = getErrorMessage(err, 'PR 生成失败，请稍后重试')
       set({ isGenerating: false, error: message })
     }
   },

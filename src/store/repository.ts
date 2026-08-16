@@ -1,6 +1,14 @@
 import { create } from 'zustand'
-import type { Repository, RepoAnalysis, Issue, RecommendedIssue, LoadingState } from '@/types'
+import type {
+  Repository,
+  RepoAnalysis,
+  Issue,
+  IssueExplain,
+  RecommendedIssue,
+  LoadingState,
+} from '@/types'
 import { repositoryService } from '@/services'
+import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
 
 // localStorage 键名
@@ -9,13 +17,21 @@ const STORAGE_KEY = 'opensource-mentor:repository'
 /**
  * 从 localStorage 读取保存的仓库信息
  */
-function loadSavedRepository(): { owner: string; repoName: string; hasData: boolean } {
+function loadSavedRepository(): {
+  owner: string
+  repoName: string
+  hasData: boolean
+} {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
       if (parsed.owner && parsed.repoName) {
-        return { owner: parsed.owner, repoName: parsed.repoName, hasData: true }
+        return {
+          owner: parsed.owner,
+          repoName: parsed.repoName,
+          hasData: true,
+        }
       }
     }
   } catch {
@@ -73,6 +89,12 @@ interface RepositoryState {
   currentOwner: string
   /** 当前仓库 name */
   currentRepoName: string
+  /** 当前 Issue 的 AI 解释结果 */
+  currentExplain: IssueExplain | null
+  explainStatus: LoadingState
+  explainError: string | null
+  modalVisible: boolean
+  currentIssue: RecommendedIssue | null
 
   // ---- Actions ----
   /**
@@ -84,97 +106,174 @@ interface RepositoryState {
    * 加载推荐 Issue 列表
    * 调用 repositoryService.getRecommendedIssues
    */
-  loadRecommendedIssues: (owner: string, name: string, params?: {
-    state?: 'open' | 'closed' | 'all'
-    labels?: string
-    perPage?: number
-    page?: number
-  }) => Promise<void>
+  loadRecommendedIssues: (
+    owner: string,
+    name: string,
+    params?: {
+      state?: 'open' | 'closed' | 'all'
+      labels?: string
+      perPage?: number
+      page?: number
+    },
+  ) => Promise<void>
   /** 选中某个推荐 Issue */
   selectIssue: (issue: RecommendedIssue | null) => void
   /** 设置当前仓库信息 */
   setCurrentRepo: (repo: Repository | null) => void
   /** 清空仓库相关所有状态 */
   clearRepo: () => void
+  explainIssue: (
+    owner: string,
+    name: string,
+    issue: RecommendedIssue,
+  ) => Promise<void>
+  openModal: () => void
+  closeModal: () => void
 }
 
 // 从 localStorage 读取保存的仓库信息
 const savedRepo = loadSavedRepository()
 
-export const useRepositoryStore = create<RepositoryState>((set) => ({
-  currentRepo: null,
-  analysis: null,
-  analysisStatus: 'idle',
-  analysisError: null,
-  issues: [],
-  recommendedIssues: [],
-  issuesStatus: 'idle',
-  issuesError: null,
-  selectedIssue: null,
-  currentOwner: savedRepo.owner,
-  currentRepoName: savedRepo.repoName,
+export const useRepositoryStore = create<RepositoryState>((set) => {
+  let analysisRequestId = 0
+  let issuesRequestId = 0
+  let explainRequestId = 0
 
-  analyzeRepo: async (owner: string, name: string) => {
-    set({ analysisStatus: 'loading', analysisError: null, currentOwner: owner, currentRepoName: name })
-    // 保存到 localStorage
-    saveRepositoryToStorage(owner, name)
-    try {
-      const { repository, analysis } = await repositoryService.analyzeRepository(owner, name)
+  return {
+    currentRepo: null,
+    analysis: null,
+    analysisStatus: 'idle',
+    analysisError: null,
+    issues: [],
+    recommendedIssues: [],
+    issuesStatus: 'idle',
+    issuesError: null,
+    selectedIssue: null,
+    currentOwner: savedRepo.owner,
+    currentRepoName: savedRepo.repoName,
+    currentExplain: null,
+    explainStatus: 'idle',
+    explainError: null,
+    modalVisible: false,
+    currentIssue: null,
+
+    analyzeRepo: async (owner: string, name: string) => {
+      const requestId = ++analysisRequestId
       set({
-        analysis,
-        analysisStatus: 'success',
-        currentRepo: repository,
+        analysisStatus: 'loading',
+        analysisError: null,
+        currentOwner: owner,
+        currentRepoName: name,
       })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '仓库分析失败，请稍后重试'
-      set({ analysisStatus: 'error', analysisError: message })
-    }
-  },
+      // 保存到 localStorage
+      saveRepositoryToStorage(owner, name)
+      try {
+        const { repository, analysis } =
+          await repositoryService.analyzeRepository(owner, name)
+        if (requestId !== analysisRequestId) return
+        set({
+          analysis,
+          analysisStatus: 'success',
+          currentRepo: repository,
+        })
+      } catch (err) {
+        if (requestId !== analysisRequestId) return
+        const message = getErrorMessage(err, '仓库分析失败，请稍后重试')
+        set({ analysisStatus: 'error', analysisError: message })
+      }
+    },
 
-  loadRecommendedIssues: async (owner: string, name: string, params) => {
-    const userProfile = getEffectiveUserProfileContext()
+    loadRecommendedIssues: async (owner: string, name: string, params) => {
+      const requestId = ++issuesRequestId
+      const userProfile = getEffectiveUserProfileContext()
 
-    set({ issuesStatus: 'loading', issuesError: null, currentOwner: owner, currentRepoName: name })
-    // 保存到 localStorage
-    saveRepositoryToStorage(owner, name)
-    try {
-      const recommendedIssues = await repositoryService.getRecommendedIssues(
-        owner,
-        name,
-        userProfile,
-        params,
-      )
       set({
-        recommendedIssues,
-        issues: recommendedIssues,
-        issuesStatus: 'success',
+        issuesStatus: 'loading',
+        issuesError: null,
+        currentOwner: owner,
+        currentRepoName: name,
       })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '加载 Issue 列表失败，请稍后重试'
-      set({ issuesStatus: 'error', issuesError: message })
-    }
-  },
+      // 保存到 localStorage
+      saveRepositoryToStorage(owner, name)
+      try {
+        const recommendedIssues = await repositoryService.getRecommendedIssues(
+          owner,
+          name,
+          userProfile,
+          params,
+        )
+        if (requestId !== issuesRequestId) return
+        set({
+          recommendedIssues,
+          issues: recommendedIssues,
+          issuesStatus: 'success',
+        })
+      } catch (err) {
+        if (requestId !== issuesRequestId) return
+        const message = getErrorMessage(err, '加载 Issue 列表失败，请稍后重试')
+        set({ issuesStatus: 'error', issuesError: message })
+      }
+    },
 
-  selectIssue: (issue: RecommendedIssue | null) => set({ selectedIssue: issue }),
+    selectIssue: (issue: RecommendedIssue | null) =>
+      set({ selectedIssue: issue }),
 
-  setCurrentRepo: (repo: Repository | null) => set({ currentRepo: repo }),
+    setCurrentRepo: (repo: Repository | null) => set({ currentRepo: repo }),
 
-  clearRepo: () => {
-    clearRepositoryFromStorage()
-    set({
-      currentRepo: null,
-      analysis: null,
-      analysisStatus: 'idle',
-      analysisError: null,
-      issues: [],
-      recommendedIssues: [],
-      issuesStatus: 'idle',
-      issuesError: null,
-      selectedIssue: null,
-      currentOwner: 'microsoft',
-      currentRepoName: 'vscode',
-    })
-  },
-}))
+    explainIssue: async (owner, name, issue) => {
+      const requestId = ++explainRequestId
+      set({
+        explainStatus: 'loading',
+        explainError: null,
+        currentIssue: issue,
+        currentOwner: owner,
+        currentRepoName: name,
+      })
+      try {
+        const currentExplain = await repositoryService.getIssueExplain(
+          owner,
+          name,
+          issue,
+        )
+        if (requestId !== explainRequestId) return
+        set({ currentExplain, explainStatus: 'success' })
+      } catch (err) {
+        if (requestId !== explainRequestId) return
+        set({
+          explainStatus: 'error',
+          explainError: getErrorMessage(err, 'Issue 解释失败，请稍后重试'),
+        })
+      }
+    },
+
+    openModal: () => set({ modalVisible: true }),
+    closeModal: () => set({ modalVisible: false }),
+
+    clearRepo: () => {
+      analysisRequestId += 1
+      issuesRequestId += 1
+      explainRequestId += 1
+      clearRepositoryFromStorage()
+      set({
+        currentRepo: null,
+        analysis: null,
+        analysisStatus: 'idle',
+        analysisError: null,
+        issues: [],
+        recommendedIssues: [],
+        issuesStatus: 'idle',
+        issuesError: null,
+        selectedIssue: null,
+        currentOwner: 'microsoft',
+        currentRepoName: 'vscode',
+        currentExplain: null,
+        explainStatus: 'idle',
+        explainError: null,
+        modalVisible: false,
+        currentIssue: null,
+      })
+    },
+  }
+})
 
 export default useRepositoryStore

@@ -92,9 +92,27 @@ function App() {
             </PageTransition>
           }
         />
+        {/* Scenario G alias */}
+        <Route
+          path="/review"
+          element={
+            <PageTransition>
+              <CodeReview />
+            </PageTransition>
+          }
+        />
         {/* AI 导师 */}
         <Route
           path="/ai-mentor"
+          element={
+            <PageTransition>
+              <AiMentor />
+            </PageTransition>
+          }
+        />
+        {/* Scenario G alias */}
+        <Route
+          path="/mentor"
           element={
             <PageTransition>
               <AiMentor />

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2023"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["@cloudflare/workers-types", "vite/client"],
+    "verbatimModuleSyntax": true
+  },
+  "include": ["worker", "shared", "worker-configuration.d.ts"]
+}

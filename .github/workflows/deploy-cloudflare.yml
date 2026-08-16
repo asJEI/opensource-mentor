@@ -1,0 +1,60 @@
+# Deploy OpenSource Mentor to Cloudflare Workers on every push to main.
+# Requires GitHub Actions secrets:
+#   CLOUDFLARE_API_TOKEN   — Edit Cloudflare Workers (or equivalent)
+#   CLOUDFLARE_ACCOUNT_ID  — b4c747bf0cff2cd690256565c0f1a38c
+#
+# Runtime platform secrets (PLATFORM_*) are set on the Worker via
+# `wrangler secret put` / Dashboard — they are NOT GitHub Actions secrets.
+
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck Express fallback
+        run: npm run typecheck:server
+
+      - name: Build Express fallback
+        run: npm --prefix server run build
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

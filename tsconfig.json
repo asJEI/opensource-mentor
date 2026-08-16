@@ -22,7 +22,8 @@
 
     /* Path aliases */
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["./shared/*"]
     },
 
     /* React */
@@ -31,5 +32,5 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src"]
+  "include": ["src", "shared"]
 }

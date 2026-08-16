@@ -11,7 +11,7 @@ export const DEFAULT_GITHUB_CONFIG: GitHubApiConfig = {
 export const DEFAULT_AI_CONFIG: AIProviderConfig = {
   mode: 'platform',
   provider: 'deepseek',
-  model: 'deepseek-chat',
+  model: 'deepseek-v4-flash',
 }
 
 interface SettingsState {
@@ -41,9 +41,11 @@ function normalizeGitHubConfig(value: unknown): GitHubApiConfig {
 function normalizeAIConfig(value: unknown): AIProviderConfig {
   const data = isRecord(value) ? value : {}
   const provider =
-    data.provider === 'openai-compatible'
-      ? 'openai-compatible'
-      : 'deepseek'
+    data.provider === 'openai'
+      ? 'openai'
+      : data.provider === 'openai-compatible'
+        ? 'openai-compatible'
+        : 'deepseek'
 
   return {
     mode: data.mode === 'custom' ? 'custom' : 'platform',
@@ -60,8 +62,10 @@ function normalizeAIConfig(value: unknown): AIProviderConfig {
       typeof data.model === 'string' && data.model.trim()
         ? data.model.trim()
         : provider === 'deepseek'
-          ? 'deepseek-chat'
-          : '',
+          ? 'deepseek-v4-flash'
+          : provider === 'openai'
+            ? 'gpt-4o-mini'
+            : '',
   }
 }
 

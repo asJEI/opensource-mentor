@@ -193,6 +193,7 @@ interface UserState {
   /** 用户偏好设置 */
   preferences: UserPreferences
   /** 是否已认证 */
+  /** 是否已登录（预留：未来 GitHub OAuth / D1 用户体系；当前始终访客模式） */
   isAuthenticated: boolean
 
   // ---- Actions ----
@@ -296,6 +297,7 @@ export const useUserStore = create<UserState>()(
           }),
         })),
 
+      /** 预留：未来 GitHub OAuth 成功后置 true；当前产品不要求登录 */
       setAuthenticated: (value) => set({ isAuthenticated: value }),
     }),
     {

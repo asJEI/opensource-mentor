@@ -68,5 +68,11 @@ export type { ReviewActionBarProps } from './ReviewActionBar'
 // 下一步引导卡片
 export { NextStepCard } from './NextStepCard'
 
+// 分析后多路径引导
+export { JourneyActions } from './JourneyActions'
+
+// AI 页面错误恢复
+export { AiPageError } from './AiPageError'
+
 // 首次用户画像问卷
 export { default as ProfileOnboarding } from './ProfileOnboarding'

@@ -1,5 +1,4 @@
 import express from 'express'
-import cors from 'cors'
 import { config } from './config'
 import routes from './routes'
 import {
@@ -7,17 +6,20 @@ import {
   errorHandler,
   githubRequestContext,
   notFoundHandler,
+  platformAIRateLimit,
   requestLogger,
 } from './middlewares'
 
 const app = express()
+app.set('trust proxy', 1)
 
 // 中间件
-app.use(cors())
 app.use(express.json())
 app.use(requestLogger)
 app.use(githubRequestContext)
 app.use(aiRequestContext)
+app.use('/api/ai', platformAIRateLimit)
+app.use('/api/code-review/reviews', platformAIRateLimit)
 
 // 路由
 app.use('/api', routes)
@@ -47,8 +49,12 @@ app.listen(config.port, () => {
   console.log('  POST /api/ai/generate-roadmap   - AI 生成学习路线图')
   console.log('  POST /api/ai/chat               - AI 导师对话')
   console.log('')
-  console.log(`GitHub API: ${config.github.token ? '✅ Token 已配置' : '⚠️  未配置 Token（限流严重）'}`)
-  console.log(`LLM API:    ${config.llm.apiKey ? `✅ ${config.llm.provider} / ${config.llm.model}` : '⚠️  未配置 Key（使用 Mock）'}`)
+  console.log(
+    `GitHub API: ${config.github.token ? '✅ Token 已配置' : '⚠️  未配置 Token（限流严重）'}`,
+  )
+  console.log(
+    `LLM API:    ${config.llm.apiKey ? `✅ ${config.llm.provider} / ${config.llm.model}` : '⚠️  未配置 Key（使用 Mock）'}`,
+  )
   console.log('')
 })
 

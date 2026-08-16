@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChatMessage, Repository, Issue } from '@/types'
 import { aiService } from '@/services'
+import { getErrorMessage } from '@/services/errors'
 
 /**
  * 生成唯一消息 ID
@@ -19,6 +20,7 @@ interface ChatState {
   /** 是否正在生成回复 */
   isStreaming: boolean
   /** 当前会话 ID */
+  /** 会话 ID（预留：未来可映射 D1 对话历史；当前仅本地态） */
   sessionId: string | null
   /** 错误信息 */
   error: string | null
@@ -94,7 +96,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         isStreaming: false,
       }))
     } catch (err) {
-      const message = err instanceof Error ? err.message : '消息发送失败，请稍后重试'
+      const message = getErrorMessage(err, '消息发送失败，请稍后重试')
       set({ isStreaming: false, error: message })
     }
   },
