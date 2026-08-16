@@ -4,7 +4,7 @@
 
 ## 在线体验
 
-- Cloudflare Workers：[https://opensource-mentor.316920080dd.workers.dev](https://opensource-mentor.316920080dd.workers.dev)
+- Cloudflare Workers：[https://hokkai.top](https://hokkai.top/)
 - Docker / 腾讯云：[http://119.45.237.47:8082](http://119.45.237.47:8082)
 
 两个入口使用同一套前端和核心业务能力：
