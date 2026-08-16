@@ -1,4 +1,5 @@
 import type { RepoAnalysis, DifficultyLevel } from '@/types'
+import { parseGitHubRepositoryInput } from '@/utils/githubRepository'
 import clsx from 'clsx'
 
 const CodeIcon = () => (
@@ -225,15 +226,10 @@ function StatCard({
 
 /**
  * 解析仓库输入字符串，提取 owner 和 name
- * @param input 格式为 "owner/repo" 的字符串
+ * @param input 支持 "owner/repo" 或 GitHub 仓库链接
  */
 function parseRepoInput(input: string): { owner: string; name: string } | null {
-  const trimmed = input.trim()
-  const parts = trimmed.split('/')
-  if (parts.length === 2 && parts[0] && parts[1]) {
-    return { owner: parts[0], name: parts[1] }
-  }
-  return null
+  return parseGitHubRepositoryInput(input)
 }
 
 /**

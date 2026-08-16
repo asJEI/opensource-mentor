@@ -106,7 +106,7 @@ const Dashboard = () => {
       showToast(
         'error',
         '输入格式错误',
-        '请输入正确的仓库地址，格式为 owner/repo',
+        '请输入 GitHub 仓库链接，或 owner/repo 格式',
       )
       return
     }
@@ -484,7 +484,7 @@ const Dashboard = () => {
                 className="form-input"
                 value={repoInput}
                 onChange={(e) => setRepoInput(e.target.value)}
-                placeholder="owner/repo"
+                placeholder="https://github.com/owner/repo"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleAnalyze()
