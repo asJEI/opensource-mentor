@@ -225,6 +225,7 @@ const PrGenerator = () => {
               status={resultStatus}
               error={error}
               onCopy={handleCopy}
+              onRetry={handleGenerate}
             />
           </Card>
         </div>
@@ -234,9 +235,9 @@ const PrGenerator = () => {
           <div className="next-step-card">
             <div className="next-step-content">
               <div className="next-step-badge">
-                🎉 步骤 4 / 4 · 全部完成！
+                🎉 步骤 6 / 6 · 全部完成！
               </div>
-              <div className="next-step-title">恭喜，你的第一个开源贡献已就绪！</div>
+              <div className="next-step-title">恭喜，你的第一次开源贡献草稿已就绪！</div>
               <div className="next-step-desc">
                 复制上方 PR 标题和描述，到 GitHub 提交你的 Pull Request 吧。
                 感谢你为开源社区做出的贡献！

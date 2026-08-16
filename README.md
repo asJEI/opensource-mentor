@@ -1,254 +1,167 @@
-# OpenSource Mentor — AI 开源贡献导师
+# OpenSource Mentor
 
-> 每个开发者身边的 AI 开源导师，帮助你迈出参与开源的第一步。
+> 面向开源新手的 AI 贡献导师：理解项目、筛选 Issue、规划学习路径，并辅助完成代码审查与 Pull Request。
 
-<p align="center">
-  <img src="https://img.shields.io/badge/React-19-61dafb?logo=react" alt="React" />
-  <img src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Vite-8-646cff?logo=vite" alt="Vite" />
-  <img src="https://img.shields.io/badge/Node.js-20-339933?logo=nodedotjs" alt="Node.js" />
-  <img src="https://img.shields.io/badge/Docker-✓-2496ed?logo=docker" alt="Docker" />
-</p>
+## 在线体验
 
----
+- Cloudflare Workers：[https://opensource-mentor.316920080dd.workers.dev](https://opensource-mentor.316920080dd.workers.dev)
+- Docker / 腾讯云：[http://119.45.237.47:8082](http://119.45.237.47:8082)
 
-## 👋 项目简介
+两个入口使用同一套前端和核心业务能力：
 
-很多开发者在面对 GitHub 上优秀的开源项目时，会产生参与兴趣，却因为学习成本过高最终放弃。最大的困难往往不是不会写代码，而是面对一个陌生仓库时不知道：
+- Cloudflare 版本由 Worker 提供 API，并托管前端静态资源。
+- Docker 版本由 Nginx 托管前端，Express 提供 API。
 
-- 应该先看什么？
-- 哪些 Issue 适合自己？
-- 如何符合社区规范提交贡献？
+## 主要功能
 
-OpenSource Mentor 希望利用 AI 的理解和分析能力，把复杂的开源参与流程变成一条更加友好的学习路径，让 AI 不只是代码助手，也成为开发者成长过程中的导师。
+- **仓库分析**：提取项目定位、技术栈、目录结构和贡献切入点。
+- **Issue 推荐与解释**：结合用户经验筛选任务，并用 AI 解释需求和实现方向。
+- **学习路线**：围绕目标仓库生成分阶段学习与贡献计划。
+- **AI 导师**：针对当前仓库、技术和开源协作流程提供问答。
+- **PR 生成**：根据 Issue 与仓库上下文生成 PR 标题和描述。
+- **AI 代码审查**：读取真实 GitHub Pull Request 与 diff，返回结构化问题、风险和修改建议；LLM 不可用时使用确定性规则审查，不随机生成结果。
+- **BYOK**：可在设置页使用自己的 GitHub Token 和兼容 OpenAI API 的模型配置，配置仅保存在浏览器本地。
 
----
+## 技术架构
 
-## ✨ 核心功能
+| 层级 | 技术 |
+| --- | --- |
+| 前端 | React 19、TypeScript、Vite、Zustand |
+| Cloudflare 后端 | Workers、Static Assets |
+| Docker 后端 | Express、Node.js、Nginx |
+| 外部服务 | GitHub REST API、OpenAI-compatible LLM API |
+| 测试 | Vitest、TypeScript |
 
-### ① GitHub 项目智能分析
+```text
+Browser
+  ├─ Cloudflare: Static Assets + /api/* Worker
+  └─ Docker: Nginx + /api/* Express
+                         │
+                         ├─ GitHub API
+                         └─ LLM Provider
 
-用户输入 GitHub 仓库地址后，AI 可以帮助快速了解：
-
-- 项目定位与背景
-- 技术栈构成
-- 文件结构概览
-- 核心模块解析
-
-降低阅读陌生项目的门槛。
-
-### ② AI Issue 推荐
-
-根据 GitHub Issue 信息，结合用户能力水平，帮助筛选：
-
-- 适合新手的 `good first issue`
-- 当前可以参与的问题
-- 推荐贡献方向
-
-避免新人面对大量 Issue 无从选择。
-
-### ③ AI 代码审查
-
-围绕代码质量与贡献流程提供辅助：
-
-- 分析 Issue 需求
-- 提供代码修改思路
-- 审查 Pull Request 改动
-
-帮助用户完成符合规范的开源贡献。
-
-### ④ PR 生成辅助
-
-根据 Issue 描述与代码上下文，辅助生成 Pull Request 的标题、描述与改动说明，让新手也能写出规范的 PR。
-
-### ⑤ 个性化学习路线
-
-根据项目特点和用户水平，生成定制化的开源贡献学习路径，引导用户从了解项目到提交 PR，逐步推进。
-
-### ⑥ AI 导师对话
-
-随时向 AI 导师提问，解答关于项目、技术、贡献流程等各种问题。
-
----
-
-## 🛠 技术栈
-
-| 类别 | 技术 |
-|------|------|
-| 前端框架 | React 19 + TypeScript |
-| 构建工具 | Vite |
-| 路由 | React Router |
-| 状态管理 | Zustand |
-| 后端框架 | Express.js |
-| 请求校验 | Zod |
-| AI 能力 | LLM API（DeepSeek 兼容 OpenAI 格式） |
-| 数据来源 | GitHub API |
-| 部署 | Docker + Nginx |
-
----
-
-## 🚀 快速开始
-
-### 在线体验
-
-🌐 **[点击访问在线 Demo](http://119.45.237.47:8082/)**
-
-### 本地运行
-
-#### 前置要求
-
-- Node.js >= 20
-- npm 或 pnpm
-- GitHub Personal Access Token（可选，用于调用真实 GitHub API）
-- LLM API Key（可选，用于真实 AI 分析）
-
-#### 1. 克隆项目
-
-```bash
-git clone https://github.com/asJEI/opensource-mentor.git
-cd opensource-mentor
+Worker ─────┐
+           ├─ shared/core/code-review
+Express ────┘
 ```
 
-#### 2. 安装依赖
+Worker 与 Express 保留不同的运行时适配层，代码审查等可复用逻辑放在 `shared/core`，避免两套实现继续分叉。
+
+## 本地开发
+
+### 环境要求
+
+- Node.js 22
+- npm
+
+### Cloudflare Worker 模式
 
 ```bash
-# 前端依赖
 npm install
-
-# 后端依赖
-cd server
-npm install
-cd ..
+cp .dev.vars.example .dev.vars
+npm run dev
 ```
 
-#### 3. 配置环境变量
+默认访问地址由 Vite 输出，通常为 `http://localhost:5173`。没有平台密钥时仍可打开界面，但真实 AI 与 GitHub 请求可能受模型配置和 GitHub 匿名限流影响。
+
+本地平台密钥写入 `.dev.vars`：
+
+```dotenv
+PLATFORM_GITHUB_TOKEN=
+PLATFORM_LLM_API_KEY=
+```
+
+非密钥默认配置位于 [wrangler.jsonc](./wrangler.jsonc)。用户在设置页填写的 BYOK 配置不应写入服务端环境文件。
+
+### Express 模式
 
 ```bash
-# 前端
-cp .env.example .env
-# 编辑 .env，填入你的配置
-
-# 后端
+npm install
+npm --prefix server install
 cp server/.env.example server/.env
-# 编辑 server/.env，填入你的配置
+npm --prefix server run dev
 ```
 
-> 💡 **快速体验**：保持 `VITE_USE_MOCK=true`，无需任何密钥即可使用 Mock 数据体验全部界面。
+Express 默认监听 `http://localhost:3001`，主要用于 Docker 路径；当前 Vite 开发服务器使用 Cloudflare Worker，不再代理到 Express。
 
-#### 4. 启动开发服务器
+## 配置说明
+
+推荐使用以下服务端变量：
+
+| 变量 | 用途 |
+| --- | --- |
+| `PLATFORM_GITHUB_TOKEN` | 提高 GitHub API 请求限额 |
+| `PLATFORM_LLM_API_KEY` | 平台默认 LLM 密钥 |
+| `DEFAULT_LLM_PROVIDER` | 默认模型提供方 |
+| `DEFAULT_LLM_BASE_URL` | OpenAI-compatible API 地址 |
+| `DEFAULT_LLM_MODEL` | 默认模型 |
+| `LLM_TIMEOUT_MS` | LLM 请求超时 |
+
+真实密钥只能放在以下位置：
+
+- 本地 Worker：`.dev.vars`
+- Cloudflare 生产环境：Wrangler Secret 或 Dashboard Secret
+- Express：`server/.env`
+- Docker Compose：根目录 `.env`
+
+不要提交上述本地环境文件，也不要使用 `VITE_*` 暴露平台密钥。
+
+## Docker 部署
 
 ```bash
-# 启动前端（终端 1）
-npm run dev
-
-# 启动后端（终端 2）
-cd server
-npm run dev
-```
-
-前端默认运行在 `http://localhost:5173`，后端运行在 `http://localhost:3001`。
-
----
-
-## 🐳 Docker 部署
-
-### 一键部署
-
-```bash
-# 克隆项目
-git clone https://github.com/asJEI/opensource-mentor.git
-cd opensource-mentor
-
-# 配置环境变量
 cp .env.docker.example .env
-# 编辑 .env 填入你的配置
-
-# 启动服务
 docker compose up -d --build
 ```
 
-访问 `http://你的服务器IP:8082` 即可使用。
+默认通过 `http://服务器地址:8082` 访问。完整步骤和故障排查见 [DEPLOY.md](./DEPLOY.md)。
 
-### 环境变量说明
+## Cloudflare 部署
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `VITE_USE_MOCK` | 是否使用 Mock 数据 | `true` |
-| `GITHUB_TOKEN` | GitHub API Token | *(空)* |
-| `LLM_API_KEY` | 大模型 API Key | *(空)* |
-| `LLM_MODEL` | 使用的模型 | `deepseek-chat` |
-
-更多配置请参考 [DEPLOY.md](./DEPLOY.md)。
-
----
-
-## 📁 项目结构
-
+```bash
+npm ci
+npm run deploy
 ```
+
+项目也包含 GitHub Actions 自动部署工作流。Secrets、自动部署和生产检查见 [DEPLOY-CLOUDFLARE.md](./DEPLOY-CLOUDFLARE.md)。
+
+## 开发校验
+
+```bash
+npm test
+npm run typecheck
+npm run typecheck:server
+npm run build
+npm --prefix server run build
+```
+
+## 目录结构
+
+```text
 opensource-mentor/
-├── src/                    # 前端源码
-│   ├── components/         # 通用组件
-│   ├── pages/              # 页面组件
-│   │   ├── Dashboard/      # 项目分析页
-│   │   ├── Issues/         # Issue 推荐页
-│   │   ├── CodeReview/     # 代码审查页
-│   │   ├── PrGenerator/    # PR 生成辅助页
-│   │   ├── Roadmap/        # 学习路线页
-│   │   ├── AiMentor/       # AI 导师对话页
-│   │   ├── Settings/       # 设置页
-│   │   └── Landing/        # 落地页
-│   ├── store/              # 状态管理（Zustand）
-│   ├── services/           # API 服务层
-│   └── styles/             # 全局样式
-├── server/                 # 后端源码（BFF 层）
-│   ├── src/
-│   │   ├── routes/         # API 路由
-│   │   ├── controllers/    # 控制器
-│   │   ├── services/       # 业务逻辑
-│   │   ├── middlewares/    # 中间件
-│   │   ├── utils/          # 工具与 Prompt
-│   │   ├── config/         # 配置
-│   │   └── app.ts          # 入口文件
-│   └── package.json
-├── Dockerfile              # 前端 Dockerfile
-├── Dockerfile.server       # 后端 Dockerfile
-├── docker-compose.yml      # Docker Compose 配置
-├── nginx.conf              # Nginx 配置
-└── DEPLOY.md               # 部署文档
+├─ src/
+│  ├─ components/          # 通用与业务组件
+│  ├─ pages/               # 页面及页面私有组件
+│  ├─ services/            # 前端 API 服务
+│  ├─ store/               # Zustand 状态
+│  └─ types/               # 前端类型
+├─ worker/                 # Cloudflare Worker 路由与运行时适配
+├─ server/                 # Express 后端
+├─ shared/core/            # 两种后端共享的纯业务逻辑
+├─ public/                 # 静态资源
+├─ .github/workflows/      # Cloudflare 自动部署
+├─ wrangler.jsonc          # Worker 配置
+├─ docker-compose.yml      # Docker 编排
+├─ DEPLOY.md               # Docker / 腾讯云部署
+└─ DEPLOY-CLOUDFLARE.md    # Cloudflare 部署
 ```
 
----
+## 安全说明
 
-## 💡 设计思路
+- BYOK 密钥保存在浏览器本地，并按请求传递；服务端不持久化用户密钥。
+- 平台模式只使用服务端预设的模型和 API 地址；客户端不能覆盖平台请求目标，避免平台密钥被转发到非预期地址。
+- 平台 AI 请求默认按客户端限制为每分钟 10 次；BYOK 使用用户自己的额度，不占用平台配额。
+- 平台密钥不得写入仓库、前端环境变量或 URL。生产环境还应配置 HTTPS、来源控制和日志脱敏。
 
-### 想解决的问题
+## 项目定位
 
-新人参与开源通常需要经历：
-
-```
-阅读 README → 理解项目结构 → 寻找 Issue → 学习开发规范 → 修改代码 → 提交 PR
-```
-
-整个过程信息分散，需要大量经验积累。OpenSource Mentor 希望将这条路径上的关键节点交给 AI 辅助，让初次参与开源的开发者不再孤单。
-
-### 为什么选择这个方向
-
-随着 AI Coding 工具的发展，代码生成越来越容易。但未来开发者真正需要提升的能力，不只是生成代码，而是：
-
-- 理解真实项目
-- 学习工程规范
-- 参与团队协作
-
-因此本项目希望探索 AI 在开发者成长和开源生态中的价值，让 AI 成为开源贡献路上的导师，而不仅仅是代码补全工具。
-
----
-
-## 📝 License
-
-MIT License
-
----
-
-<p align="center">
-  Made with ❤️
-</p>
+OpenSource Mentor 的目标不是替代开发者完成贡献，而是降低理解陌生仓库和参与社区协作的门槛。AI 输出可能不完整或不准确，提交代码前仍应阅读仓库贡献规范并人工核验建议。

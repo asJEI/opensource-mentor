@@ -68,7 +68,18 @@ const Navbar = () => {
       </div>
 
       <div className="nav-right">
-        <button className="btn btn-secondary btn-sm">登录</button>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          title="即将支持 GitHub 登录；当前为访客模式，配置保存在此设备"
+          onClick={() => {
+            setCurrentPage('app')
+            setCurrentAppPage('settings')
+            navigate('/settings')
+          }}
+        >
+          访客模式
+        </button>
         <button className="btn btn-primary btn-sm" onClick={handleStartFree}>
           免费开始
         </button>

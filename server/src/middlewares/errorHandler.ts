@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { ZodError } from 'zod'
 import { error } from '../utils/response'
-import { AppError, GitHubError, RateLimitError } from '../utils/errors'
+import { AppError, GitHubError } from '../utils/errors'
 
 /**
  * 全局异常处理中间件
@@ -24,10 +24,15 @@ export function errorHandler(
       code: err.code,
     }
 
+    if (err.errorCode) {
+      responseData.errorCode = err.errorCode
+    }
+
     // GitHub 错误附加详细信息
     if (err instanceof GitHubError) {
-      responseData.githubErrorCode = err.githubErrorCode
-      if (err instanceof RateLimitError) {
+      responseData.errorCode = err.errorCode || err.githubErrorCode
+      responseData.githubErrorCode = err.githubErrorCode || err.errorCode
+      if (err.rateLimitReset !== undefined) {
         responseData.rateLimitReset = err.rateLimitReset
       }
     }

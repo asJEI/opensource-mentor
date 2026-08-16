@@ -1,4 +1,5 @@
 import { bffPost } from './request'
+import { BYOK_HEADERS } from '@shared/byok'
 import { useSettingsStore } from '@/store/settings'
 import type {
   Issue,
@@ -22,21 +23,51 @@ import type {
 class AiService {
   private withProviderConfig<T extends Record<string, unknown>>(
     payload: T,
-  ): T & { aiProviderConfig?: AIProviderConfig } {
+  ): T & {
+    aiProviderConfig?: {
+      mode: 'custom'
+      provider: AIProviderConfig['provider']
+      model: string
+      baseUrl?: string
+    }
+  } {
     const { aiConfig } = useSettingsStore.getState()
-    return aiConfig.mode === 'custom'
-      ? { ...payload, aiProviderConfig: aiConfig }
-      : payload
+    if (aiConfig.mode !== 'custom') return payload
+    // apiKey is sent via X-AI-Key header (see request interceptor) — never in body/URL.
+    return {
+      ...payload,
+      aiProviderConfig: {
+        mode: 'custom',
+        provider: aiConfig.provider,
+        model: aiConfig.model,
+        baseUrl: aiConfig.baseUrl,
+      },
+    }
   }
 
   async testConnection(
     configOverride?: AIProviderConfig,
   ): Promise<ConnectionTestResult> {
-    const aiProviderConfig =
-      configOverride ?? useSettingsStore.getState().aiConfig
+    const aiConfig = configOverride ?? useSettingsStore.getState().aiConfig
+    const headers: Record<string, string> = {}
+    if (aiConfig.mode === 'custom') {
+      headers[BYOK_HEADERS.aiMode] = 'custom'
+      headers[BYOK_HEADERS.aiProvider] = aiConfig.provider
+      if (aiConfig.model) headers[BYOK_HEADERS.aiModel] = aiConfig.model
+      if (aiConfig.baseUrl) headers[BYOK_HEADERS.aiBaseUrl] = aiConfig.baseUrl
+      if (aiConfig.apiKey) headers[BYOK_HEADERS.aiKey] = aiConfig.apiKey
+    }
     return bffPost<ConnectionTestResult>(
       '/ai/test-connection',
-      { aiProviderConfig },
+      {
+        aiProviderConfig: {
+          mode: aiConfig.mode,
+          provider: aiConfig.provider,
+          model: aiConfig.model,
+          baseUrl: aiConfig.baseUrl,
+        },
+      },
+      { headers },
     )
   }
 

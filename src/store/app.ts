@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { ToastMessage, ToastType } from '@/types'
 
 /** 应用当前所处的顶级页面 */
 export type AppPage = 'landing' | 'app'
@@ -29,6 +30,8 @@ interface AppState {
   sidebarCollapsed: boolean
   /** 主题（目前只有 light） */
   theme: AppTheme
+  /** 当前显示的全局通知 */
+  toasts: ToastMessage[]
 
   // ---- Actions ----
   /** 设置当前顶级页面 */
@@ -39,13 +42,29 @@ interface AppState {
   toggleSidebar: () => void
   /** 设置主题 */
   setTheme: (theme: AppTheme) => void
+  /** 显示一个全局通知并返回其 id */
+  showToast: (
+    type: ToastType,
+    title: string,
+    message: string,
+    duration?: number,
+  ) => string
+  /** 隐藏指定通知 */
+  hideToast: (id: string) => void
+  /** 清除全部通知 */
+  clearAll: () => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
+function generateToastId(): string {
+  return `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+export const useAppStore = create<AppState>((set, get) => ({
   currentPage: 'app',
   currentAppPage: 'dashboard',
   sidebarCollapsed: false,
   theme: 'light',
+  toasts: [],
 
   setCurrentPage: (page) => set({ currentPage: page }),
 
@@ -55,6 +74,27 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
   setTheme: (theme) => set({ theme }),
+
+  showToast: (type, title, message, duration = 3000) => {
+    const id = generateToastId()
+    const toast: ToastMessage = { id, type, title, message, duration }
+
+    set((state) => ({ toasts: [...state.toasts, toast] }))
+
+    if (duration > 0) {
+      setTimeout(() => get().hideToast(id), duration)
+    }
+
+    return id
+  },
+
+  hideToast: (id) => {
+    set((state) => ({
+      toasts: state.toasts.filter((toast) => toast.id !== id),
+    }))
+  },
+
+  clearAll: () => set({ toasts: [] }),
 }))
 
 export default useAppStore

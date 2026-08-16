@@ -1,6 +1,13 @@
 import axios from 'axios'
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import type {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios'
+import { BYOK_HEADERS } from '@shared/byok'
 import { useSettingsStore } from '@/store/settings'
+import { ApiClientError, getErrorMessage } from './errors'
 
 /**
  * 统一响应格式（与后端对齐）
@@ -10,11 +17,11 @@ export interface ApiResponse<T = unknown> {
   data: T
   message?: string
   code?: number
+  errorCode?: string
+  /** @deprecated prefer errorCode */
+  githubErrorCode?: string
+  rateLimitReset?: number
 }
-
-// ============================================================
-// BFF API 实例（主要使用，调用后端 /api）
-// ============================================================
 
 const bffService: AxiosInstance = axios.create({
   baseURL: '/api',
@@ -24,88 +31,99 @@ const bffService: AxiosInstance = axios.create({
   },
 })
 
+/**
+ * Attach BYOK credentials via headers only (never URL query).
+ * AI apiKey goes in X-AI-Key; GitHub token in X-User-GitHub-Token.
+ */
 bffService.interceptors.request.use(
   (requestConfig: InternalAxiosRequestConfig) => {
-    const { githubConfig } = useSettingsStore.getState()
+    const { githubConfig, aiConfig } = useSettingsStore.getState()
+
     if (
       githubConfig.mode === 'custom' &&
       githubConfig.token &&
-      !requestConfig.headers['X-User-GitHub-Token']
+      !requestConfig.headers[BYOK_HEADERS.githubToken]
     ) {
-      requestConfig.headers['X-User-GitHub-Token'] = githubConfig.token
+      requestConfig.headers[BYOK_HEADERS.githubToken] = githubConfig.token
     }
+
+    if (aiConfig.mode === 'custom') {
+      requestConfig.headers[BYOK_HEADERS.aiMode] = 'custom'
+      requestConfig.headers[BYOK_HEADERS.aiProvider] = aiConfig.provider
+      if (aiConfig.model) {
+        requestConfig.headers[BYOK_HEADERS.aiModel] = aiConfig.model
+      }
+      if (aiConfig.baseUrl) {
+        requestConfig.headers[BYOK_HEADERS.aiBaseUrl] = aiConfig.baseUrl
+      }
+      if (aiConfig.apiKey && !requestConfig.headers[BYOK_HEADERS.aiKey]) {
+        requestConfig.headers[BYOK_HEADERS.aiKey] = aiConfig.apiKey
+      }
+    }
+
     return requestConfig
   },
 )
 
 bffService.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
-    // 直接返回 data 字段（后端统一格式 { success, data, message, code }）
     const payload = response.data
     if (payload && payload.success) {
       return payload.data as any
     }
-    return Promise.reject(new Error(payload?.message || '请求失败'))
+    const errorCode = payload?.errorCode || payload?.githubErrorCode
+    return Promise.reject(
+      new ApiClientError(payload?.message || '请求失败', {
+        errorCode,
+        status: response.status,
+        rateLimitReset: payload?.rateLimitReset,
+      }),
+    )
   },
   (error) => {
-    const status = error.response?.status
-    const message =
-      error.response?.data?.message || error.message || '请求失败'
+    const status = error.response?.status as number | undefined
+    const data = error.response?.data as ApiResponse | undefined
+    const errorCode = data?.errorCode || data?.githubErrorCode
+    const message = data?.message || error.message || '请求失败'
 
-    switch (status) {
-      case 400:
-        console.error('[400] 参数错误:', message)
-        break
-      case 401:
-        console.error('[401] 未授权')
-        break
-      case 403:
-        console.error('[403] 被拒绝:', message)
-        break
-      case 404:
-        console.error('[404] 资源不存在:', message)
-        break
-      case 429:
-        console.error('[429] 频率限制:', message)
-        break
-      case 500:
-      case 502:
-      case 503:
-        console.error(`[${status}] 服务器错误:`, message)
-        break
-      default:
-        if (status) {
-          console.error(`[${status}] ${message}`)
-        } else {
-          console.error('[Network Error]', message)
-        }
+    // Never log request config / Authorization / API keys — message only.
+    if (status) {
+      console.error(`[${status}] ${errorCode || 'ERROR'}:`, message)
+    } else {
+      console.error('[Network Error]', message)
     }
 
-    return Promise.reject(new Error(message))
+    return Promise.reject(
+      new ApiClientError(message, {
+        errorCode,
+        status,
+        rateLimitReset: data?.rateLimitReset,
+      }),
+    )
   },
 )
 
-/** BFF GET */
-export function bffGet<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
+/** BFF GET — optional AbortSignal via config.signal */
+export function bffGet<T = unknown>(
+  url: string,
+  config?: AxiosRequestConfig,
+): Promise<T> {
   return bffService.get<T, T>(url, config)
 }
 
-/** BFF POST */
-export function bffPost<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+/** BFF POST — optional AbortSignal via config.signal */
+export function bffPost<T = unknown>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
   return bffService.post<T, T>(url, data, config)
 }
 
-// ============================================================
-// 工具函数
-// ============================================================
-
-/**
- * 模拟异步延迟（开发调试用）
- */
 export function mockDelay(minMs = 500, maxMs = 1500): Promise<void> {
   const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
   return new Promise((resolve) => setTimeout(resolve, delay))
 }
 
-// 导出默认实例（兼容旧代码）
+export { ApiClientError, getErrorMessage }
 export default bffService

@@ -1,4 +1,5 @@
 import { bffGet, bffPost } from './request'
+import { BYOK_HEADERS } from '@shared/byok'
 import type {
   ConnectionTestResult,
   Issue,
@@ -16,7 +17,7 @@ class GithubService {
       '/github/test-connection',
       {},
       token
-        ? { headers: { 'X-User-GitHub-Token': token } }
+        ? { headers: { [BYOK_HEADERS.githubToken]: token } }
         : undefined,
     )
   }

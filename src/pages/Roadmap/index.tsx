@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Button } from '@/components/ui'
+import { AiPageError, NextStepCard } from '@/components/business'
 import {
   selectUserProfileContext,
   useRepositoryStore,
@@ -85,22 +87,6 @@ const RotateCcwIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
     <path d="M3 3v5h5" />
-  </svg>
-)
-
-const AlertCircleIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8" x2="12" y2="12" />
-    <line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-)
-
-const RefreshCwIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 4 23 10 17 10" />
-    <polyline points="1 20 1 14 7 14" />
-    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
   </svg>
 )
 
@@ -363,16 +349,13 @@ function UserLevelSelector({ owner, repo }: { owner: string; repo: string }) {
 // ==================== 错误状态组件 ====================
 function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
-    <div className="roadmap-error">
-      <div className="roadmap-error-icon">
-        <AlertCircleIcon />
-      </div>
-      <h3>路线图加载失败</h3>
-      <p>{error}</p>
-      <Button variant="primary" onClick={onRetry} icon={<RefreshCwIcon />}>
-        重新加载
-      </Button>
-    </div>
+    <AiPageError
+      className="roadmap-error"
+      title="路线图加载失败"
+      message={error}
+      onRetry={onRetry}
+      retryLabel="重新加载"
+    />
   )
 }
 
@@ -435,6 +418,8 @@ const Roadmap = () => {
     loadRoadmap(currentOwner, currentRepoName)
   }
 
+  const navigate = useNavigate()
+
   const currentStep = steps.find((s) => s.status === 'current')
   const isAllCompleted = steps.length > 0 && steps.every((s) => s.status === 'completed')
   const hasData = steps.length > 0
@@ -460,6 +445,23 @@ const Roadmap = () => {
       <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '学习路线' }]}>
         <div className="app-page active" style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <ErrorState error={error} onRetry={handleRetry} />
+        </div>
+      </AppLayout>
+    )
+  }
+
+  // 空状态：尚未分析仓库
+  if (!isLoading && !hasData) {
+    return (
+      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '学习路线' }]}>
+        <div className="app-page active" style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <AiPageError
+            title="还没有学习路线"
+            message="请先在工作台选择并分析一个仓库，再回来生成个性化路线。"
+            onRetry={() => navigate('/dashboard')}
+            retryLabel="去工作台"
+            showSettingsLink={false}
+          />
         </div>
       </AppLayout>
     )
@@ -498,6 +500,17 @@ const Roadmap = () => {
               </Button>
             )}
           </div>
+        )}
+
+        {hasData && (
+          <NextStepCard
+            currentStep={3}
+            totalSteps={6}
+            title="学习路线已就绪"
+            description="遇到卡点时可以直接问 AI Mentor，再继续 Code Review 与 PR。"
+            buttonText="询问 AI Mentor"
+            nextPath="/ai-mentor"
+          />
         )}
       </div>
     </AppLayout>

@@ -7,8 +7,9 @@ WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci
 
-# 复制后端源码
+# 复制后端源码与平台无关共享核心
 COPY server/ ./
+COPY shared/ /app/shared/
 
 # 编译 TypeScript
 RUN npm run build
@@ -19,4 +20,4 @@ ENV PORT=3001
 
 EXPOSE 3001
 
-CMD ["node", "dist/app.js"]
+CMD ["node", "dist/server/src/app.js"]

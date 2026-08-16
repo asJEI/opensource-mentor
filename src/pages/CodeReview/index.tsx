@@ -7,6 +7,7 @@ import {
   ReviewResultPanel,
   ReviewActionBar,
   NextStepCard,
+  AiPageError,
 } from '@/components/business'
 import { useCodeReviewStore, useRepositoryStore, useToastStore } from '@/store'
 
@@ -415,21 +416,13 @@ const CodeReview = () => {
 
         {/* 失败状态 */}
         {status === 'failed' && (
-          <div className="code-review__error">
-            <div className="error-state">
-              <div className="error-state__icon">⚠️</div>
-              <h3>审查遇到了一点问题</h3>
-              <p>{error || '请检查网络连接后重试'}</p>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  reset()
-                }}
-              >
-                重新提交
-              </button>
-            </div>
-          </div>
+          <AiPageError
+            className="code-review__error"
+            title="审查遇到了一点问题"
+            message={error || '请检查网络或 GitHub Token 后重试'}
+            onRetry={() => reset()}
+            retryLabel="重新提交"
+          />
         )}
 
         {/* 底部操作栏（仅审查完成后显示） */}
@@ -444,10 +437,10 @@ const CodeReview = () => {
         {/* 下一步引导：审查完成后引导去生成 PR */}
         {status === 'completed' && result && (
           <NextStepCard
-            currentStep={3}
-            totalSteps={4}
+            currentStep={5}
+            totalSteps={6}
             title="AI 审查完成！"
-            description="代码审查已完成，下一步生成专业的 PR 描述，让你的贡献更易被合并"
+            description="下一步生成专业的 PR 描述，让你的贡献更易被合并"
             buttonText="生成 PR 描述"
             nextPath="/pr-generator"
             onClick={handleGeneratePr}

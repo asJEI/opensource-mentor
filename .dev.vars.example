@@ -1,0 +1,15 @@
+# Local-only Cloudflare Workers secrets / overrides.
+# Copy to `.dev.vars` (gitignored). Never commit real values.
+#
+# Platform secrets — injected as Worker env bindings in local `vite` / `wrangler` dev.
+# Production: `npx wrangler secret put PLATFORM_GITHUB_TOKEN`
+#             `npx wrangler secret put PLATFORM_LLM_API_KEY`
+#
+# User BYOK (provider/apiKey/model/baseUrl/githubToken) does NOT belong here.
+# Those stay in the browser and are sent per-request later.
+
+PLATFORM_GITHUB_TOKEN=
+PLATFORM_LLM_API_KEY=
+
+# Non-secret model defaults live in wrangler.jsonc (DEFAULT_LLM_MODEL).
+# Current platform default: deepseek-v4-flash

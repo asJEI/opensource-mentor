@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Roadmap, RoadmapPhase, RoadmapProgress, RoadmapStepStatus } from '@/types'
 import { aiService } from '@/services'
+import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
 
 /**
@@ -122,7 +123,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         get().currentOwner !== owner ||
         get().currentRepo !== repo
       ) return
-      const message = err instanceof Error ? err.message : '路线图生成失败，请稍后重试'
+      const message = getErrorMessage(err, '路线图生成失败，请稍后重试')
       set({ isLoading: false, error: message })
     }
   },

@@ -5,7 +5,7 @@ export interface GitHubApiConfig {
   token?: string
 }
 
-export type AIProvider = 'deepseek' | 'openai-compatible'
+export type AIProvider = 'deepseek' | 'openai' | 'openai-compatible'
 
 export interface AIProviderConfig {
   mode: ApiConfigMode

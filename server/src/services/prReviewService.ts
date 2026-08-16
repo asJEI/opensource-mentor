@@ -7,7 +7,6 @@ import {
 import { AppError } from '../utils/errors'
 import { githubService } from './githubService'
 import { aiService } from './aiService'
-import { config } from '../config'
 
 /**
  * PR Review 服务层
@@ -22,7 +21,10 @@ import { config } from '../config'
  */
 class PRReviewService {
   // 内存中的任务表（简易异步任务队列）
-  private jobs = new Map<string, { record: ReviewJobRecord; createdAt: number; prInfo?: any }>()
+  private jobs = new Map<
+    string,
+    { record: ReviewJobRecord; createdAt: number; prInfo?: any }
+  >()
 
   /**
    * 健康检查
@@ -45,7 +47,7 @@ class PRReviewService {
   async createReview(
     prUrl: string,
     options?: { forceMock?: boolean },
-  ): Promise<{ reviewId: string; status: ReviewStatus; progress: ReviewProgress }> {
+  ): Promise<ReviewJobRecord> {
     const reviewId = this.generateId()
     const now = new Date().toISOString()
 
@@ -82,11 +84,7 @@ class PRReviewService {
       }
     })
 
-    return {
-      reviewId,
-      status: 'queued',
-      progress: initialProgress,
-    }
+    return { ...record }
   }
 
   /**
@@ -113,7 +111,10 @@ class PRReviewService {
   /**
    * 异步执行审查
    */
-  private async startReviewAsync(reviewId: string, prUrl: string): Promise<void> {
+  private async startReviewAsync(
+    reviewId: string,
+    prUrl: string,
+  ): Promise<void> {
     const job = this.jobs.get(reviewId)
     if (!job) return
 
@@ -126,7 +127,10 @@ class PRReviewService {
 
       const parsed = githubService.parsePrUrl(prUrl)
       if (!parsed) {
-        throw new AppError('PR URL 格式不正确，请输入正确的 GitHub PR 链接', 400)
+        throw new AppError(
+          'PR URL 格式不正确，请输入正确的 GitHub PR 链接',
+          400,
+        )
       }
 
       const { owner, repo, pullNumber } = parsed
@@ -136,10 +140,18 @@ class PRReviewService {
       job.prInfo = prInfo
 
       // 获取 PR 文件列表
-      const { files } = await githubService.getPullRequestFiles(owner, repo, pullNumber)
+      const { files } = await githubService.getPullRequestFiles(
+        owner,
+        repo,
+        pullNumber,
+      )
 
       // 获取 PR diff
-      const diff = await githubService.getPullRequestDiff(owner, repo, pullNumber)
+      const diff = await githubService.getPullRequestDiff(
+        owner,
+        repo,
+        pullNumber,
+      )
 
       // 阶段 2：风险分析
       job.record.progress.phases.summary = 'completed'
@@ -197,7 +209,8 @@ class PRReviewService {
     } catch (err) {
       console.error('[PR-Review] 审查失败:', err)
       job.record.status = 'failed'
-      job.record.error = err instanceof Error ? err.message : '审查失败，请稍后重试'
+      job.record.error =
+        err instanceof Error ? err.message : '审查失败，请稍后重试'
       job.record.completedAt = new Date().toISOString()
     }
   }
@@ -205,7 +218,10 @@ class PRReviewService {
   /**
    * 根据已用时间更新进度显示（平滑进度条）
    */
-  private updateProgress(job: { record: ReviewJobRecord; createdAt: number }): void {
+  private updateProgress(job: {
+    record: ReviewJobRecord
+    createdAt: number
+  }): void {
     if (job.record.status !== 'running') return
 
     const elapsed = Date.now() - job.createdAt
@@ -225,11 +241,7 @@ class PRReviewService {
    * 生成唯一 ID
    */
   private generateId(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0
-      const v = c === 'x' ? r : (r & 0x3) | 0x8
-      return v.toString(16)
-    })
+    return crypto.randomUUID()
   }
 
   /**

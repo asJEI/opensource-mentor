@@ -5,3 +5,4 @@ export {
   githubRequestContext,
 } from './githubRequestContext'
 export { aiRequestContext, getRequestAIConfig } from './aiRequestContext'
+export { platformAIRateLimit } from './platformRateLimit'

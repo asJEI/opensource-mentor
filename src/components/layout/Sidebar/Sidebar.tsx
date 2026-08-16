@@ -76,7 +76,7 @@ const navGroups: NavGroup[] = [
 ]
 
 const contributionLevelMap: Record<string, string> = {
-  none: '新手贡献者',
+  none: '访客模式',
   low: '初级贡献者',
   medium: '中级贡献者',
   high: '高级贡献者',
@@ -163,7 +163,12 @@ const Sidebar = () => {
       </nav>
 
       <div className="app-sidebar-footer">
-        <div className="user-card">
+        <button
+          type="button"
+          className="user-card user-card-button"
+          onClick={() => handleNavClick('settings')}
+          aria-label="打开偏好设置"
+        >
           <div className="user-avatar">
             {profile.avatar ? (
               <img src={profile.avatar} alt={profile.username} />
@@ -172,12 +177,14 @@ const Sidebar = () => {
             )}
           </div>
           <div className="user-info">
-            <div className="user-name">{profile.username || '未登录'}</div>
+            <div className="user-name">{profile.username || '访客模式'}</div>
             <div className="user-role">
-              {contributionLevelMap[profile.contributionLevel] || '—'}
+              {profile.username
+                ? contributionLevelMap[profile.contributionLevel] || '—'
+                : '配置保存在此设备'}
             </div>
           </div>
-        </div>
+        </button>
       </div>
     </aside>
   )

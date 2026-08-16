@@ -7,6 +7,7 @@ import type {
   RecommendedIssue,
 } from '@/types'
 import { codeReviewService } from '@/services'
+import { getErrorMessage } from '@/services/errors'
 
 /**
  * 代码审查状态 Store
@@ -90,11 +91,26 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       clearInterval(_pollTimer)
     }
 
-    set({ status: 'queued', error: null, result: null, progress: initialProgress })
+    set({
+      status: 'queued',
+      error: null,
+      result: null,
+      progress: initialProgress,
+    })
 
     try {
-      const { reviewId, status, progress } = await codeReviewService.createReview(prUrl.trim())
-      set({ reviewId, status, progress })
+      const record = await codeReviewService.createReview(prUrl.trim())
+      set({
+        reviewId: record.reviewId,
+        status: record.status,
+        progress: record.progress,
+        result: record.result,
+        error: record.error,
+      })
+
+      if (record.status === 'completed' || record.status === 'failed') {
+        return
+      }
 
       // 启动轮询：每 2 秒拉取一次状态
       const timer = setInterval(() => {
@@ -102,7 +118,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       }, 2000)
       set({ _pollTimer: timer })
     } catch (err) {
-      const message = err instanceof Error ? err.message : '创建审查任务失败，请稍后重试'
+      const message = getErrorMessage(err, '创建审查任务失败，请稍后重试')
       set({ status: 'failed', error: message, _pollTimer: null })
     }
   },
@@ -138,7 +154,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '获取审查状态失败'
+      const message = getErrorMessage(err, '获取审查状态失败')
       set({ error: message })
     }
   },

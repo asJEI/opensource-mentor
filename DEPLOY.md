@@ -1,4 +1,6 @@
-# Docker 部署指南
+# Docker / 腾讯云部署指南
+
+本文档对应 Docker Compose + Nginx + Express 部署。Cloudflare Workers 部署见 [DEPLOY-CLOUDFLARE.md](./DEPLOY-CLOUDFLARE.md)。
 
 ## 项目结构
 
@@ -58,11 +60,14 @@ vim .env
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `GITHUB_TOKEN` | 推荐 | GitHub Personal Access Token，提高 API 速率限制 |
-| `LLM_API_KEY` | 推荐 | LLM API Key（如 DeepSeek），不填则使用 Mock 数据 |
-| `VITE_USE_MOCK` | 否 | 前端是否使用 Mock，默认 `true` |
+| `PLATFORM_GITHUB_TOKEN` | 推荐 | GitHub Personal Access Token，提高 API 速率限制 |
+| `PLATFORM_LLM_API_KEY` | AI 功能需要 | 平台默认 LLM API Key |
+| `DEFAULT_LLM_PROVIDER` | 否 | 默认模型提供方，如 `deepseek` |
+| `DEFAULT_LLM_BASE_URL` | 否 | OpenAI-compatible API 地址 |
+| `DEFAULT_LLM_MODEL` | 否 | 默认模型名称 |
+| `LLM_TIMEOUT_MS` | 否 | LLM 请求超时，单位毫秒 |
 
-> 演示/测试用：保持 `VITE_USE_MOCK=true`，不填密钥也能跑（Mock 模式）。
+旧的 `GITHUB_TOKEN`、`LLM_API_KEY` 等变量仍作为兼容别名接受，新部署应使用上表中的变量。没有 LLM Key 时不能假定全部 AI 功能都能返回真实结果。
 
 ### 4. 构建并启动
 
@@ -165,4 +170,5 @@ docker compose up -d
 1. **不要把 .env 文件提交到 Git**（已在 .gitignore 中排除）
 2. 生产环境建议配置 HTTPS（可用 Nginx 反向代理 + Let's Encrypt）
 3. 限制 `GITHUB_TOKEN` 的权限范围
-4. 定期更新基础镜像：`docker compose build --pull`
+4. Express 已对平台 AI 请求按客户端限制为每分钟 10 次；BYOK 请求不占用平台额度
+5. 定期更新基础镜像：`docker compose build --pull`
