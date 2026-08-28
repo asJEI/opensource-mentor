@@ -18,12 +18,21 @@ import {
   handleCreateReview,
   handleGetReview,
 } from './code-review/routes'
+import {
+  handleGetMe,
+  handleLogout,
+  handleUpdateDeveloperProfile,
+} from './auth/routes'
 import { getPlatformConfigStatus, type PlatformEnv } from './config'
 import {
   handleGetIssues,
   handleGetRepository,
   handleTestGitHubConnection,
 } from './github/routes'
+import {
+  handleGitHubOAuthCallback,
+  handleGitHubOAuthStart,
+} from './github/oauth'
 import { json, toErrorResponse } from './http'
 
 export default {
@@ -51,11 +60,40 @@ export default {
         return await handleGetIssues(request, env)
       }
 
+      if (url.pathname === '/api/me' && request.method === 'GET') {
+        return await handleGetMe(request, env)
+      }
+
+      if (url.pathname === '/api/me/logout' && request.method === 'POST') {
+        return await handleLogout(request)
+      }
+
+      if (
+        url.pathname === '/api/me/developer-profile' &&
+        request.method === 'PATCH'
+      ) {
+        return await handleUpdateDeveloperProfile(request, env)
+      }
+
       if (
         url.pathname === '/api/github/test-connection' &&
         request.method === 'POST'
       ) {
         return await handleTestGitHubConnection(request, env)
+      }
+
+      if (
+        url.pathname === '/api/auth/github/start' &&
+        request.method === 'GET'
+      ) {
+        return handleGitHubOAuthStart(request, env)
+      }
+
+      if (
+        url.pathname === '/api/auth/github/callback' &&
+        request.method === 'GET'
+      ) {
+        return await handleGitHubOAuthCallback(request, env)
       }
 
       if (url.pathname === '/api/ai/explain' && request.method === 'POST') {

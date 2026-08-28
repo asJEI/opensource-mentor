@@ -1,10 +1,8 @@
-import { Navbar, Footer } from '@/components/layout'
+import { Navbar } from '@/components/layout'
 import {
-  CTASection,
   FeaturesSection,
   HeroSection,
   PreviewSection,
-  WhySection,
   WorkflowSection,
 } from './sections'
 
@@ -12,12 +10,9 @@ const Landing = () => (
   <div className="landing-page">
     <Navbar />
     <HeroSection />
-    <WhySection />
-    <FeaturesSection />
     <WorkflowSection />
+    <FeaturesSection />
     <PreviewSection />
-    <CTASection />
-    <Footer />
   </div>
 )
 

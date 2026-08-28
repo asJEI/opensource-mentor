@@ -3,7 +3,7 @@
  */
 
 /** 用户画像数据版本；升级结构时递增并在 Store 中执行迁移 */
-export type UserProfileVersion = 1
+export type UserProfileVersion = 2
 
 /** 用户掌握或正在学习的编程语言 */
 export type ProgrammingLanguage =
@@ -39,6 +39,25 @@ export type LearningGoal =
   | 'improve_engineering'
   | 'learn_new_technology'
 
+export type OpenSourceGoal =
+  | 'ship_first_pr'
+  | 'improve_skills'
+  | 'build_github_profile'
+  | 'contribute_liked_projects'
+  | 'long_term_contributor'
+
+export type ContributionTimeBudget =
+  | 'lt_1h'
+  | '1_3h'
+  | '3_6h'
+  | 'weekend'
+  | 'no_preference'
+
+export type GuidancePreference =
+  | 'step_by_step'
+  | 'hints_when_stuck'
+  | 'find_good_issues'
+
 /** 用户画像填写状态 */
 export type ProfileSetupStatus = 'not_started' | 'completed' | 'skipped'
 
@@ -59,19 +78,122 @@ export interface UserProfile {
   interests: ContributionInterest[]
   /** 学习和贡献目标 */
   goals: LearningGoal[]
+  /** 首次进入产品时补充的开源目标 */
+  openSourceGoal: OpenSourceGoal | ''
+  /** 希望工作的技术栈，来自 GitHub 预选并允许用户编辑 */
+  preferredTechStack: string[]
+  /** 下一次贡献的期望时间投入 */
+  contributionTimeBudget: ContributionTimeBudget | ''
+  /** 希望获得的陪伴程度 */
+  guidancePreference: GuidancePreference | ''
   /** 用户名 */
   username: string
   /** 头像 URL */
   avatar: string
+  /** GitHub 个人简介 */
+  bio: string
+  /** GitHub 主页 URL */
+  githubUrl: string
   /** 开源贡献等级 */
   contributionLevel: ContributionLevel
+}
+
+export interface GitHubRepositoryProfile {
+  name: string
+  fullName: string
+  owner: string
+  htmlUrl: string
+  description: string
+  language: string
+  topics: string[]
+  stars: number
+  forks: number
+  isFork: boolean
+  isArchived: boolean
+  isOwnRepository: boolean
+  pushedAt: string
+  updatedAt: string
+}
+
+export interface GitHubDeveloperProfile {
+  authenticatedAt: string
+  inferredContributionLevel?: Exclude<ContributionLevel, 'none'>
+  developerProfile?: StructuredDeveloperProfile
+  profile: {
+    username: string
+    name: string
+    avatar: string
+    bio: string
+    htmlUrl: string
+    company: string
+    blog: string
+    location: string
+    publicRepos: number
+    followers: number
+    following: number
+    createdAt: string
+  }
+  repositories: GitHubRepositoryProfile[]
+  recentRepositories: string[]
+  languages: Array<{ name: string; score: number; repositories: number }>
+  topics: Array<{ name: string; count: number }>
+  projectTypes: Array<{ type: string; score: number }>
+  contributions: {
+    publicEventCount: number
+    pullRequestsAuthored: number
+    issuesAuthored: number
+    contributedToOthers: boolean
+    externalContributionCount: number
+    recentEventTypes: Record<string, number>
+    recentExternalRepositories: string[]
+    recentPullRequests: Array<{
+      title: string
+      url: string
+      repository: string
+      state: string
+      updatedAt: string
+    }>
+    recentIssues: Array<{
+      title: string
+      url: string
+      repository: string
+      state: string
+      updatedAt: string
+    }>
+  }
+}
+
+export interface StructuredDeveloperProfile {
+  level: 'beginner' | 'intermediate' | 'advanced'
+  confidence: number
+  languages: Array<{
+    name: string
+    level: 'beginner' | 'intermediate' | 'advanced'
+    confidence: number
+  }>
+  frameworks: string[]
+  domains: string[]
+  open_source_experience: 'none' | 'beginner' | 'experienced'
+  strengths: string[]
+  possible_weaknesses: string[]
+  evidence: string[]
+  github_summary: string
 }
 
 /** 画像表单可编辑字段；展示身份字段由其他流程维护 */
 export type UserProfileFormData = Pick<
   UserProfile,
   'programmingLanguages' | 'experienceLevel' | 'interests' | 'goals'
->
+> &
+  Partial<
+    Pick<
+      UserProfile,
+      | 'openSourceGoal'
+      | 'preferredTechStack'
+      | 'contributionTimeBudget'
+      | 'guidancePreference'
+    >
+  >
 
 /** 发送给个性化业务的最小画像上下文，不包含展示身份信息 */
 export type UserProfileContext = Pick<

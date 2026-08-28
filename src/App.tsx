@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import Landing from '@/pages/Landing'
 import Dashboard from '@/pages/Dashboard'
@@ -9,6 +9,8 @@ import CodeReview from '@/pages/CodeReview'
 import AiMentor from '@/pages/AiMentor'
 import Settings from '@/pages/Settings'
 import { ToastContainer } from '@/components/ui'
+import { authService } from '@/services'
+import { useToastStore, useUserStore } from '@/store'
 
 /**
  * 页面包装组件，添加切换动画
@@ -29,11 +31,75 @@ function PageTransition({ children }: { children: React.ReactNode }) {
  */
 function App() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const applyGitHubOAuthProfile = useUserStore(
+    (state) => state.applyGitHubOAuthProfile,
+  )
+  const applyServerUserState = useUserStore(
+    (state) => state.applyServerUserState,
+  )
+  const showToast = useToastStore((state) => state.showToast)
 
   // 页面切换时滚动到顶部
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [location.pathname])
+
+  useEffect(() => {
+    const githubProfile = authService.consumeGitHubOAuthProfile()
+    if (githubProfile) {
+      applyGitHubOAuthProfile(githubProfile)
+      showToast(
+        'success',
+        'GitHub 已连接',
+        `已读取 ${githubProfile.profile.username} 的公开开发者画像`,
+      )
+    }
+
+    void authService
+      .getMe()
+      .then((me) => {
+        applyServerUserState({
+          githubProfile: me.developerProfile.github_profile ?? githubProfile,
+          githubUsername: me.user.githubUsername,
+          githubAvatar: me.user.githubAvatar,
+          profileSetupStatus: me.developerProfile.profile_setup_status,
+          profileConfirmed: me.developerProfile.profile_confirmed,
+          openSourceGoal: me.developerProfile.open_source_goal,
+          preferredTechStack: me.developerProfile.preferred_tech_stack,
+          contributionTimeBudget: me.developerProfile.contribution_time_budget,
+          guidancePreference: me.developerProfile.guidance_preference,
+        })
+      })
+      .catch(() => {
+        // 未登录或会话过期时静默保留本地兼容数据。
+      })
+
+    const params = new URLSearchParams(location.search)
+    if (params.get('github_login') === 'success') {
+      navigate('/dashboard', { replace: true })
+      return
+    }
+
+    if (params.get('github_login') === 'error') {
+      const reason = params.get('reason')
+      showToast(
+        'error',
+        'GitHub 登录失败',
+        reason === 'github_oauth_not_configured'
+          ? 'OAuth 应用尚未配置 Client ID / Secret'
+          : '请稍后重试，或检查 GitHub OAuth 配置',
+      )
+      navigate(location.pathname || '/', { replace: true })
+    }
+  }, [
+    applyGitHubOAuthProfile,
+    applyServerUserState,
+    location.pathname,
+    location.search,
+    navigate,
+    showToast,
+  ])
 
   return (
     <div className="app">

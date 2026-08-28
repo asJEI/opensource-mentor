@@ -14,6 +14,10 @@ import {
  */
 export type PlatformEnv = CloudflareEnv & {
   PLATFORM_GITHUB_TOKEN?: string
+  GITHUB_OAUTH_CLIENT_ID?: string
+  GITHUB_OAUTH_CLIENT_SECRET?: string
+  SUPABASE_URL?: string
+  SUPABASE_SECRET_KEY?: string
   PLATFORM_LLM_API_KEY?: string
   PLATFORM_AI_RATE_LIMITER: RateLimit
 }

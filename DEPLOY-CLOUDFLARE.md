@@ -23,7 +23,7 @@
 
 ## 自动部署（二选一，推荐先做 A）
 
-### A. GitHub Actions（本仓库已配置）
+### A. GitHub Actions（可选）
 
 工作流：[`.github/workflows/deploy-cloudflare.yml`](./.github/workflows/deploy-cloudflare.yml)
 
@@ -67,6 +67,10 @@ Dashboard 一次性授权 GitHub App 后，push 由 Cloudflare 直接构建：
 ```bash
 npx wrangler secret put PLATFORM_LLM_API_KEY
 npx wrangler secret put PLATFORM_GITHUB_TOKEN
+npx wrangler secret put GITHUB_OAUTH_CLIENT_ID
+npx wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_SECRET_KEY
 ```
 
 也可在 Dashboard → Worker → **Settings** → **Variables and Secrets** 添加类型为 Secret 的项。
@@ -75,6 +79,10 @@ npx wrangler secret put PLATFORM_GITHUB_TOKEN
 |--------|------|------|
 | `PLATFORM_LLM_API_KEY` | 平台模式推荐 | 平台默认 LLM（如 DeepSeek） |
 | `PLATFORM_GITHUB_TOKEN` | 推荐 | 提高 GitHub API 限额；无则公共限流更紧 |
+| `GITHUB_OAUTH_CLIENT_ID` | GitHub 登录必需 | GitHub OAuth App 的 Client ID |
+| `GITHUB_OAUTH_CLIENT_SECRET` | GitHub 登录必需 | GitHub OAuth App 的 Client Secret |
+| `SUPABASE_URL` | 用户持久化必需 | Supabase Project URL，仅 Worker 使用 |
+| `SUPABASE_SECRET_KEY` | 用户持久化必需 | Supabase Secret Key，仅 Worker 使用，禁止返回前端 |
 
 非密钥默认（已在 `wrangler.jsonc` → `vars`）：
 

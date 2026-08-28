@@ -8,7 +8,7 @@ import {
   useUserStore,
 } from '@/store'
 import type { ProfileOption as Option } from '@/constants/userProfile'
-import { aiService, githubService } from '@/services'
+import { aiService, authService, githubService } from '@/services'
 import { getConnectionErrorMessage } from '@/services/connectionErrors'
 import type {
   AIProvider,
@@ -221,6 +221,10 @@ function defaultModel(provider: AIProvider): string {
 
 const GitHubApiSettings = () => {
   const githubConfig = useSettingsStore((state) => state.githubConfig)
+  const profile = useUserStore((state) => state.profile)
+  const githubProfile = useUserStore((state) => state.githubProfile)
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated)
+  const logout = useUserStore((state) => state.logout)
   const updateGitHubConfig = useSettingsStore(
     (state) => state.updateGitHubConfig,
   )
@@ -291,20 +295,59 @@ const GitHubApiSettings = () => {
           <span className="settings-card-icon">
             <ApiIcon />
           </span>
-          <span>GitHub Token（可选）</span>
+          <span>GitHub 账号与 API</span>
           <Badge
-            variant={githubConfig.mode === 'custom' ? 'accent' : 'default'}
+            variant={isAuthenticated ? 'success' : 'default'}
             size="sm"
           >
-            {githubConfig.mode === 'custom' ? '自定义 Token' : '平台默认'}
+            {isAuthenticated ? '已连接账号' : '未登录'}
           </Badge>
         </div>
       }
     >
       <div className="api-settings-body">
+        <section className="settings-inline-panel">
+          <div>
+            <h3>GitHub 账号</h3>
+            <p className="form-hint">
+              用于生成你的开发者画像：头像、名称、公开仓库、语言、PR / Issue
+              和第三方贡献线索。
+            </p>
+          </div>
+          <div className="settings-account-preview">
+            {profile.avatar ? (
+              <img src={profile.avatar} alt={profile.username} />
+            ) : (
+              <span>?</span>
+            )}
+            <div>
+              <strong>{profile.username || '尚未连接 GitHub'}</strong>
+              <small>
+                {githubProfile?.developerProfile
+                  ? `${githubProfile.developerProfile.level} · 能力判断把握度 ${Math.round(
+                      githubProfile.developerProfile.confidence * 100,
+                    )}%`
+                  : isAuthenticated
+                    ? '已读取公开资料'
+                    : '点击登录后生成结构化 Developer Profile'}
+              </small>
+            </div>
+          </div>
+          <div className="settings-actions api-settings-actions">
+            <Button variant="primary" onClick={authService.startGitHubLogin}>
+              {isAuthenticated ? '重新连接 GitHub' : '使用 GitHub 登录'}
+            </Button>
+            {isAuthenticated && (
+              <Button variant="ghost" onClick={logout}>
+                退出当前设备
+              </Button>
+            )}
+          </div>
+        </section>
+
         <p className="form-hint api-section-lead">
-          用于提高 GitHub API 请求额度。未配置时可继续使用公开 API，但更容易触发
-          Rate Limit。
+          账号登录只负责识别用户和生成画像；公共仓库分析默认继续使用平台
+          GitHub API 额度，普通用户无需配置自己的 Token。
         </p>
 
         <ModeSelector
@@ -316,14 +359,14 @@ const GitHubApiSettings = () => {
             )
             setStatusDetail(undefined)
           }}
-          platformLabel="平台默认 GitHub API"
-          customLabel="使用自己的 GitHub Token"
+          platformLabel="平台 GitHub API（推荐）"
+          customLabel="高级：使用自己的 GitHub Token"
         />
 
         {githubConfig.mode === 'platform' && (
           <p className="api-warning-note">
-            未配置个人 Token 时使用公开额度（约 60
-            次/小时）。频繁分析仓库时建议切换为自定义 Token。
+            当前由部署环境的 PLATFORM_GITHUB_TOKEN 提供公共仓库分析额度。即使你已登录
+            GitHub，也不需要额外填写个人 Token。
           </p>
         )}
 
@@ -350,8 +393,8 @@ const GitHubApiSettings = () => {
               </Button>
             </div>
             <p className="form-hint">
-              当前保存值：{maskSecret(githubConfig.token)}。建议仅授予
-              public_repo / Contents 只读权限。
+              当前保存值：{maskSecret(githubConfig.token)}。仅在需要调试或更高个人额度时使用；
+              不建议申请私有仓库权限。
             </p>
           </div>
         )}
@@ -379,7 +422,8 @@ const GitHubApiSettings = () => {
         </div>
 
         <p className="api-security-note">
-          配置保存在当前浏览器。Token 经请求头临时发送，服务端不持久化。
+          GitHub 登录不等于上传个人 Token。自定义 Token 只保存在当前浏览器，
+          经请求头临时发送，服务端不持久化。
         </p>
       </div>
     </Card>
