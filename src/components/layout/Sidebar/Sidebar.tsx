@@ -87,6 +87,8 @@ const Sidebar = () => {
   const location = useLocation()
   const setCurrentAppPage = useAppStore((s) => s.setCurrentAppPage)
   const profile = useUserStore((s) => s.profile)
+  const githubProfile = useUserStore((s) => s.githubProfile)
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated)
 
   const getInitials = (name: string) => {
     if (!name) return '?'
@@ -113,6 +115,14 @@ const Sidebar = () => {
   }
 
   const activePage = getActivePage()
+  const displayName = profile.username || githubProfile?.profile.username || ''
+  const userRole = isAuthenticated
+    ? githubProfile?.developerProfile
+      ? `${githubProfile.developerProfile.level} · 能力判断把握度 ${Math.round(
+          githubProfile.developerProfile.confidence * 100,
+        )}%`
+      : githubProfile?.profile.bio || contributionLevelMap[profile.contributionLevel] || 'GitHub 已连接'
+    : '配置保存在此设备'
 
   const handleNavClick = (id: string) => {
     const validPages: AppSubPage[] = [
@@ -171,18 +181,14 @@ const Sidebar = () => {
         >
           <div className="user-avatar">
             {profile.avatar ? (
-              <img src={profile.avatar} alt={profile.username} />
+              <img src={profile.avatar} alt={displayName} />
             ) : (
-              getInitials(profile.username)
+              getInitials(displayName)
             )}
           </div>
           <div className="user-info">
-            <div className="user-name">{profile.username || '访客模式'}</div>
-            <div className="user-role">
-              {profile.username
-                ? contributionLevelMap[profile.contributionLevel] || '—'
-                : '配置保存在此设备'}
-            </div>
+            <div className="user-name">{displayName || '访客模式'}</div>
+            <div className="user-role">{userRole}</div>
           </div>
         </button>
       </div>

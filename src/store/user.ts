@@ -2,10 +2,14 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type {
   ContributionInterest,
+  ContributionTimeBudget,
   ExperienceLevel,
+  GuidancePreference,
   LearningGoal,
+  OpenSourceGoal,
   ProgrammingLanguage,
   ProfileSetupStatus,
+  GitHubDeveloperProfile,
   UserProfile,
   UserProfileContext,
   UserProfileFormData,
@@ -13,7 +17,7 @@ import type {
 } from '@/types'
 
 const USER_STORAGE_KEY = 'opensource-mentor:user-profile'
-const USER_STORE_VERSION = 1
+const USER_STORE_VERSION = 2
 
 const contributionInterests = [
   'frontend',
@@ -31,6 +35,28 @@ const learningGoals = [
   'improve_engineering',
   'learn_new_technology',
 ] as const satisfies readonly LearningGoal[]
+
+const openSourceGoals = [
+  'ship_first_pr',
+  'improve_skills',
+  'build_github_profile',
+  'contribute_liked_projects',
+  'long_term_contributor',
+] as const satisfies readonly OpenSourceGoal[]
+
+const contributionTimeBudgets = [
+  'lt_1h',
+  '1_3h',
+  '3_6h',
+  'weekend',
+  'no_preference',
+] as const satisfies readonly ContributionTimeBudget[]
+
+const guidancePreferences = [
+  'step_by_step',
+  'hints_when_stuck',
+  'find_good_issues',
+] as const satisfies readonly GuidancePreference[]
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -104,6 +130,28 @@ function normalizeSetupStatus(
   return hasLegacyAnswers ? 'completed' : 'not_started'
 }
 
+function normalizeOptionalEnum<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+): T | '' {
+  return typeof value === 'string' && allowed.includes(value as T)
+    ? (value as T)
+    : ''
+}
+
+function normalizeTechStack(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [
+    ...new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 16),
+    ),
+  ]
+}
+
 function normalizeProfile(value: unknown): UserProfile {
   const profile = isRecord(value) ? value : {}
   const languageSource =
@@ -117,7 +165,7 @@ function normalizeProfile(value: unknown): UserProfile {
     normalizedLanguages.length > 0 || normalizedInterests.length > 0
 
   return {
-    version: 1,
+    version: 2,
     profileSetupStatus: normalizeSetupStatus(
       profile.profileSetupStatus,
       hasLegacyAnswers,
@@ -128,8 +176,24 @@ function normalizeProfile(value: unknown): UserProfile {
     ),
     interests: normalizedInterests,
     goals: filterOptions(profile.goals, learningGoals),
+    openSourceGoal: normalizeOptionalEnum(
+      profile.openSourceGoal,
+      openSourceGoals,
+    ),
+    preferredTechStack: normalizeTechStack(profile.preferredTechStack),
+    contributionTimeBudget: normalizeOptionalEnum(
+      profile.contributionTimeBudget,
+      contributionTimeBudgets,
+    ),
+    guidancePreference: normalizeOptionalEnum(
+      profile.guidancePreference,
+      guidancePreferences,
+    ),
     username: typeof profile.username === 'string' ? profile.username : '',
     avatar: typeof profile.avatar === 'string' ? profile.avatar : '',
+    bio: typeof profile.bio === 'string' ? profile.bio : '',
+    githubUrl:
+      typeof profile.githubUrl === 'string' ? profile.githubUrl : '',
     contributionLevel:
       profile.contributionLevel === 'low' ||
       profile.contributionLevel === 'medium' ||
@@ -163,14 +227,20 @@ function normalizePreferences(value: unknown): UserPreferences {
  * 默认用户资料
  */
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  version: 1,
+  version: 2,
   profileSetupStatus: 'not_started',
   programmingLanguages: [],
   experienceLevel: 'beginner',
   interests: [],
   goals: [],
+  openSourceGoal: '',
+  preferredTechStack: [],
+  contributionTimeBudget: '',
+  guidancePreference: '',
   username: '',
   avatar: '',
+  bio: '',
+  githubUrl: '',
   contributionLevel: 'none',
 }
 
@@ -193,8 +263,10 @@ interface UserState {
   /** 用户偏好设置 */
   preferences: UserPreferences
   /** 是否已认证 */
-  /** 是否已登录（预留：未来 GitHub OAuth / D1 用户体系；当前始终访客模式） */
+  /** 是否已登录 GitHub */
   isAuthenticated: boolean
+  /** GitHub OAuth 读取到的公开开发者画像 */
+  githubProfile: GitHubDeveloperProfile | null
 
   // ---- Actions ----
   /** 部分更新用户资料 */
@@ -209,9 +281,28 @@ interface UserState {
   updatePreferences: (partial: Partial<UserPreferences>) => void
   /** 设置认证状态 */
   setAuthenticated: (value: boolean) => void
+  /** 应用 GitHub OAuth 回调返回的公开画像 */
+  applyGitHubOAuthProfile: (profile: GitHubDeveloperProfile) => void
+  /** 应用服务端 /api/me 返回的持久化状态 */
+  applyServerUserState: (input: {
+    githubProfile: GitHubDeveloperProfile | null
+    githubUsername: string
+    githubAvatar: string
+    profileSetupStatus: ProfileSetupStatus
+    profileConfirmed: boolean
+    openSourceGoal?: string | null
+    preferredTechStack?: string[] | null
+    contributionTimeBudget?: string | null
+    guidancePreference?: string | null
+  }) => void
+  /** 退出当前设备上的 GitHub 登录态 */
+  logout: () => void
 }
 
-type PersistedUserState = Pick<UserState, 'profile' | 'preferences'>
+type PersistedUserState = Pick<
+  UserState,
+  'profile' | 'preferences' | 'isAuthenticated' | 'githubProfile'
+>
 
 /** 推荐、路线等业务统一使用的最小画像 selector */
 export const selectUserProfileContext = (
@@ -244,17 +335,42 @@ function createDefaultProfile(
     programmingLanguages: [],
     interests: [],
     goals: [],
+    openSourceGoal: current?.openSourceGoal ?? '',
+    preferredTechStack: current?.preferredTechStack ?? [],
+    contributionTimeBudget: current?.contributionTimeBudget ?? '',
+    guidancePreference: current?.guidancePreference ?? '',
     username: current?.username ?? '',
     avatar: current?.avatar ?? '',
+    bio: current?.bio ?? '',
+    githubUrl: current?.githubUrl ?? '',
     contributionLevel: current?.contributionLevel ?? 'none',
   }
 }
 
+function normalizeGitHubProfile(value: unknown): GitHubDeveloperProfile | null {
+  if (!isRecord(value) || !isRecord(value.profile)) return null
+  if (
+    typeof value.authenticatedAt !== 'string' ||
+    typeof value.profile.username !== 'string' ||
+    typeof value.profile.avatar !== 'string'
+  ) {
+    return null
+  }
+
+  return value as unknown as GitHubDeveloperProfile
+}
+
 function normalizePersistedState(value: unknown): PersistedUserState {
   const state = isRecord(value) ? value : {}
+  const githubProfile = normalizeGitHubProfile(state.githubProfile)
   return {
     profile: normalizeProfile(state.profile),
     preferences: normalizePreferences(state.preferences),
+    isAuthenticated:
+      typeof state.isAuthenticated === 'boolean'
+        ? state.isAuthenticated
+        : Boolean(githubProfile),
+    githubProfile,
   }
 }
 
@@ -264,6 +380,7 @@ export const useUserStore = create<UserState>()(
       profile: { ...DEFAULT_USER_PROFILE },
       preferences: defaultPreferences,
       isAuthenticated: false,
+      githubProfile: null,
 
       updateProfile: (partial) =>
         set((state) => ({
@@ -297,8 +414,80 @@ export const useUserStore = create<UserState>()(
           }),
         })),
 
-      /** 预留：未来 GitHub OAuth 成功后置 true；当前产品不要求登录 */
       setAuthenticated: (value) => set({ isAuthenticated: value }),
+
+      applyGitHubOAuthProfile: (githubProfile) =>
+        set((state) => ({
+          isAuthenticated: true,
+          githubProfile,
+          profile: normalizeProfile({
+            ...state.profile,
+            username: githubProfile.profile.name || githubProfile.profile.username,
+            avatar: githubProfile.profile.avatar,
+            bio: githubProfile.profile.bio,
+            githubUrl: githubProfile.profile.htmlUrl,
+            profileSetupStatus:
+              state.profile.profileSetupStatus === 'completed'
+                ? 'completed'
+                : 'not_started',
+            preferredTechStack:
+              state.profile.preferredTechStack.length > 0
+                ? state.profile.preferredTechStack
+                : [
+                    ...new Set([
+                      ...(githubProfile.developerProfile?.languages.map(
+                        (item) => item.name,
+                      ) ?? []),
+                      ...(githubProfile.developerProfile?.frameworks ?? []),
+                    ]),
+                  ].slice(0, 8),
+            contributionLevel:
+              githubProfile.inferredContributionLevel ??
+              state.profile.contributionLevel,
+          }),
+        })),
+
+      applyServerUserState: (input) =>
+        set((state) => {
+          const githubProfile = input.githubProfile
+          return {
+            isAuthenticated: true,
+            githubProfile,
+            profile: normalizeProfile({
+              ...state.profile,
+              username:
+                githubProfile?.profile.name ||
+                githubProfile?.profile.username ||
+                input.githubUsername,
+              avatar: githubProfile?.profile.avatar || input.githubAvatar,
+              bio: githubProfile?.profile.bio || state.profile.bio,
+              githubUrl:
+                githubProfile?.profile.htmlUrl || state.profile.githubUrl,
+              profileSetupStatus: input.profileSetupStatus,
+              openSourceGoal: input.openSourceGoal,
+              preferredTechStack: input.preferredTechStack,
+              contributionTimeBudget: input.contributionTimeBudget,
+              guidancePreference: input.guidancePreference,
+              contributionLevel:
+                githubProfile?.inferredContributionLevel ??
+                state.profile.contributionLevel,
+            }),
+          }
+        }),
+
+      logout: () =>
+        set((state) => ({
+          isAuthenticated: false,
+          githubProfile: null,
+          profile: normalizeProfile({
+            ...state.profile,
+            username: '',
+            avatar: '',
+            bio: '',
+            githubUrl: '',
+            contributionLevel: 'none',
+          }),
+        })),
     }),
     {
       name: USER_STORAGE_KEY,
@@ -307,6 +496,8 @@ export const useUserStore = create<UserState>()(
       partialize: (state) => ({
         profile: state.profile,
         preferences: state.preferences,
+        isAuthenticated: state.isAuthenticated,
+        githubProfile: state.githubProfile,
       }),
       migrate: (persistedState) =>
         normalizePersistedState(persistedState),

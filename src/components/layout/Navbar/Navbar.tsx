@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { useAppStore } from '@/store'
+import { authService } from '@/services'
 
 const navLinks = [
-  { label: '产品特性', href: '#features' },
-  { label: '工作流程', href: '#workflow' },
-  { label: '产品预览', href: '#preview' },
-  { label: '定价', href: '#pricing' },
+  { label: '流程', href: '#how-it-works' },
+  { label: '能力', href: '#features' },
+  { label: '工作台', href: '#preview' },
 ]
 
 const Navbar = () => {
-  const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
-  const setCurrentPage = useAppStore((s) => s.setCurrentPage)
-  const setCurrentAppPage = useAppStore((s) => s.setCurrentAppPage)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,9 +31,7 @@ const Navbar = () => {
   }
 
   const handleStartFree = () => {
-    setCurrentPage('app')
-    setCurrentAppPage('dashboard')
-    navigate('/dashboard')
+    authService.startGitHubLogin()
   }
 
   return (
@@ -68,20 +61,8 @@ const Navbar = () => {
       </div>
 
       <div className="nav-right">
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          title="即将支持 GitHub 登录；当前为访客模式，配置保存在此设备"
-          onClick={() => {
-            setCurrentPage('app')
-            setCurrentAppPage('settings')
-            navigate('/settings')
-          }}
-        >
-          访客模式
-        </button>
-        <button className="btn btn-primary btn-sm" onClick={handleStartFree}>
-          免费开始
+        <button className="btn btn-primary btn-sm nav-github-login" onClick={handleStartFree}>
+          GitHub 登录
         </button>
       </div>
     </nav>

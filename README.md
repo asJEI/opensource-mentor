@@ -20,6 +20,7 @@
 - **AI 导师**：针对当前仓库、技术和开源协作流程提供问答。
 - **PR 生成**：根据 Issue 与仓库上下文生成 PR 标题和描述。
 - **AI 代码审查**：读取真实 GitHub Pull Request 与 diff，返回结构化问题、风险和修改建议；LLM 不可用时使用确定性规则审查，不随机生成结果。
+- **GitHub 登录**：通过最小权限 OAuth 读取公开头像、名称、仓库、语言、PR / Issue 等信息，用于后续开发者画像分析。
 - **BYOK**：可在设置页使用自己的 GitHub Token 和兼容 OpenAI API 的模型配置，配置仅保存在浏览器本地。
 
 ## 技术架构
@@ -69,6 +70,10 @@ npm run dev
 ```dotenv
 PLATFORM_GITHUB_TOKEN=
 PLATFORM_LLM_API_KEY=
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+SUPABASE_URL=
+SUPABASE_SECRET_KEY=
 ```
 
 非密钥默认配置位于 [wrangler.jsonc](./wrangler.jsonc)。用户在设置页填写的 BYOK 配置不应写入服务端环境文件。
@@ -92,6 +97,10 @@ Express 默认监听 `http://localhost:3001`，主要用于 Docker 路径；当�
 | --- | --- |
 | `PLATFORM_GITHUB_TOKEN` | 提高 GitHub API 请求限额 |
 | `PLATFORM_LLM_API_KEY` | 平台默认 LLM 密钥 |
+| `GITHUB_OAUTH_CLIENT_ID` | GitHub OAuth App 的 Client ID |
+| `GITHUB_OAUTH_CLIENT_SECRET` | GitHub OAuth App 的 Client Secret |
+| `SUPABASE_URL` | Supabase Project URL，仅 Worker 服务端使用 |
+| `SUPABASE_SECRET_KEY` | Supabase 服务端 Secret Key，仅 Worker 服务端使用 |
 | `DEFAULT_LLM_PROVIDER` | 默认模型提供方 |
 | `DEFAULT_LLM_BASE_URL` | OpenAI-compatible API 地址 |
 | `DEFAULT_LLM_MODEL` | 默认模型 |

@@ -120,6 +120,14 @@ export function bffPost<T = unknown>(
   return bffService.post<T, T>(url, data, config)
 }
 
+export function bffPatch<T = unknown>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  return bffService.patch<T, T>(url, data, config)
+}
+
 export function mockDelay(minMs = 500, maxMs = 1500): Promise<void> {
   const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
   return new Promise((resolve) => setTimeout(resolve, delay))

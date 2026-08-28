@@ -60,10 +60,16 @@ export type {
   ProgrammingLanguage,
   ExperienceLevel,
   ContributionInterest,
+  ContributionTimeBudget,
+  GuidancePreference,
+  OpenSourceGoal,
   LearningGoal,
   ProfileSetupStatus,
   UserPreferences,
   ContributionLevel,
+  GitHubDeveloperProfile,
+  GitHubRepositoryProfile,
+  StructuredDeveloperProfile,
 } from './user'
 
 // 通用

@@ -3,6 +3,13 @@
   "name": "opensource-mentor",
   "compatibility_date": "2026-08-14",
   "main": "./worker/index.ts",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "hokkai.top",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     // directory is filled by @cloudflare/vite-plugin from the client build output
     "not_found_handling": "single-page-application",
@@ -30,6 +37,8 @@
   ],
   // Optional platform secrets (set via `wrangler secret put` or `.dev.vars`):
   //   PLATFORM_LLM_API_KEY, PLATFORM_GITHUB_TOKEN
+  //   GITHUB_OAUTH_CLIENT_ID, GITHUB_OAUTH_CLIENT_SECRET
+  //   SUPABASE_URL, SUPABASE_SECRET_KEY
   // Not marked `secrets.required` so Preview/PoC can deploy without platform keys.
   // User BYOK stays request-scoped and is never stored as Worker Secrets.
   // See DEPLOY-CLOUDFLARE.md for the production secrets checklist.
