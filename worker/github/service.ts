@@ -1,6 +1,11 @@
 import { ApiError } from '../http'
 import { GitHubClient } from './client'
-import type { IssueDto, IssueListParams, RepositoryDto } from './types'
+import type {
+  GitHubSearchIssuesResultDto,
+  IssueDto,
+  IssueListParams,
+  RepositoryDto,
+} from './types'
 
 export interface PullRequestFile {
   filename: string
@@ -87,6 +92,45 @@ export class GitHubService {
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
     )
     return mapIssue(data)
+  }
+
+  async searchIssues(
+    query: string,
+    params: {
+      sort?: 'created' | 'updated' | 'comments'
+      order?: 'asc' | 'desc'
+      perPage?: number
+      page?: number
+    } = {},
+  ): Promise<GitHubSearchIssuesResultDto> {
+    const { data, headers } = await this.client.getJson<{
+      total_count?: number
+      incomplete_results?: boolean
+      items?: Array<Record<string, unknown>>
+    }>('/search/issues', {
+      query: {
+        q: query,
+        sort: params.sort ?? 'updated',
+        order: params.order ?? 'desc',
+        per_page: params.perPage ?? 30,
+        page: params.page ?? 1,
+      },
+    })
+
+    const reset = headers.get('x-ratelimit-reset')
+    const rateLimitReset = reset ? Number(reset) : undefined
+
+    return {
+      totalCount: data.total_count ?? 0,
+      incompleteResults: Boolean(data.incomplete_results),
+      items: Array.isArray(data.items)
+        ? data.items.map((item) => mapSearchIssue(item))
+        : [],
+      rateLimitReset:
+        rateLimitReset && Number.isFinite(rateLimitReset)
+          ? rateLimitReset
+          : undefined,
+    }
   }
 
   /** Returns README raw text; empty string when missing. */
@@ -211,5 +255,41 @@ function mapIssue(data: Record<string, any>): IssueDto {
     createdAt: data.created_at ?? '',
     updatedAt: data.updated_at ?? '',
     htmlUrl: data.html_url ?? '',
+  }
+}
+
+function mapSearchIssue(data: Record<string, any>) {
+  return {
+    id: data.id,
+    number: data.number,
+    title: data.title,
+    body: data.body ?? null,
+    state: data.state as 'open' | 'closed',
+    htmlUrl: data.html_url ?? '',
+    comments: data.comments ?? 0,
+    createdAt: data.created_at ?? '',
+    updatedAt: data.updated_at ?? '',
+    repositoryUrl: data.repository_url ?? '',
+    pullRequest: data.pull_request,
+    assignee: data.assignee
+      ? {
+          login: data.assignee.login ?? '',
+          avatarUrl: data.assignee.avatar_url ?? '',
+        }
+      : null,
+    assignees: (data.assignees || []).map((assignee: Record<string, any>) => ({
+      login: assignee.login ?? '',
+      avatarUrl: assignee.avatar_url ?? '',
+    })),
+    labels: (data.labels || []).map((label: Record<string, any>) => ({
+      id: label.id,
+      name: label.name,
+      color: label.color,
+      description: label.description ?? null,
+    })),
+    user: {
+      login: data.user?.login ?? '',
+      avatarUrl: data.user?.avatar_url ?? '',
+    },
   }
 }

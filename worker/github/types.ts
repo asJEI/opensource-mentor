@@ -50,3 +50,28 @@ export interface IssueListParams {
   page?: number
   perPage?: number
 }
+
+export interface GitHubSearchIssueItemDto {
+  id: number
+  number: number
+  title: string
+  body: string | null
+  state: 'open' | 'closed'
+  htmlUrl: string
+  comments: number
+  createdAt: string
+  updatedAt: string
+  repositoryUrl: string
+  pullRequest?: unknown
+  assignee: { login: string; avatarUrl: string } | null
+  assignees: Array<{ login: string; avatarUrl: string }>
+  labels: IssueLabelDto[]
+  user: { login: string; avatarUrl: string }
+}
+
+export interface GitHubSearchIssuesResultDto {
+  items: GitHubSearchIssueItemDto[]
+  totalCount: number
+  incompleteResults: boolean
+  rateLimitReset?: number
+}

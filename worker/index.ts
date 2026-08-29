@@ -29,6 +29,7 @@ import {
   handleGetRepository,
   handleTestGitHubConnection,
 } from './github/routes'
+import { handleGetCandidateIssues } from './github/candidateIssues'
 import {
   handleGitHubOAuthCallback,
   handleGitHubOAuthStart,
@@ -58,6 +59,13 @@ export default {
 
       if (url.pathname === '/api/issues' && request.method === 'GET') {
         return await handleGetIssues(request, env)
+      }
+
+      if (
+        url.pathname === '/api/issues/candidates' &&
+        request.method === 'GET'
+      ) {
+        return await handleGetCandidateIssues(request, env)
       }
 
       if (url.pathname === '/api/me' && request.method === 'GET') {
