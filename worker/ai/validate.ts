@@ -194,7 +194,7 @@ export function validateRoadmapResult(
       return {
         phase: idx + 1,
         title,
-        goal: String(phase.goal || '本章内容暂未生成，请重新生成 Contribution Guide。'),
+        goal: String(phase.goal || '本章内容暂未生成，请重新生成贡献指南。'),
         learningItems: ensureStringArray(phase.learningItems),
         recommendedIssues: ensureStringArray(phase.recommendedIssues),
         estimatedDuration: String(phase.estimatedDuration || '待确认'),

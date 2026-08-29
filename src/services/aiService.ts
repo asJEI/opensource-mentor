@@ -191,7 +191,7 @@ class AiService {
       repo,
       userProfile,
       issueContext,
-    }))
+    }), { timeout: 130_000 })
     return this.mapRoadmap(data)
   }
 

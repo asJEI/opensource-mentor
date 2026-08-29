@@ -24,7 +24,7 @@
     "DEFAULT_LLM_PROVIDER": "deepseek",
     "DEFAULT_LLM_MODEL": "deepseek-v4-flash",
     "DEFAULT_LLM_BASE_URL": "https://api.deepseek.com",
-    "LLM_TIMEOUT_MS": "60000"
+    "LLM_TIMEOUT_MS": "120000"
   },
   "ratelimits": [
     {

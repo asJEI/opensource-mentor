@@ -209,7 +209,7 @@ async function collectRoadmapRepositoryContext(
           item.path,
         ),
     )
-    .slice(0, 250)
+    .slice(0, 120)
 
   const packageMeta = extractPackageMeta(projectConfigs)
   const confirmedCommands = extractConfirmedCommands({
@@ -551,53 +551,39 @@ export async function handleGenerateRoadmap(
   const { client } = await resolveAIClient(env, request, body)
   const github = createGitHubService(request, env)
 
-  const repository = await github.getRepository(owner, repo)
-  let readme = ''
-  try {
-    readme = await github.getReadme(owner, repo)
-  } catch {
-    readme = ''
-  }
-
-  let goodFirstIssues = [] as Awaited<
-    ReturnType<typeof github.getIssues>
-  >['items']
-  try {
-    const result = await github.getIssues(owner, repo, {
-      state: 'open',
-      labels: 'good first issue',
-      perPage: 10,
-      page: 1,
-    })
-    goodFirstIssues = result.items
-  } catch {
-    goodFirstIssues = []
-  }
-
   let issueContext = isRecord(body.issueContext) ? body.issueContext : undefined
   const issueNumber = Number(
     isRecord(issueContext?.issue) ? issueContext.issue.number : NaN,
   )
-  if (Number.isFinite(issueNumber) && issueNumber > 0) {
-    try {
-      const liveIssue = await github.getIssue(owner, repo, issueNumber)
-      issueContext = {
-        ...(issueContext || {}),
-        issue: {
-          ...(isRecord(issueContext?.issue) ? issueContext.issue : {}),
-          number: liveIssue.number,
-          title: liveIssue.title,
-          body: liveIssue.body,
-          labels: liveIssue.labels.map((label) => label.name),
-          state: liveIssue.state,
-          htmlUrl: liveIssue.htmlUrl,
-        },
-        liveIssueFetched: true,
-      }
-    } catch {
-      // Keep client-provided issue context when GitHub fetch fails.
+  const hasSelectedIssue = Number.isFinite(issueNumber) && issueNumber > 0
+
+  const [repository, readme, liveIssue] = await Promise.all([
+    github.getRepository(owner, repo),
+    github.getReadme(owner, repo).catch(() => ''),
+    hasSelectedIssue
+      ? github.getIssue(owner, repo, issueNumber).catch(() => null)
+      : Promise.resolve(null),
+  ])
+
+  if (liveIssue) {
+    issueContext = {
+      ...(issueContext || {}),
+      issue: {
+        ...(isRecord(issueContext?.issue) ? issueContext.issue : {}),
+        number: liveIssue.number,
+        title: liveIssue.title,
+        body: liveIssue.body,
+        labels: liveIssue.labels.map((label) => label.name),
+        state: liveIssue.state,
+        htmlUrl: liveIssue.htmlUrl,
+      },
+      liveIssueFetched: true,
     }
   }
+
+  // 已选定目标 Issue 时不再额外拉 good first issue，节省请求时间
+  const goodFirstIssues: Awaited<ReturnType<typeof github.getIssues>>['items'] =
+    []
 
   const repositoryContext = await collectRoadmapRepositoryContext(
     github,

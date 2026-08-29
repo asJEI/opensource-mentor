@@ -29,9 +29,9 @@ export function roadmapPrompt(params: {
     issueContext,
   } = params
 
-  const readmeSnippet = readme ? readme.slice(0, 5000) : '（未读取到 README）'
+  const readmeSnippet = readme ? readme.slice(0, 3500) : '（未读取到 README）'
   const repositoryContextText = repositoryContext
-    ? JSON.stringify(repositoryContext).slice(0, 10000)
+    ? JSON.stringify(repositoryContext).slice(0, 7000)
     : '（未读取到额外仓库上下文）'
   const issuesText =
     goodFirstIssues.length > 0
@@ -76,7 +76,7 @@ export function roadmapPrompt(params: {
 - 不得假设用户掌握特定语言或对特定方向感兴趣`
 
   const selectedIssueText = issueContext
-    ? JSON.stringify(issueContext).slice(0, 6000)
+    ? JSON.stringify(issueContext).slice(0, 4000)
     : '（严重缺失：用户尚未选择具体 Issue。此时不要假装已有目标 Issue，只能说明需要先选择 Issue。）'
 
   return `你是一位资深开源贡献导师。请生成“Contribution Guide”阅读文档，不是课程时间线，也不是通用学习路线。
@@ -108,7 +108,7 @@ ${issuesText}
 
 ## 必须返回严格 JSON
 {
-  "title": "Contribution Guide: #Issue编号 Issue标题",
+  "title": "贡献指南：#Issue编号 Issue标题",
   "description": "用 1-2 句话说明这份指南如何帮助用户完成当前 Issue",
   "totalEstimatedTime": "根据 Issue 与上下文保守估计；不确定则写 '待确认'",
   "phases": [

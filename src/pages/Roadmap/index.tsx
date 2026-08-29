@@ -38,14 +38,14 @@ const GUIDE_SECTIONS = [
   {
     number: '04',
     title: '复现问题',
-    pointsTitle: '复现步骤（含 Expected / Actual）',
+    pointsTitle: '复现步骤（含预期行为 / 实际行为）',
     criteriaTitle: '复现完成标准',
     resourcesTitle: 'Issue 与运行依据',
   },
   {
     number: '05',
     title: '修正方案',
-    pointsTitle: 'Suggested Approach',
+    pointsTitle: '建议方案',
     criteriaTitle: '方案确认检查',
     resourcesTitle: '仓库事实与参考',
   },
@@ -61,7 +61,7 @@ const GUIDE_SECTIONS = [
     title: 'PR 提交',
     pointsTitle: '提交前清单',
     criteriaTitle: 'PR 完成标准',
-    resourcesTitle: 'CONTRIBUTING / PR Template',
+    resourcesTitle: '贡献指南与 PR 模板',
   },
 ] as const
 
@@ -137,7 +137,7 @@ function GuideArticle({
 }) {
   const phase = section.phase
   const title = phase?.title || section.title
-  const goal = phase?.goal || '这一章还没有生成内容，请重新生成 Contribution Guide。'
+  const goal = phase?.goal || '这一章还没有生成内容，请重新生成贡献指南。'
   const learningItems = phase?.learningItems || []
   const completionCriteria = phase?.completionCriteria || []
   const resources = phase?.resources || []
@@ -145,7 +145,7 @@ function GuideArticle({
   return (
     <article className="guide-reader">
       <div className="guide-reader-kicker">
-        Contribution Guide / {section.number}
+        贡献指南 / {section.number}
         {isCurrent ? ' · 当前阅读' : ''}
         {isCompleted ? ' · 已完成' : ''}
       </div>
@@ -263,11 +263,11 @@ const Roadmap = () => {
 
   if (!activeContributionIssue) {
     return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: 'Contribution Guide' }]}>
+      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
         <div className="app-page active roadmap-shell">
           <AiPageError
             title="请先选择一个 Issue"
-            message="Contribution Guide 必须围绕你当前选择的 Issue 生成。请先在 Issue 推荐中选定目标 Issue。"
+            message="贡献指南必须围绕你当前选择的 Issue 生成。请先在 Issue 推荐中选定目标 Issue。"
             onRetry={() => navigate('/issues')}
             retryLabel="去选择 Issue"
             showSettingsLink={false}
@@ -279,13 +279,13 @@ const Roadmap = () => {
 
   if (isLoading && !hasData) {
     return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: 'Contribution Guide' }]}>
+      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
         <div className="app-page active">
           <div className="ai-loading active">
             <div className="ai-loading-spinner" />
-            <div className="ai-loading-title">正在生成 Contribution Guide...</div>
+            <div className="ai-loading-title">正在生成贡献指南...</div>
             <div className="ai-loading-desc">
-              正在读取 README、CONTRIBUTING、文件树与「{issueTitle}」，整理可执行的贡献指南
+              正在读取 README、贡献文档、文件树与「{issueTitle}」，整理可执行的贡献指南（可能需要一两分钟）
             </div>
           </div>
         </div>
@@ -295,7 +295,7 @@ const Roadmap = () => {
 
   if (error && !hasData) {
     return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: 'Contribution Guide' }]}>
+      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
         <div className="app-page active roadmap-shell">
           <ErrorState error={error} onRetry={handleRetry} />
         </div>
@@ -305,13 +305,13 @@ const Roadmap = () => {
 
   if (!isLoading && !hasData) {
     return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: 'Contribution Guide' }]}>
+      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
         <div className="app-page active roadmap-shell">
           <AiPageError
             title="还没有可阅读的贡献指南"
-            message={`已选定「${issueTitle}」，点击下方按钮基于真实仓库上下文生成 Contribution Guide。`}
+            message={`已选定「${issueTitle}」，点击下方按钮基于真实仓库上下文生成贡献指南。`}
             onRetry={handleRetry}
-            retryLabel="生成 Contribution Guide"
+            retryLabel="生成贡献指南"
             showSettingsLink={false}
           />
         </div>
@@ -320,11 +320,11 @@ const Roadmap = () => {
   }
 
   return (
-    <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: 'Contribution Guide' }]}>
+    <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
       <div className="app-page active roadmap-shell">
         <header className="guide-header">
           <div>
-            <span className="guide-eyebrow">Contribution Guide</span>
+            <span className="guide-eyebrow">贡献指南</span>
             <h1>{roadmap?.title || `围绕 ${issueTitle} 的贡献指南`}</h1>
             <p>
               围绕「{issueTitle}」理解问题、准备环境、复现并准备 PR。
@@ -343,7 +343,7 @@ const Roadmap = () => {
 
         <div className="guide-layout">
           <aside className="guide-sidebar">
-            <div className="guide-sidebar-title">Contribution Guide 目录</div>
+            <div className="guide-sidebar-title">章节目录</div>
             <nav className="guide-nav">
               {sections.map((section, index) => (
                 <button
@@ -403,7 +403,7 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
   return (
     <AiPageError
       className="roadmap-error"
-      title="Contribution Guide 加载失败"
+      title="贡献指南加载失败"
       message={error}
       onRetry={onRetry}
       retryLabel="重新加载"

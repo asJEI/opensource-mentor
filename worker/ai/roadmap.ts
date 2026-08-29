@@ -55,6 +55,8 @@ export async function generateRoadmap(
       ],
       temperature: 0.8,
       topP: 0.9,
+      // 7 章指南 + 仓库上下文较长，给足上游生成时间
+      timeoutMs: 120_000,
       responseFormat: { type: 'json_object' },
     })
     return validateRoadmapResult(parseJsonSafely(content))

@@ -40,7 +40,7 @@ export const PLATFORM_PUBLIC_DEFAULTS: PlatformPublicConfig = {
   defaultLlmProvider: 'deepseek',
   defaultLlmModel: 'deepseek-v4-flash',
   defaultLlmBaseUrl: 'https://api.deepseek.com',
-  llmTimeoutMs: 60_000,
+  llmTimeoutMs: 120_000,
 }
 
 /** Safe status payload — never includes secret values. */
