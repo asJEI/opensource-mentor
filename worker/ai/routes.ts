@@ -353,6 +353,7 @@ export async function handleGenerateRoadmap(
     readme,
     userProfile,
     goodFirstIssues,
+    issueContext: isRecord(body.issueContext) ? body.issueContext : undefined,
   })
   return success(roadmap)
 }

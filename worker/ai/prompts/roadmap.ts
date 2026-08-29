@@ -13,6 +13,7 @@ export function roadmapPrompt(params: {
     title: string
     labels: string[]
   }>
+  issueContext?: Record<string, unknown>
 }): string {
   const {
     repoName,
@@ -23,6 +24,7 @@ export function roadmapPrompt(params: {
     userProfile,
     readme,
     goodFirstIssues,
+    issueContext,
   } = params
 
   const readmeSnippet = readme ? readme.slice(0, 3000) : '（无 README）'
@@ -80,10 +82,18 @@ export function roadmapPrompt(params: {
           '生成 3-5 个阶段；跳过基础编程和 Git 教程，从架构理解、测试或 Bug 修复开始',
       }[userProfile.experienceLevel]
     : '生成 5-7 个阶段；按纯新手路径从理解项目和开源流程开始'
+  const hasSelectedIssue = Boolean(issueContext)
+  const selectedIssueText = hasSelectedIssue
+    ? JSON.stringify(issueContext).slice(0, 3000)
+    : '（用户尚未选择具体 Issue）'
 
   return `你是一位资深开源贡献导师，擅长为不同水平的开发者定制开源项目学习路线图。
 
-请为下面这个开源项目生成一份个性化的学习路线图，帮助用户从当前水平逐步成长为活跃贡献者。
+请为下面这个开源项目生成一份个性化的学习路线图。${
+    hasSelectedIssue
+      ? '用户已经选择了一个具体 Issue，路线图必须围绕“为了完成这个 Issue，需要先理解什么、查看什么、尝试什么”展开。'
+      : '用户尚未选择具体 Issue，路线图可以围绕项目贡献入门展开。'
+  }
 
 设计理念参考 developer-roadmap：循序渐进、每个阶段有明确目标、有可量化的完成标准、理论与实践结合。
 
@@ -99,6 +109,9 @@ ${profileText}
 
 ## 适合新人的 Issue
 ${issuesText}
+
+## 当前已选择 Issue 与已确认上下文
+${selectedIssueText}
 
 ## README 摘要（前 3000 字符）
 ${readmeSnippet}
@@ -130,11 +143,12 @@ ${readmeSnippet}
 ## 注意事项
 1. ${phaseGuidance}
 2. 路线必须根据经验、编程语言、兴趣和目标改变具体起点、学习内容与实践任务，不能只在标题中提及画像
-3. 每个阶段都要有推荐实践的 Issue（如果有 good first issue 优先推荐）
+3. ${hasSelectedIssue ? '每个阶段都要服务于完成当前已选择 Issue，不要转向泛泛学习整个仓库' : '每个阶段都要有推荐实践的 Issue（如果有 good first issue 优先推荐）'}
 4. 完成标准要可量化，如"能独立搭建开发环境并跑通测试"、"提交了第一个文档类 PR"
 5. 学习内容要结合仓库主要语言、Topics 和 README，具体到技术或实践动作
 6. 用户未掌握仓库语言且目标是学习新技术时，要加入语言补齐阶段；已掌握时不要重复基础教程
 7. 兴趣方向应影响优先实践类型，学习目标应影响路线完成里程碑
 8. 严格返回 JSON，不要有额外文字
-9. 所有内容使用中文`
+9. 若输入中没有真实代码路径、类名、函数名、配置或测试文件，不要编造；只能写“建议检查相关模块/测试/文档”
+10. 所有内容使用中文`
 }

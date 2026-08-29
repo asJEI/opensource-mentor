@@ -890,10 +890,59 @@
   line-height: 1.8;
 }
 
+.issue-analysis-section {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.issue-analysis-section:first-child {
+  margin-top: 0;
+}
+
+.issue-analysis-section h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.issue-analysis-section p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.75;
+}
+
+.issue-learning-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: var(--radius-lg);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.issue-learning-cta h2 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.issue-learning-cta p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
 @media (max-width: 900px) {
   .issues-toolbar,
   .issue-expanded-footer,
-  .selected-issue-header {
+  .selected-issue-header,
+  .issue-learning-cta {
     align-items: stretch;
     flex-direction: column;
   }

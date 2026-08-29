@@ -6,8 +6,10 @@ import { issueExplainPrompt, systemPrompt } from './prompts/explain'
 export interface IssueExplainResult {
   summary: string
   difficulty: 'easy' | 'medium' | 'hard'
+  confirmedContext: string[]
   knowledge: string[]
   steps: string[]
+  possibleAreasToInspect: string[]
   estimatedTime: string
   tips: string[]
 }
@@ -38,6 +40,9 @@ function validateExplainResult(
   return {
     summary: String(parsed.summary || '暂无总结'),
     difficulty: validDifficulty,
+    confirmedContext: ensureStringArray(parsed.confirmedContext, [
+      '已确认仓库名称和 Issue 标题。',
+    ]),
     knowledge: ensureStringArray(parsed.knowledge, [
       '了解项目基本架构',
       '熟悉 Git 基本操作',
@@ -49,6 +54,13 @@ function validateExplainResult(
       '实现修复',
       '提交 PR',
     ]),
+    possibleAreasToInspect: ensureStringArray(
+      parsed.possibleAreasToInspect,
+      [
+        '建议先阅读 README 和贡献指南。',
+        '根据 Issue 描述查找相关功能入口和测试说明。',
+      ],
+    ),
     estimatedTime: String(parsed.estimatedTime || '2-4 小时'),
     tips: ensureStringArray(parsed.tips, [
       '先看 CONTRIBUTING.md 了解贡献规范',

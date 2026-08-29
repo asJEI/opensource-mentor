@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Button, Card } from '@/components/ui'
@@ -28,6 +29,7 @@ import {
 } from './components'
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const showToast = useToastStore((s) => s.showToast)
 
   // 从 store 获取数据（分开调用避免无限重渲染）
@@ -170,6 +172,38 @@ const Dashboard = () => {
   const displayRepoOwner =
     currentRepo?.owner || (parseRepoInput(repoInput)?.owner ?? '')
   const displayFullName = currentRepo?.fullName || repoInput
+  const issueAnalysis = activeContributionIssue?.analysis
+  const issueTechStack = issueAnalysis?.technologies?.length
+    ? issueAnalysis.technologies.join('、')
+    : activeContributionIssue?.language || currentRepo?.language || '分析中'
+  const issueDifficulty = issueAnalysis?.difficulty || '分析中'
+  const issueEstimatedTime = issueAnalysis?.estimatedTime || '分析中'
+  const issueMatchScore =
+    typeof activeContributionIssue?.matchScore === 'number'
+      ? `${activeContributionIssue.matchScore}`
+      : '分析中'
+  const confirmedContext = currentExplain?.confirmedContext?.length
+    ? currentExplain.confirmedContext
+    : [
+        `已确认仓库：${displayFullName}`,
+        activeContributionIssue
+          ? `已确认 Issue：#${activeContributionIssue.issueNumber} ${activeContributionIssue.title}`
+          : '已确认当前仓库基础信息。',
+        currentRepo?.language
+          ? `已确认主要语言：${currentRepo.language}`
+          : '主要语言仍在等待仓库信息返回。',
+      ]
+  const possibleAreasToInspect = currentExplain?.possibleAreasToInspect?.length
+    ? currentExplain.possibleAreasToInspect
+    : [
+        '建议先阅读 README、贡献指南和开发环境说明。',
+        '根据 Issue 描述中的关键词，在仓库中搜索相关功能、文档或测试。',
+        '如果无法定位代码，先在 Issue 下向维护者确认建议修改范围。',
+      ]
+
+  const handleStartLearning = () => {
+    navigate('/roadmap')
+  }
 
   return (
     <AppLayout breadcrumbs={[{ label: '仓库分析' }]}>
@@ -301,66 +335,105 @@ const Dashboard = () => {
 
         {/* 统计行 */}
         <div className="stat-row">
-          <StatCard
-            icon={<StarIcon />}
-            iconClass="yellow"
-            label="GitHub Stars"
-            value={currentRepo ? currentRepo.stars.toLocaleString() : '--'}
-            change={
-              currentRepo
-                ? `Forks ${currentRepo.forks.toLocaleString()}`
-                : '等待分析'
-            }
-            changeUp={true}
-          />
-          <StatCard
-            icon={<IssueIcon />}
-            iconClass="green"
-            label="推荐 Issue"
-            value={
-              recommendedIssues.length > 0
-                ? String(recommendedIssues.length)
-                : '--'
-            }
-            change={
-              analysis
-                ? `匹配度 ${Math.round((analysis.confidence || 0) * 100)}%`
-                : 'AI 智能匹配'
-            }
-            changeUp={true}
-          />
-          <StatCard
-            icon={<SparklesIcon />}
-            iconClass="purple"
-            label="新手友好度"
-            value={
-              analysis
-                ? getFriendlyLabel(analysis.beginnerFriendliness?.level)
-                : '--'
-            }
-            change={
-              analysis
-                ? `评分 ${analysis.beginnerFriendliness?.score || 0}/10`
-                : 'AI 评估中'
-            }
-            changeUp={true}
-          />
-          <StatCard
-            icon={<ZapIcon />}
-            iconClass="blue"
-            label="贡献领域"
-            value={
-              analysis?.contributionAreas?.length
-                ? String(analysis.contributionAreas.length)
-                : '--'
-            }
-            change={
-              analysis?.domains?.length
-                ? `${analysis.domains.slice(0, 2).join('、')}${analysis.domains.length > 2 ? '等' : ''}`
-                : '分析中...'
-            }
-            changeUp={true}
-          />
+          {activeContributionIssue ? (
+            <>
+              <StatCard
+                icon={<SparklesIcon />}
+                iconClass="purple"
+                label="Difficulty"
+                value={issueDifficulty}
+                change="当前 Issue 难度"
+                changeUp={true}
+              />
+              <StatCard
+                icon={<IssueIcon />}
+                iconClass="green"
+                label="Estimated Time"
+                value={issueEstimatedTime}
+                change="预计投入时间"
+                changeUp={true}
+              />
+              <StatCard
+                icon={<ZapIcon />}
+                iconClass="blue"
+                label="Match Score"
+                value={issueMatchScore}
+                change="内部匹配评分"
+                changeUp={true}
+              />
+              <StatCard
+                icon={<CodeIcon />}
+                iconClass="yellow"
+                label="Tech Stack"
+                value={issueTechStack}
+                change={currentRepo ? `${currentRepo.stars.toLocaleString()} Stars` : '仓库信息加载中'}
+                changeUp={true}
+              />
+            </>
+          ) : (
+            <>
+              <StatCard
+                icon={<StarIcon />}
+                iconClass="yellow"
+                label="GitHub Stars"
+                value={currentRepo ? currentRepo.stars.toLocaleString() : '--'}
+                change={
+                  currentRepo
+                    ? `Forks ${currentRepo.forks.toLocaleString()}`
+                    : '等待分析'
+                }
+                changeUp={true}
+              />
+              <StatCard
+                icon={<IssueIcon />}
+                iconClass="green"
+                label="推荐 Issue"
+                value={
+                  recommendedIssues.length > 0
+                    ? String(recommendedIssues.length)
+                    : '--'
+                }
+                change={
+                  analysis
+                    ? `匹配度 ${Math.round((analysis.confidence || 0) * 100)}%`
+                    : 'AI 智能匹配'
+                }
+                changeUp={true}
+              />
+              <StatCard
+                icon={<SparklesIcon />}
+                iconClass="purple"
+                label="新手友好度"
+                value={
+                  analysis
+                    ? getFriendlyLabel(analysis.beginnerFriendliness?.level)
+                    : '--'
+                }
+                change={
+                  analysis
+                    ? `评分 ${analysis.beginnerFriendliness?.score || 0}/10`
+                    : 'AI 评估中'
+                }
+                changeUp={true}
+              />
+              <StatCard
+                icon={<ZapIcon />}
+                iconClass="blue"
+                label="贡献领域"
+                value={
+                  analysis?.contributionAreas?.length
+                    ? String(analysis.contributionAreas.length)
+                    : '--'
+                }
+                change={
+                  analysis?.domains?.length
+                    ? `${analysis.domains.slice(0, 2).join('、')}${analysis.domains.length > 2 ? '等' : ''}`
+                    : '分析中...'
+                }
+                changeUp={true}
+              />
+            </>
+          )}
         </div>
 
         {/* 分析网格 */}
@@ -705,30 +778,9 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    marginBottom: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}
-                >
-                  <SparklesIcon />
-                  推荐入门 Issue
-                </div>
                 <div className="suggested-issues-list">
                   {activeContributionIssue ? (
                     <>
-                      <div className="suggested-issue">
-                        <div className="suggested-issue-icon">
-                          <CheckIcon />
-                        </div>
-                        <span className="suggested-issue-text">
-                          当前任务：{activeContributionIssue.title}
-                        </span>
-                      </div>
                       {explainStatus === 'loading' && (
                         <div className="suggested-issue">
                           <div className="suggested-issue-icon">
@@ -741,24 +793,34 @@ const Dashboard = () => {
                       )}
                       {currentExplain && (
                         <>
-                          <div className="ai-summary-text">
-                            <strong>AI 对当前 Issue 的简要分析：</strong>{' '}
-                            {currentExplain.summary}
-                          </div>
-                          <div
-                            style={{
-                              marginTop: 14,
-                              fontSize: 14,
-                              fontWeight: 600,
-                            }}
-                          >
-                            Suggested Approach
-                          </div>
-                          <ol className="suggested-approach-list">
-                            {currentExplain.steps.slice(0, 5).map((step) => (
-                              <li key={step}>{step}</li>
-                            ))}
-                          </ol>
+                          <section className="issue-analysis-section">
+                            <h3>Issue Summary</h3>
+                            <p>{currentExplain.summary}</p>
+                          </section>
+                          <section className="issue-analysis-section">
+                            <h3>Confirmed Context</h3>
+                            <ul className="issue-fit-list">
+                              {confirmedContext.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </section>
+                          <section className="issue-analysis-section">
+                            <h3>Suggested Approach</h3>
+                            <ol className="suggested-approach-list">
+                              {currentExplain.steps.slice(0, 6).map((step) => (
+                                <li key={step}>{step}</li>
+                              ))}
+                            </ol>
+                          </section>
+                          <section className="issue-analysis-section">
+                            <h3>Possible Areas to Inspect</h3>
+                            <ul className="issue-fit-list">
+                              {possibleAreasToInspect.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </section>
                         </>
                       )}
                       {explainStatus === 'error' && (
@@ -800,6 +862,25 @@ const Dashboard = () => {
             )}
           </Card>
         </div>
+
+        {hasAnalyzed && activeContributionIssue && (
+          <section className="issue-learning-cta">
+            <div>
+              <span className="hero-badge" style={{ marginBottom: 10 }}>
+                <span className="hero-badge-dot" />
+                下一步
+              </span>
+              <h2>开始学习并解决这个 Issue</h2>
+              <p>
+                路线图会围绕当前 Issue 生成：先理解任务背景，再确认要查看的仓库信息，
+                最后拆成可以逐步完成的小任务。
+              </p>
+            </div>
+            <Button variant="primary" onClick={handleStartLearning}>
+              开始学习并解决这个 Issue →
+            </Button>
+          </section>
+        )}
 
         {/* 分析完成后的连续路径引导 */}
         {hasAnalyzed && !activeContributionIssue && (

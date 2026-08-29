@@ -372,6 +372,7 @@ const Roadmap = () => {
   const showToast = useToastStore((s) => s.showToast)
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
+  const activeContributionIssue = useRepositoryStore((s) => s.activeContributionIssue)
   const profileSignature = useUserStore((s) =>
     JSON.stringify(selectUserProfileContext(s)),
   )
@@ -472,8 +473,16 @@ const Roadmap = () => {
       <div className="app-page active" style={{ maxWidth: '1100px', margin: '0 auto' }}>
         {/* 页面标题 */}
         <div className="roadmap-header">
-          <h1>{roadmap?.title || '开源贡献学习路线'}</h1>
-          <p>{roadmap?.description || '按照路线图逐步推进，开启你的开源之旅'}</p>
+          <h1>
+            {activeContributionIssue
+              ? `解决 #${activeContributionIssue.issueNumber} 的学习路线`
+              : roadmap?.title || '开源贡献学习路线'}
+          </h1>
+          <p>
+            {activeContributionIssue
+              ? `围绕「${activeContributionIssue.title}」拆解你需要先理解、查看和尝试的内容。`
+              : roadmap?.description || '按照路线图逐步推进，开启你的开源之旅'}
+          </p>
           {/* 用户水平选择器 */}
           <UserLevelSelector owner={currentOwner} repo={currentRepoName} />
         </div>

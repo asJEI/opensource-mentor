@@ -3,6 +3,7 @@ import type { Roadmap, RoadmapPhase, RoadmapProgress, RoadmapStepStatus } from '
 import { aiService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
+import { useRepositoryStore } from './repository'
 
 /**
  * 计算路线图进度
@@ -79,8 +80,45 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
 
   loadRoadmap: async (owner: string, repo: string) => {
     const userProfile = getEffectiveUserProfileContext()
+    const repositoryState = useRepositoryStore.getState()
+    const activeIssue = repositoryState.activeContributionIssue
+    const issueContext = activeIssue
+      ? {
+          issue: {
+            number: activeIssue.issueNumber,
+            title: activeIssue.title,
+            body: activeIssue.body,
+            language: activeIssue.language,
+            analysis: activeIssue.analysis,
+            whyThisFitsYou: activeIssue.whyThisFitsYou,
+            matchScore: activeIssue.matchScore,
+          },
+          repository: repositoryState.currentRepo
+            ? {
+                fullName: repositoryState.currentRepo.fullName,
+                description: repositoryState.currentRepo.description,
+                language: repositoryState.currentRepo.language,
+                stars: repositoryState.currentRepo.stars,
+                forks: repositoryState.currentRepo.forks,
+                issuesCount: repositoryState.currentRepo.issuesCount,
+                defaultBranch: repositoryState.currentRepo.defaultBranch,
+              }
+            : {
+                fullName: activeIssue.repository.fullName,
+                description: activeIssue.repository.description,
+                language: activeIssue.language,
+                stars: activeIssue.repository.stars,
+                forks: activeIssue.repository.forks,
+                issuesCount: activeIssue.repository.openIssues,
+                defaultBranch: activeIssue.repository.defaultBranch,
+              },
+          confirmedContext: repositoryState.currentExplain?.confirmedContext ?? [],
+          possibleAreasToInspect:
+            repositoryState.currentExplain?.possibleAreasToInspect ?? [],
+        }
+      : undefined
 
-    const profileSignature = JSON.stringify(userProfile)
+    const profileSignature = JSON.stringify({ userProfile, issueContext })
     const current = get()
     if (
       current.roadmap &&
@@ -104,6 +142,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         owner,
         repo,
         userProfile,
+        issueContext,
       )
       const steps = roadmap.phases
       // 标记第一步为当前步骤

@@ -18,9 +18,10 @@ export async function generateRoadmap(
     readme: string
     userProfile: UserProfileContext
     goodFirstIssues: IssueDto[]
+    issueContext?: Record<string, unknown>
   },
 ): Promise<Roadmap> {
-  const { repository, readme, userProfile, goodFirstIssues } = params
+  const { repository, readme, userProfile, goodFirstIssues, issueContext } = params
   const prompt = roadmapPrompt({
     repoName: repository.fullName,
     repoDescription: repository.description,
@@ -34,6 +35,7 @@ export async function generateRoadmap(
       title: i.title,
       labels: i.labels.map((l) => l.name),
     })),
+    issueContext,
   })
 
   try {

@@ -68,10 +68,14 @@ export interface IssueExplain {
   summary: string
   /** 难度等级 */
   difficulty: 'easy' | 'medium' | 'hard'
+  /** 从真实仓库数据或 Issue 描述中确认的信息 */
+  confirmedContext: string[]
   /** 需要提前了解的知识或技术点 */
   knowledge: string[]
   /** 解决步骤（详细步骤） */
   steps: string[]
+  /** 无法确认具体代码位置时建议检查的方向 */
+  possibleAreasToInspect: string[]
   /** 预估完成时间 */
   estimatedTime: string
   /** 实用提示或注意事项 */

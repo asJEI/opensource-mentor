@@ -184,11 +184,13 @@ class AiService {
     owner: string,
     repo: string,
     userProfile: UserProfileContext,
+    issueContext?: Record<string, unknown>,
   ): Promise<Roadmap> {
     const data = await bffPost<any>('/ai/generate-roadmap', this.withProviderConfig({
       owner,
       repo,
       userProfile,
+      issueContext,
     }))
     return this.mapRoadmap(data)
   }
@@ -225,8 +227,10 @@ class AiService {
     return {
       summary: data.summary || '',
       difficulty: data.difficulty || 'medium',
+      confirmedContext: data.confirmedContext || [],
       knowledge: data.knowledge || [],
       steps: data.steps || [],
+      possibleAreasToInspect: data.possibleAreasToInspect || [],
       estimatedTime: data.estimatedTime || '',
       tips: data.tips || [],
     }
