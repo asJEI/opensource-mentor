@@ -121,6 +121,14 @@ const CandidateIssueCard = ({
       : analysisStatus === 'loading' || analysisStatus === 'idle'
         ? '正在分析匹配度…'
       : '该 Issue 与你的当前画像存在一定匹配。')
+  const contributionAccess =
+    issue.contributionAccess ||
+    (issue.claimHint?.includes('认领') ? 'claim_required' : 'direct_submit')
+  const claimHint =
+    issue.claimHint ||
+    (contributionAccess === 'claim_required'
+      ? '开始动手前，请先按仓库要求在 Issue 下评论认领，并等待维护者审核或指派。'
+      : '当前看不需要额外认领，可直接按 Issue 完成修改并提交 PR。')
 
   return (
     <article className={clsx('issue-row-card', expanded && 'expanded')}>
@@ -137,6 +145,18 @@ const CandidateIssueCard = ({
           <em>{shortReason}</em>
         </span>
         <span className="issue-row-meta">
+          <span
+            className={clsx(
+              'issue-access-chip',
+              contributionAccess === 'claim_required'
+                ? 'claim-required'
+                : 'direct-submit',
+            )}
+          >
+            {contributionAccess === 'claim_required'
+              ? '需先认领'
+              : '可直接提交'}
+          </span>
           {technologies.slice(0, 3).map((technology) => (
             <span key={technology}>{technology}</span>
           ))}
@@ -152,6 +172,18 @@ const CandidateIssueCard = ({
       {expanded && (
         <div className="issue-expanded-panel">
           <div className="issue-expanded-grid">
+            <section>
+              <h3>贡献方式</h3>
+              <p>
+                <strong>
+                  {contributionAccess === 'claim_required'
+                    ? '需先认领'
+                    : '可直接提交'}
+                </strong>
+                {' · '}
+                {claimHint}
+              </p>
+            </section>
             <section>
               <h3>Issue 简介</h3>
               <p>

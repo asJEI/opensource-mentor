@@ -153,6 +153,10 @@ export interface CandidateIssue extends Issue {
     repositoryHealth: number
   }
   recommendationFallback?: boolean
+  /** 是否需要先认领：claim_required | direct_submit */
+  contributionAccess?: 'claim_required' | 'direct_submit'
+  /** 认领/直接提交说明 */
+  claimHint?: string
 }
 
 export interface CandidateIssueAnalysisResult {
@@ -163,6 +167,8 @@ export interface CandidateIssueAnalysisResult {
   matchDetails: NonNullable<CandidateIssue['candidateMatchDetails']>
   fromCache: boolean
   recommendationFallback: boolean
+  contributionAccess?: 'claim_required' | 'direct_submit'
+  claimHint?: string
 }
 
 export interface CandidateIssuesMeta {

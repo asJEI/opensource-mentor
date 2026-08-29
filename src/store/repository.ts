@@ -318,6 +318,9 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
                     matchScore: result.matchScore,
                     candidateMatchDetails: result.matchDetails,
                     recommendationFallback: result.recommendationFallback,
+                    contributionAccess:
+                      result.contributionAccess || candidate.contributionAccess,
+                    claimHint: result.claimHint || candidate.claimHint,
                   }
                 : candidate,
             )

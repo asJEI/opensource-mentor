@@ -747,6 +747,18 @@
   padding: 4px 8px;
 }
 
+.issue-access-chip.claim-required {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.issue-access-chip.direct-submit {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
 .issue-row-labels {
   display: flex;
   gap: 6px;

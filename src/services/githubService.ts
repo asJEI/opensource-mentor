@@ -100,6 +100,12 @@ class GithubService {
       matchDetails: data.matchDetails,
       fromCache: Boolean(data.fromCache),
       recommendationFallback: Boolean(data.recommendationFallback),
+      contributionAccess:
+        data.contributionAccess === 'claim_required' ||
+        data.contributionAccess === 'direct_submit'
+          ? data.contributionAccess
+          : undefined,
+      claimHint: typeof data.claimHint === 'string' ? data.claimHint : undefined,
     }
   }
 
@@ -232,6 +238,12 @@ class GithubService {
       matchScore: data.matchScore,
       candidateMatchDetails: data.matchDetails ?? data.candidateMatchDetails,
       recommendationFallback: Boolean(data.recommendationFallback),
+      contributionAccess:
+        data.contributionAccess === 'claim_required' ||
+        data.contributionAccess === 'direct_submit'
+          ? data.contributionAccess
+          : undefined,
+      claimHint: typeof data.claimHint === 'string' ? data.claimHint : undefined,
     }
   }
 }

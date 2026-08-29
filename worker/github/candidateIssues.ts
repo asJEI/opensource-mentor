@@ -47,6 +47,14 @@ type IssueLLMAnalysis = {
   confidence: number
 }
 
+type ContributionAccess = 'claim_required' | 'direct_submit'
+
+type ContributionAccessInfo = {
+  access: ContributionAccess
+  hint: string
+  signals: string[]
+}
+
 type MatchDetails = {
   technologyMatch: number
   levelMatch: number
@@ -87,6 +95,10 @@ type CandidateIssue = {
     login: string
     avatarUrl: string
   }
+  /** 是否需要先认领才能动手 */
+  contributionAccess?: ContributionAccess
+  /** 认领/直接提交说明 */
+  claimHint?: string
   analysis?: IssueLLMAnalysis
   whyThisFitsYou?: string[]
   matchScore?: number
@@ -240,7 +252,7 @@ function toCandidateIssue(
 ): CandidateIssue | null {
   const repository = repositoryFromApiUrl(item.repositoryUrl)
   if (!repository || !item.body) return null
-  return {
+  const base: CandidateIssue = {
     id: item.id,
     issueNumber: item.number,
     title: item.title,
@@ -257,6 +269,58 @@ function toCandidateIssue(
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     user: item.user,
+  }
+  const access = detectContributionAccess(base)
+  return {
+    ...base,
+    contributionAccess: access.access,
+    claimHint: access.hint,
+  }
+}
+
+/** 识别「需先认领」vs「可直接提交」 */
+function detectContributionAccess(issue: CandidateIssue): ContributionAccessInfo {
+  const labelText = issue.labels.join(' ')
+  const haystack = `${issue.title}\n${issue.body}\n${labelText}`
+  const signals: string[] = []
+
+  if (
+    issue.labels.some((label) =>
+      /认领|申请|claim|claimed|assign-me|星波|恒星波|wave|mentorship|campus|实习任务|任务认领/i.test(
+        label,
+      ),
+    )
+  ) {
+    signals.push('标签暗示需要申请或认领')
+  }
+
+  if (
+    /认领|申请参与|请先评论|先在下方评论|先评论申请|claim this|please claim|assign me|我想解决这个|请把这个任务交给我|恒星波|星波计划|要接受此申请|指派至此问题/i.test(
+      haystack,
+    )
+  ) {
+    signals.push('正文要求先评论认领或等待维护者指派')
+  }
+
+  if (
+    issue.comments >= 5 &&
+    /认领|申请|claim|星波|恒星波|assign/i.test(haystack)
+  ) {
+    signals.push('已有多人讨论或申请，通常需要维护者确认')
+  }
+
+  if (signals.length > 0) {
+    return {
+      access: 'claim_required',
+      hint: '开始动手前，请先按仓库要求在 Issue 下评论认领，并等待维护者审核或指派。',
+      signals,
+    }
+  }
+
+  return {
+    access: 'direct_submit',
+    hint: '当前看不需要额外认领，可直接按 Issue 完成修改并提交 PR。',
+    signals: [],
   }
 }
 
@@ -503,6 +567,7 @@ function createWhyThisFitsYou(
   user: OnboardingContext,
 ): string[] {
   const reasons: string[] = []
+  const access = detectContributionAccess(issue)
   const techScore = technologyMatchScore(issue, analysis, user)
   if (techScore >= 50 && user.technologies.length > 0) {
     reasons.push('它和你当前选择或常用的技术栈有重合。')
@@ -519,10 +584,15 @@ function createWhyThisFitsYou(
   if (analysis.scopeAssessment === 'small') {
     reasons.push('改动范围看起来较小，适合先从局部理解和验证开始。')
   }
+  if (access.access === 'claim_required') {
+    reasons.push('注意：动手前需要先评论认领，并等待维护者指派。')
+  } else {
+    reasons.push('看起来可直接动手修改并提交 PR，无需额外认领流程。')
+  }
   if (reasons.length === 0) {
     reasons.push('它具备较清晰的 Issue 描述，可以作为候选任务进一步评估。')
   }
-  return reasons.slice(0, 3)
+  return reasons.slice(0, 4)
 }
 
 async function analyzeIssueWithLLM(
@@ -542,6 +612,8 @@ async function analyzeIssueWithLLM(
 
 要求：
 - summary 必须使用简体中文，2-4 句说明任务目标与关键改动，不要直接照抄英文标题。
+- 若 Issue 要求先评论认领、申请活动/星波计划、或等待维护者指派，请在 summary 末尾用一句话提醒「需先认领」。
+- 若看不出认领要求，不要额外强调认领。
 - 保守判断难度，不要因为标签叫 good first issue 就无条件判定很简单。
 - estimatedTime 使用中文短字符串，例如 "约 1-3 小时"、"约 3-6 小时"、"约一个周末"。
 - technologies 保留技术专有名词原文即可。
@@ -557,6 +629,7 @@ ${JSON.stringify({
   repository: issue.repository,
   language: issue.language,
   comments: issue.comments,
+  contributionAccessHint: detectContributionAccess(issue).access,
   createdAt: issue.createdAt,
   updatedAt: issue.updatedAt,
 })}`,
@@ -607,7 +680,7 @@ function candidateIssueFromBody(body: Record<string, unknown>): CandidateIssue {
   if (!Number.isFinite(id) || !Number.isFinite(issueNumber) || !title || !updatedAt) {
     throw new ApiError('Issue 数据不完整，无法分析', 400)
   }
-  return {
+  const base: CandidateIssue = {
     id,
     issueNumber,
     title,
@@ -642,6 +715,19 @@ function candidateIssueFromBody(body: Record<string, unknown>): CandidateIssue {
       login: typeof user.login === 'string' ? user.login : '',
       avatarUrl: typeof user.avatarUrl === 'string' ? user.avatarUrl : '',
     },
+  }
+  const access = detectContributionAccess(base)
+  return {
+    ...base,
+    contributionAccess:
+      issue.contributionAccess === 'claim_required' ||
+      issue.contributionAccess === 'direct_submit'
+        ? issue.contributionAccess
+        : access.access,
+    claimHint:
+      typeof issue.claimHint === 'string' && issue.claimHint.trim()
+        ? issue.claimHint.trim()
+        : access.hint,
   }
 }
 
@@ -766,6 +852,9 @@ export async function handleGetCandidateIssues(
           repository: repositorySummary(repository),
           language: issue.language || repository.language,
           languageSource: issue.language ? issue.languageSource : 'unknown',
+          contributionAccess:
+            issue.contributionAccess || detectContributionAccess(issue).access,
+          claimHint: issue.claimHint || detectContributionAccess(issue).hint,
         }
       } catch (error) {
         console.warn('[candidate-issues] repository enrichment failed', {
@@ -852,6 +941,7 @@ export async function handleAnalyzeCandidateIssue(
     analysis,
     onboarding,
   )
+  const access = detectContributionAccess(issue)
 
   return success({
     issueId: String(issue.id),
@@ -859,6 +949,8 @@ export async function handleAnalyzeCandidateIssue(
     whyThisFitsYou: createWhyThisFitsYou(issue, analysis, onboarding),
     matchScore,
     matchDetails,
+    contributionAccess: access.access,
+    claimHint: access.hint,
     fromCache,
     recommendationFallback: fallback,
   })
