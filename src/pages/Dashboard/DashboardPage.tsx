@@ -26,7 +26,6 @@ import {
   isBeginnerFriendly,
   parseRepoInput,
 } from './components'
-import type { CandidateIssue } from '@/types'
 
 const Dashboard = () => {
   const showToast = useToastStore((s) => s.showToast)
@@ -222,13 +221,6 @@ const Dashboard = () => {
               <div>
                 <h3>技术栈</h3>
                 <p>{activeContributionIssue.language || currentRepo?.language || '后续补充'}</p>
-              </div>
-              <div>
-                <h3>标签</h3>
-                <p>
-                  {activeContributionIssue.labels.map((label: CandidateIssue['labels'][number]) => label.name).join('、') ||
-                    '无标签'}
-                </p>
               </div>
             </div>
           </section>
@@ -810,7 +802,7 @@ const Dashboard = () => {
         </div>
 
         {/* 分析完成后的连续路径引导 */}
-        {hasAnalyzed && (
+        {hasAnalyzed && !activeContributionIssue && (
           <>
             <JourneyActions
               title="仓库已理解，选择下一步"

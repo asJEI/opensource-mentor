@@ -54,7 +54,6 @@ const CandidateIssueCard = ({
   onToggle: () => void
   onStart: () => void
 }) => {
-  const visibleLabels = issue.labels.slice(0, 5)
   const analysis = issue.analysis
   const technologies = analysis?.technologies?.length
     ? analysis.technologies
@@ -87,19 +86,6 @@ const CandidateIssueCard = ({
           {analysis?.estimatedTime && <span>{analysis.estimatedTime}</span>}
         </span>
       </button>
-
-      <div className="issue-row-labels">
-        {visibleLabels.map((label: CandidateIssue['labels'][number]) => (
-          <span key={label.id || label.name} className="issue-label-chip">
-            {label.name}
-          </span>
-        ))}
-        {issue.labels.length > visibleLabels.length && (
-          <span className="issue-label-chip muted">
-            +{issue.labels.length - visibleLabels.length}
-          </span>
-        )}
-      </div>
 
       {expanded && (
         <div className="issue-expanded-panel">

@@ -457,9 +457,9 @@ const Roadmap = () => {
         <div className="app-page active" style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <AiPageError
             title="还没有学习路线"
-            message="请先在工作台选择并分析一个仓库，再回来生成个性化路线。"
+            message="请先在仓库分析页选择并分析一个仓库，再回来生成个性化路线。"
             onRetry={() => navigate('/dashboard')}
-            retryLabel="去工作台"
+            retryLabel="去仓库分析"
             showSettingsLink={false}
           />
         </div>

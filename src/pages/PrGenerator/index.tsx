@@ -100,7 +100,6 @@ const PrGenerator = () => {
   return (
     <AppLayout
       breadcrumbs={[
-        { label: '工作台' },
         { label: 'PR 生成器' },
       ]}
     >

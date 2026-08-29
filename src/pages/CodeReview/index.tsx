@@ -133,7 +133,6 @@ const CodeReview = () => {
     return (
       <AppLayout
         breadcrumbs={[
-          { label: '工作台' },
           { label: '代码审查' },
         ]}
       >
@@ -233,7 +232,6 @@ const CodeReview = () => {
   return (
     <AppLayout
       breadcrumbs={[
-        { label: '工作台' },
         { label: '代码审查' },
       ]}
     >

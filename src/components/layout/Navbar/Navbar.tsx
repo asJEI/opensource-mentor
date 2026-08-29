@@ -5,7 +5,7 @@ import { authService } from '@/services'
 const navLinks = [
   { label: '流程', href: '#how-it-works' },
   { label: '能力', href: '#features' },
-  { label: '工作台', href: '#preview' },
+  { label: '产品预览', href: '#preview' },
 ]
 
 const Navbar = () => {

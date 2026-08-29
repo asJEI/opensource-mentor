@@ -241,7 +241,7 @@ function PreviewSection() {
         <h2>仓库分析、Issue 推荐、路线图、PR 辅助和代码审查已经在产品内串起来。</h2>
       </div>
       <a href="/dashboard" className="landing-inline-link">
-        进入工作台
+        查看 Issue 推荐
         <ArrowRightIcon />
       </a>
     </section>
