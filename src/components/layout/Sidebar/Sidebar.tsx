@@ -25,15 +25,15 @@ const navGroups: NavGroup[] = [
     title: '主菜单',
     items: [
       {
-        id: 'dashboard',
-        label: '工作台',
-        icon: <Icon d="M3 12l9-9 9 9M5 10v10h14V10" />,
-      },
-      {
         id: 'issues',
         label: 'Issue 推荐',
         icon: <Icon d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
         badge: '新',
+      },
+      {
+        id: 'dashboard',
+        label: '仓库分析',
+        icon: <Icon d="M3 12l9-9 9 9M5 10v10h14V10" />,
       },
       {
         id: 'code-review',
@@ -82,6 +82,12 @@ const contributionLevelMap: Record<string, string> = {
   high: '高级贡献者',
 }
 
+const developerLevelMap: Record<string, string> = {
+  beginner: '初学者',
+  intermediate: '中级',
+  advanced: '高级',
+}
+
 const Sidebar = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -118,7 +124,7 @@ const Sidebar = () => {
   const displayName = profile.username || githubProfile?.profile.username || ''
   const userRole = isAuthenticated
     ? githubProfile?.developerProfile
-      ? `${githubProfile.developerProfile.level} · 能力判断把握度 ${Math.round(
+      ? `${developerLevelMap[githubProfile.developerProfile.level] ?? '待判断'} · 能力判断把握度 ${Math.round(
           githubProfile.developerProfile.confidence * 100,
         )}%`
       : githubProfile?.profile.bio || contributionLevelMap[profile.contributionLevel] || 'GitHub 已连接'

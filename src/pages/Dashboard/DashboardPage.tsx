@@ -173,7 +173,7 @@ const Dashboard = () => {
   const displayFullName = currentRepo?.fullName || repoInput
 
   return (
-    <AppLayout breadcrumbs={[{ label: '工作台' }]}>
+    <AppLayout breadcrumbs={[{ label: '仓库分析' }]}>
       <div className="app-page active">
         {/* 页面标题区 */}
         <div className="page-header">

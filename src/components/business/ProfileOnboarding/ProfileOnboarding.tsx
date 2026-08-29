@@ -181,7 +181,7 @@ const ProfileOnboarding = () => {
           <Button variant="ghost" onClick={handleSkip}>稍后再说</Button>
           <div className="profile-onboarding-footer-actions">
             {step > 0 && <Button variant="secondary" onClick={() => setStep((current) => current - 1)}>返回</Button>}
-            <Button variant="primary" loading={saving} onClick={handleNext}>{step === TOTAL_STEPS - 1 ? '保存并进入工作台' : '继续'}</Button>
+            <Button variant="primary" loading={saving} onClick={handleNext}>{step === TOTAL_STEPS - 1 ? '保存并查看 Issue 推荐' : '继续'}</Button>
           </div>
         </div>
       }

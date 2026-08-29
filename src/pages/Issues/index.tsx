@@ -43,11 +43,6 @@ function formatDate(value: string): string {
   })
 }
 
-function optionalText(value?: string | number | null): string {
-  if (value === undefined || value === null || value === '') return '暂无真实数据'
-  return String(value)
-}
-
 const CandidateIssueCard = ({
   issue,
   expanded,
@@ -75,10 +70,7 @@ const CandidateIssueCard = ({
           <span>{issue.repository.fullName}</span>
         </span>
         <span className="issue-row-meta">
-          <span>{issue.language || 'Language 未知'}</span>
-          <span>Difficulty：{optionalText()}</span>
-          <span>Time：{optionalText()}</span>
-          <span>Match：{optionalText()}</span>
+          <span>{issue.language || '语言未知'}</span>
         </span>
       </button>
 
@@ -107,14 +99,14 @@ const CandidateIssueCard = ({
               <p>{summarizeBody(issue.body)}</p>
             </section>
             <section>
-              <h3>Why this fits you</h3>
+              <h3>为什么适合你</h3>
               <p>
                 当前阶段已基于你的技术栈和公开 Issue 数据拉取候选项；
                 更精确的匹配原因会在后续推荐算法补齐后展示。
               </p>
             </section>
             <section>
-              <h3>Repository 基本信息</h3>
+              <h3>仓库基本信息</h3>
               <p>
                 <a href={issue.repository.url} target="_blank" rel="noreferrer">
                   {issue.repository.fullName}
@@ -123,6 +115,10 @@ const CandidateIssueCard = ({
                 更新于 {formatDate(issue.updatedAt)} · 评论 {issue.comments}
               </p>
             </section>
+            <section>
+              <h3>匹配信息</h3>
+              <p>难度、预计时间和匹配分暂未生成，等待后续推荐算法补充真实结果。</p>
+            </section>
           </div>
 
           <div className="issue-expanded-footer">
@@ -130,7 +126,7 @@ const CandidateIssueCard = ({
               在 GitHub 查看
             </a>
             <Button variant="primary" onClick={onStart}>
-              Start Contribution
+              开始贡献
             </Button>
           </div>
         </div>
@@ -214,7 +210,7 @@ const Issues = () => {
             <div className="ai-loading-spinner" />
             <div className="ai-loading-title">正在获取候选 Issue...</div>
             <div className="ai-loading-desc">
-              从 GitHub Search API 拉取 good first issue / help wanted
+              正在从 GitHub 拉取 good first issue / help wanted 候选项
             </div>
           </div>
         ) : status === 'error' ? (
@@ -235,13 +231,13 @@ const Issues = () => {
               {meta && (
                 <div className="issues-filters">
                   <span className="filter-select">
-                    raw {meta.rawCount}
+                    原始 {meta.rawCount}
                   </span>
                   <span className="filter-select">
-                    dedup {meta.deduplicatedCount}
+                    去重 {meta.deduplicatedCount}
                   </span>
                   <span className="filter-select">
-                    filtered {meta.filteredCount}
+                    已筛选 {meta.filteredCount}
                   </span>
                 </div>
               )}
