@@ -20,6 +20,7 @@
   // Non-secret platform defaults only. Never put API keys here.
   "vars": {
     "GITHUB_API_BASE_URL": "https://api.github.com",
+    "SUPABASE_URL": "https://tdgnlirrpvtutosnbgwt.supabase.co",
     "DEFAULT_LLM_PROVIDER": "deepseek",
     "DEFAULT_LLM_MODEL": "deepseek-v4-flash",
     "DEFAULT_LLM_BASE_URL": "https://api.deepseek.com",
@@ -38,7 +39,7 @@
   // Optional platform secrets (set via `wrangler secret put` or `.dev.vars`):
   //   PLATFORM_LLM_API_KEY, PLATFORM_GITHUB_TOKEN
   //   GITHUB_OAUTH_CLIENT_ID, GITHUB_OAUTH_CLIENT_SECRET
-  //   SUPABASE_URL, SUPABASE_SECRET_KEY
+  //   SUPABASE_SECRET_KEY
   // Not marked `secrets.required` so Preview/PoC can deploy without platform keys.
   // User BYOK stays request-scoped and is never stored as Worker Secrets.
   // See DEPLOY-CLOUDFLARE.md for the production secrets checklist.
