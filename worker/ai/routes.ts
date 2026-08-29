@@ -11,7 +11,12 @@ import { resolveAIClient } from './resolveConfig'
 import { generateRoadmap, generateRoadmapPhase } from './roadmap'
 import { GUIDE_PHASE_TITLES } from './prompts/roadmap'
 import { testAIConnection } from './testConnection'
-import type { ChatMessage, RepositoryDto, UserProfileContext } from './types'
+import type {
+  ChatMessage,
+  GuideMentorContext,
+  RepositoryDto,
+  UserProfileContext,
+} from './types'
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim()) {
@@ -744,6 +749,8 @@ export async function handleChat(
     })
     .filter((item) => item.content)
 
+  const guideContext = parseGuideMentorContext(body.guideContext)
+
   const { client } = await resolveAIClient(env, request, body)
   const github = createGitHubService(request, env)
   const repository = await github.getRepository(owner, repo)
@@ -751,8 +758,56 @@ export async function handleChat(
     repository,
     messages,
     userMessage: message,
+    guideContext,
   })
   return success(response)
+}
+
+function parseGuideMentorContext(raw: unknown): GuideMentorContext | null {
+  if (!isRecord(raw)) return null
+  const owner = typeof raw.owner === 'string' ? raw.owner.trim() : ''
+  const repo = typeof raw.repo === 'string' ? raw.repo.trim() : ''
+  const phaseNumber =
+    typeof raw.phaseNumber === 'number' ? raw.phaseNumber : Number(raw.phaseNumber)
+  const phaseTitle = typeof raw.phaseTitle === 'string' ? raw.phaseTitle.trim() : ''
+  if (!owner || !repo || !Number.isFinite(phaseNumber) || !phaseTitle) return null
+
+  const completedPhases = Array.isArray(raw.completedPhases)
+    ? raw.completedPhases
+        .filter(isRecord)
+        .map((item) => ({
+          phase:
+            typeof item.phase === 'number' ? item.phase : Number(item.phase) || 0,
+          title: typeof item.title === 'string' ? item.title : '',
+        }))
+        .filter((item) => item.phase > 0 && item.title)
+    : []
+
+  const currentCommands = Array.isArray(raw.currentCommands)
+    ? raw.currentCommands.filter((item): item is string => typeof item === 'string')
+    : []
+
+  return {
+    owner,
+    repo,
+    defaultBranch:
+      typeof raw.defaultBranch === 'string' ? raw.defaultBranch : undefined,
+    issueNumber:
+      typeof raw.issueNumber === 'number'
+        ? raw.issueNumber
+        : Number.isFinite(Number(raw.issueNumber))
+          ? Number(raw.issueNumber)
+          : undefined,
+    issueTitle: typeof raw.issueTitle === 'string' ? raw.issueTitle : undefined,
+    phaseNumber,
+    phaseTitle,
+    phaseGoal: typeof raw.phaseGoal === 'string' ? raw.phaseGoal : undefined,
+    completedPhases,
+    currentStepTitle:
+      typeof raw.currentStepTitle === 'string' ? raw.currentStepTitle : undefined,
+    currentCommands,
+    stuckHint: typeof raw.stuckHint === 'string' ? raw.stuckHint : undefined,
+  }
 }
 
 /** POST /api/ai/generate-pr */

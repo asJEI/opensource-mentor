@@ -868,13 +868,29 @@
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .selected-issue-title {
   margin: 4px 0 0;
   color: var(--ink);
   font-size: 20px;
+  line-height: 1.35;
+}
+
+.selected-issue-meta {
+  margin: 10px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+}
+
+.selected-issue-submeta {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .selected-issue-grid {
@@ -3748,6 +3764,193 @@
   line-height: 1.7;
 }
 
+.guide-action-step {
+  margin: 18px 0;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius-md, 12px);
+  background: color-mix(in srgb, var(--bg) 65%, var(--bg-white));
+}
+
+.guide-action-step.completed {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--rule));
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-white));
+}
+
+.guide-action-step-header {
+  margin-bottom: 8px;
+}
+
+.guide-action-step-index {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.guide-action-step-desc {
+  margin: 0 0 12px;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.guide-command-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.guide-command-block pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  background: #111827;
+  border-radius: 10px;
+  color: #e5e7eb;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.guide-command-block .btn {
+  align-self: flex-start;
+}
+
+.guide-expected {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-white));
+  border-radius: 0 10px 10px 0;
+}
+
+.guide-expected strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.guide-expected p,
+.guide-expected pre {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.guide-expected code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.guide-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.guide-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.guide-file-list {
+  display: grid;
+  gap: 12px;
+}
+
+.guide-file-card {
+  padding: 14px 16px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+  background: var(--bg-white);
+}
+
+.guide-file-card code {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+}
+
+.guide-file-card p {
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.guide-file-card a {
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.guide-file-card a:hover {
+  text-decoration: underline;
+}
+
+.guide-reproduce {
+  margin: 18px 0;
+  padding: 20px 18px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-white);
+}
+
+.guide-reproduce.completed {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--rule));
+}
+
+.guide-reproduce h3 {
+  margin: 0 0 12px;
+}
+
+.guide-reproduce-steps {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.guide-behavior-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.guide-behavior-grid > div {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--bg-white));
+}
+
+.guide-behavior-grid strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.guide-behavior-grid p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
 .guide-action-row,
 .guide-reader-footer {
   display: flex;
@@ -3805,6 +4008,14 @@
   .guide-header-actions .btn,
   .guide-reader-footer .btn,
   .guide-action-row .btn {
+    width: 100%;
+  }
+
+  .guide-behavior-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-command-block .btn {
     width: 100%;
   }
 }
@@ -3979,6 +4190,28 @@
 }
 
 /* ---------- AI Mentor Chat Page ---------- */
+.chat-guide-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-white));
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.chat-guide-context strong {
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .ai-mentor-page .header-actions {
   display: flex;
   align-items: center;

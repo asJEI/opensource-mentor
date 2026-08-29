@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Button, Modal } from '@/components/ui'
 import { AiPageError, NextStepCard } from '@/components/business'
 import { useChatStore, useRepositoryStore, useToastStore } from '@/store'
 import { getErrorMessage } from '@/services/errors'
-import type { ChatMessage } from '@/types'
+import type { ChatMessage, GuideMentorContext } from '@/types'
 
 // ==================== 图标组件 ====================
 function BotIcon() {
@@ -193,11 +194,35 @@ function TypingIndicator() {
   )
 }
 
+function formatGuideSummary(ctx: GuideMentorContext) {
+  const issue =
+    ctx.issueNumber != null
+      ? `#${ctx.issueNumber}${ctx.issueTitle ? ` ${ctx.issueTitle}` : ''}`
+      : '未指定 Issue'
+  const completed =
+    ctx.completedPhases.length > 0
+      ? ctx.completedPhases.map((p) => p.phase).join('、')
+      : '暂无'
+  return {
+    issue,
+    phase: `第 ${ctx.phaseNumber} 章「${ctx.phaseTitle}」`,
+    completed,
+    step: ctx.currentStepTitle || '未指定具体步骤',
+  }
+}
+
 // ==================== 欢迎页 ====================
-function WelcomeState({ onQuickAsk }: { onQuickAsk: (q: string) => void }) {
+function WelcomeState({
+  onQuickAsk,
+  guideContext,
+}: {
+  onQuickAsk: (q: string) => void
+  guideContext: GuideMentorContext | null
+}) {
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
   const repoName = `${currentOwner}/${currentRepoName}`
+  const summary = guideContext ? formatGuideSummary(guideContext) : null
 
   return (
     <div className="chat-welcome">
@@ -205,14 +230,34 @@ function WelcomeState({ onQuickAsk }: { onQuickAsk: (q: string) => void }) {
         <SparklesIcon />
       </div>
       <h2>你好，我是 AI 导师</h2>
-      <p>
-        我可以帮你解答关于 <strong>{repoName}</strong> 项目的任何问题，
-        包括技术栈、贡献指南、Issue 解析、代码审查建议等。
-      </p>
+      {summary ? (
+        <p>
+          我已经知道你在{' '}
+          <strong>
+            {guideContext!.owner}/{guideContext!.repo}
+          </strong>{' '}
+          上解决 <strong>{summary.issue}</strong>，当前位于 {summary.phase}
+          （已完成第 {summary.completed} 章），当前步骤是「{summary.step}」。
+          直接问卡住的地方即可，不用重新解释背景。
+        </p>
+      ) : (
+        <p>
+          我可以帮你解答关于 <strong>{repoName}</strong> 项目的任何问题，
+          包括技术栈、贡献指南、Issue 解析、代码审查建议等。
+        </p>
+      )}
       <div className="chat-welcome__quick">
         <div className="chat-welcome__quick-title">快速提问</div>
         <div className="chat-welcome__quick-list">
-          {QUICK_QUESTIONS.map((q, i) => (
+          {(summary
+            ? [
+                '我卡在当前步骤了，下一步该怎么做？',
+                '帮我确认一下我现在的命令对不对',
+                '复现失败了，怎么排查？',
+                '这一章的验收标准是什么？',
+              ]
+            : QUICK_QUESTIONS
+          ).map((q, i) => (
             <button
               key={i}
               className="quick-question-btn"
@@ -229,33 +274,55 @@ function WelcomeState({ onQuickAsk }: { onQuickAsk: (q: string) => void }) {
 
 // ==================== Chat 页面 ====================
 const AiMentor = () => {
+  const location = useLocation()
   const messages = useChatStore((s) => s.messages)
   const isStreaming = useChatStore((s) => s.isStreaming)
   const error = useChatStore((s) => s.error)
+  const guideContext = useChatStore((s) => s.guideContext)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const clearChat = useChatStore((s) => s.clearChat)
   const setCurrentRepository = useChatStore((s) => s.setCurrentRepository)
+  const setGuideContext = useChatStore((s) => s.setGuideContext)
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
   const showToast = useToastStore((s) => s.showToast)
 
   const [inputValue, setInputValue] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [showSwitchConfirm, setShowSwitchConfirm] = useState(false) // 切换仓库确认弹窗
+  const autoSentRef = useRef(false)
+  const [showSwitchConfirm, setShowSwitchConfirm] = useState(false)
   const [pendingRepo, setPendingRepo] = useState<{
     owner: string
     repo: string
-  } | null>(null) // 待切换的仓库
-  const [originalRepo, setOriginalRepo] = useState<string>('') // 对话对应的原仓库
+  } | null>(null)
+  const [originalRepo, setOriginalRepo] = useState<string>('')
   const chatCurrentRepo = useChatStore(
     (s) => `${s.currentOwner}/${s.currentRepo}`,
-  ) // chat store 中的当前仓库
+  )
 
-  // 初始化：同步当前仓库到 chat store
+  // 同步仓库 + 接收贡献指南上下文
   useEffect(() => {
     setCurrentRepository(currentOwner, currentRepoName)
+    const incoming = (
+      location.state as { guideContext?: GuideMentorContext } | null
+    )?.guideContext
+    if (incoming) {
+      setGuideContext(incoming)
+      if (incoming.owner && incoming.repo) {
+        setCurrentRepository(incoming.owner, incoming.repo)
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location.key])
+
+  // 带着「卡住」提示进入时自动发起第一轮对话
+  useEffect(() => {
+    if (autoSentRef.current || isStreaming || messages.length > 0) return
+    if (!guideContext?.stuckHint) return
+    autoSentRef.current = true
+    void sendMessage(guideContext.stuckHint)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guideContext?.stuckHint])
 
   // 监听全局仓库变化：如果全局仓库变了，且有聊天记录，弹窗确认
   useEffect(() => {
@@ -336,8 +403,9 @@ const AiMentor = () => {
 
   // 清空聊天
   const handleClear = () => {
-    if (messages.length === 0) return
+    if (messages.length === 0 && !guideContext) return
     clearChat()
+    autoSentRef.current = false
     showToast('success', '已清空', '聊天记录已清空')
   }
 
@@ -351,6 +419,7 @@ const AiMentor = () => {
 
   const hasMessages = messages.length > 0
   const repoName = `${currentOwner}/${currentRepoName}`
+  const guideSummary = guideContext ? formatGuideSummary(guideContext) : null
 
   return (
     <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: 'AI 导师' }]}>
@@ -366,7 +435,9 @@ const AiMentor = () => {
                 </span>
               </h1>
               <p className="page-subtitle">
-                有任何关于开源贡献的问题？随时问我
+                {guideSummary
+                  ? `已同步贡献指南进度 · ${guideSummary.phase}`
+                  : '有任何关于开源贡献的问题？随时问我'}
               </p>
             </div>
             <div className="header-actions">
@@ -378,7 +449,7 @@ const AiMentor = () => {
                 variant="ghost"
                 size="sm"
                 onClick={handleClear}
-                disabled={!hasMessages}
+                disabled={!hasMessages && !guideContext}
               >
                 <TrashIcon />
                 清空对话
@@ -387,11 +458,24 @@ const AiMentor = () => {
           </div>
         </div>
 
+        {guideSummary && (
+          <div className="chat-guide-context">
+            <strong>当前进度</strong>
+            <span>
+              Issue {guideSummary.issue} · {guideSummary.phase} · 已完成第{' '}
+              {guideSummary.completed} 章 · 当前步骤：{guideSummary.step}
+            </span>
+          </div>
+        )}
+
         {/* 聊天区域 */}
         <div className="chat-container">
           <div className="chat-messages">
             {!hasMessages && !isStreaming && (
-              <WelcomeState onQuickAsk={handleQuickAsk} />
+              <WelcomeState
+                onQuickAsk={handleQuickAsk}
+                guideContext={guideContext}
+              />
             )}
 
             {messages.map((msg) => (
@@ -436,8 +520,11 @@ const AiMentor = () => {
               </button>
             </div>
             <p className="chat-input-hint">
-              AI 回复仅供参考，请结合实际情况判断。当前对话基于 {repoName}{' '}
-              项目。
+              AI 回复仅供参考，请结合实际情况判断。当前对话基于 {repoName}
+              {guideSummary
+                ? `，并已带上贡献指南第 ${guideContext!.phaseNumber} 章进度`
+                : ''}
+              。
             </p>
           </div>
         </div>

@@ -172,7 +172,6 @@ export function validateRoadmapPhaseResult(
 ): RoadmapPhase {
   const title = GUIDE_PHASE_TITLES[phaseNumber - 1] || `第 ${phaseNumber} 章`
 
-  // 兼容模型把单章包在 phase / phases[0] 里的情况
   let source = parsed
   if (isRecord(parsed.phase)) {
     source = parsed.phase
@@ -187,6 +186,64 @@ export function validateRoadmapPhaseResult(
     else if (isRecord(parsed.phases[0])) source = parsed.phases[0]
   }
 
+  const actionStepsRaw = Array.isArray(source.actionSteps)
+    ? source.actionSteps.filter(isRecord)
+    : []
+  const actionSteps = actionStepsRaw.map((item, index) => ({
+    id: typeof item.id === 'string' ? item.id : `step-${phaseNumber}-${index + 1}`,
+    title: String(item.title || `Step ${index + 1}`).trim(),
+    description:
+      typeof item.description === 'string' ? item.description.trim() : undefined,
+    commands: ensureStringArray(item.commands),
+    expectedResult:
+      typeof item.expectedResult === 'string'
+        ? item.expectedResult.trim()
+        : undefined,
+    checkboxLabel:
+      typeof item.checkboxLabel === 'string' && item.checkboxLabel.trim()
+        ? item.checkboxLabel.trim()
+        : '我已经完成',
+  }))
+
+  const fileRefsRaw = Array.isArray(source.fileRefs) ? source.fileRefs : []
+  const fileRefs = fileRefsRaw
+    .filter(isRecord)
+    .map((item) => ({
+      path: String(item.path || '').trim(),
+      reason: String(item.reason || item.description || '').trim() || '建议阅读',
+    }))
+    .filter((item) => item.path.length > 0)
+
+  let reproduce: RoadmapPhase['reproduce'] = null
+  if (isRecord(source.reproduce)) {
+    const steps = ensureStringArray(source.reproduce.steps)
+    if (steps.length > 0) {
+      reproduce = {
+        title:
+          typeof source.reproduce.title === 'string'
+            ? source.reproduce.title
+            : undefined,
+        steps,
+        constructExample:
+          typeof source.reproduce.constructExample === 'string'
+            ? source.reproduce.constructExample
+            : undefined,
+        expectedBehavior:
+          typeof source.reproduce.expectedBehavior === 'string'
+            ? source.reproduce.expectedBehavior
+            : undefined,
+        actualBehavior:
+          typeof source.reproduce.actualBehavior === 'string'
+            ? source.reproduce.actualBehavior
+            : undefined,
+        checkboxLabel:
+          typeof source.reproduce.checkboxLabel === 'string'
+            ? source.reproduce.checkboxLabel
+            : '我成功复现了问题',
+      }
+    }
+  }
+
   const learningItems = ensureStringArray(
     source.learningItems ??
       source.items ??
@@ -195,20 +252,37 @@ export function validateRoadmapPhaseResult(
       source.content ??
       source.bulletPoints,
   )
+  const derivedLearningItems =
+    learningItems.length > 0
+      ? learningItems
+      : actionSteps.map((step) => step.title).filter(Boolean)
+
   const goal = String(
     source.goal || source.summary || source.overview || source.description || '',
   ).trim()
-  if (!goal || learningItems.length === 0) {
+  const actionIntro =
+    typeof source.actionIntro === 'string' ? source.actionIntro.trim() : ''
+
+  const hasStructuredContent =
+    actionSteps.length > 0 ||
+    fileRefs.length > 0 ||
+    (reproduce && reproduce.steps.length > 0)
+
+  if ((!goal && !actionIntro) || (derivedLearningItems.length === 0 && !hasStructuredContent)) {
     throw new Error(
-      `第 ${phaseNumber} 章内容不完整（缺少 goal 或 learningItems）`,
+      `第 ${phaseNumber} 章内容不完整（缺少 goal/actionSteps）`,
     )
   }
 
   return {
     phase: phaseNumber,
     title,
-    goal,
-    learningItems,
+    goal: goal || actionIntro || title,
+    actionIntro: actionIntro || undefined,
+    actionSteps,
+    fileRefs,
+    reproduce,
+    learningItems: derivedLearningItems,
     recommendedIssues: ensureStringArray(source.recommendedIssues),
     estimatedDuration: String(source.estimatedDuration || '待确认'),
     difficulty: ensureEnum(

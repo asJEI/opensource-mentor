@@ -54,6 +54,10 @@ export type {
   RoadmapGenerationStatus,
   Roadmap,
   RoadmapPhase,
+  GuideFileRef,
+  GuideActionStep,
+  GuideReproduceBlock,
+  GuideMentorContext,
 } from './roadmap'
 
 // 用户相关

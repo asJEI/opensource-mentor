@@ -28,6 +28,39 @@ import {
   parseRepoInput,
 } from './components'
 
+function localizeIssueDifficulty(raw?: string | null): string | null {
+  if (!raw?.trim()) return null
+  const value = raw.trim().toLowerCase()
+  const map: Record<string, string> = {
+    beginner: '入门',
+    'beginner+': '入门+',
+    easy: '入门',
+    intermediate: '中等',
+    medium: '中等',
+    advanced: '进阶',
+    hard: '进阶',
+    expert: '专家',
+  }
+  return map[value] || raw.trim()
+}
+
+function localizeEstimatedTime(raw?: string | null): string | null {
+  if (!raw?.trim()) return null
+  const value = raw.trim()
+  const lower = value.toLowerCase()
+  if (/[\u4e00-\u9fff]/.test(value)) return value
+  if (/weekend/.test(lower)) return '约一个周末'
+  if (/few hours|couple of hours|2-4 hours|2–4 hours/.test(lower)) return '约几小时'
+  if (/half.?day/.test(lower)) return '约半天'
+  if (/\bday\b|1 day|one day/.test(lower)) return '约一天'
+  if (/week\b|1 week|one week/.test(lower)) return '约一周'
+  if (/hour/.test(lower)) {
+    const hours = value.match(/\d+(?:\.\d+)?/)?.[0]
+    return hours ? `约 ${hours} 小时` : '约数小时'
+  }
+  return value
+}
+
 const Dashboard = () => {
   const navigate = useNavigate()
   const showToast = useToastStore((s) => s.showToast)
@@ -173,15 +206,18 @@ const Dashboard = () => {
     currentRepo?.owner || (parseRepoInput(repoInput)?.owner ?? '')
   const displayFullName = currentRepo?.fullName || repoInput
   const issueAnalysis = activeContributionIssue?.analysis
-  const issueTechStack = issueAnalysis?.technologies?.length
-    ? issueAnalysis.technologies.join('、')
-    : activeContributionIssue?.language || currentRepo?.language || '分析中'
-  const issueDifficulty = issueAnalysis?.difficulty || '分析中'
-  const issueEstimatedTime = issueAnalysis?.estimatedTime || '分析中'
-  const issueMatchScore =
-    typeof activeContributionIssue?.matchScore === 'number'
-      ? `${activeContributionIssue.matchScore}`
-      : '分析中'
+  const issueTechParts = issueAnalysis?.technologies?.length
+    ? issueAnalysis.technologies
+    : activeContributionIssue?.language
+      ? [activeContributionIssue.language]
+      : currentRepo?.language
+        ? [currentRepo.language]
+        : []
+  const issueMetaParts = [
+    localizeIssueDifficulty(issueAnalysis?.difficulty),
+    localizeEstimatedTime(issueAnalysis?.estimatedTime),
+    issueTechParts.length > 0 ? issueTechParts.slice(0, 5).join(' / ') : null,
+  ].filter((part): part is string => Boolean(part))
   const confirmedContext = currentExplain?.confirmedContext?.length
     ? currentExplain.confirmedContext
     : [
@@ -236,26 +272,30 @@ const Dashboard = () => {
                   {activeContributionIssue.issueNumber} ·{' '}
                   {activeContributionIssue.title}
                 </h2>
+                <p className="selected-issue-meta">
+                  {issueMetaParts.length > 0
+                    ? issueMetaParts.join(' · ')
+                    : '难度与技术栈分析中…'}
+                </p>
+                <p className="selected-issue-submeta">
+                  开放中 · 评论 {activeContributionIssue.comments} · 更新于{' '}
+                  {new Date(activeContributionIssue.updatedAt).toLocaleDateString(
+                    'zh-CN',
+                  )}
+                </p>
               </div>
               <Button
                 variant="secondary"
-                onClick={() => window.open(activeContributionIssue.issueUrl, '_blank', 'noopener,noreferrer')}
+                onClick={() =>
+                  window.open(
+                    activeContributionIssue.issueUrl,
+                    '_blank',
+                    'noopener,noreferrer',
+                  )
+                }
               >
                 在 GitHub 查看
               </Button>
-            </div>
-            <div className="selected-issue-grid">
-              <div>
-                <h3>Issue 基本信息</h3>
-                <p>
-                  Open · 评论 {activeContributionIssue.comments} · 更新于{' '}
-                  {new Date(activeContributionIssue.updatedAt).toLocaleDateString('zh-CN')}
-                </p>
-              </div>
-              <div>
-                <h3>技术栈</h3>
-                <p>{activeContributionIssue.language || currentRepo?.language || '后续补充'}</p>
-              </div>
             </div>
           </section>
         )}
@@ -333,108 +373,71 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* 统计行 */}
-        <div className="stat-row">
-          {activeContributionIssue ? (
-            <>
-              <StatCard
-                icon={<SparklesIcon />}
-                iconClass="purple"
-                label="Difficulty"
-                value={issueDifficulty}
-                change="当前 Issue 难度"
-                changeUp={true}
-              />
-              <StatCard
-                icon={<IssueIcon />}
-                iconClass="green"
-                label="Estimated Time"
-                value={issueEstimatedTime}
-                change="预计投入时间"
-                changeUp={true}
-              />
-              <StatCard
-                icon={<ZapIcon />}
-                iconClass="blue"
-                label="Match Score"
-                value={issueMatchScore}
-                change="内部匹配评分"
-                changeUp={true}
-              />
-              <StatCard
-                icon={<CodeIcon />}
-                iconClass="yellow"
-                label="Tech Stack"
-                value={issueTechStack}
-                change={currentRepo ? `${currentRepo.stars.toLocaleString()} Stars` : '仓库信息加载中'}
-                changeUp={true}
-              />
-            </>
-          ) : (
-            <>
-              <StatCard
-                icon={<StarIcon />}
-                iconClass="yellow"
-                label="GitHub Stars"
-                value={currentRepo ? currentRepo.stars.toLocaleString() : '--'}
-                change={
-                  currentRepo
-                    ? `Forks ${currentRepo.forks.toLocaleString()}`
-                    : '等待分析'
-                }
-                changeUp={true}
-              />
-              <StatCard
-                icon={<IssueIcon />}
-                iconClass="green"
-                label="推荐 Issue"
-                value={
-                  recommendedIssues.length > 0
-                    ? String(recommendedIssues.length)
-                    : '--'
-                }
-                change={
-                  analysis
-                    ? `匹配度 ${Math.round((analysis.confidence || 0) * 100)}%`
-                    : 'AI 智能匹配'
-                }
-                changeUp={true}
-              />
-              <StatCard
-                icon={<SparklesIcon />}
-                iconClass="purple"
-                label="新手友好度"
-                value={
-                  analysis
-                    ? getFriendlyLabel(analysis.beginnerFriendliness?.level)
-                    : '--'
-                }
-                change={
-                  analysis
-                    ? `评分 ${analysis.beginnerFriendliness?.score || 0}/10`
-                    : 'AI 评估中'
-                }
-                changeUp={true}
-              />
-              <StatCard
-                icon={<ZapIcon />}
-                iconClass="blue"
-                label="贡献领域"
-                value={
-                  analysis?.contributionAreas?.length
-                    ? String(analysis.contributionAreas.length)
-                    : '--'
-                }
-                change={
-                  analysis?.domains?.length
-                    ? `${analysis.domains.slice(0, 2).join('、')}${analysis.domains.length > 2 ? '等' : ''}`
-                    : '分析中...'
-                }
-                changeUp={true}
-              />
-            </>
-          )}
-        </div>
+        {/* 无选中 Issue 时展示仓库级统计；有 Issue 时关键信息已压入标题下方 metadata */}
+        {!activeContributionIssue && (
+          <div className="stat-row">
+            <StatCard
+              icon={<StarIcon />}
+              iconClass="yellow"
+              label="GitHub Stars"
+              value={currentRepo ? currentRepo.stars.toLocaleString() : '--'}
+              change={
+                currentRepo
+                  ? `Forks ${currentRepo.forks.toLocaleString()}`
+                  : '等待分析'
+              }
+              changeUp={true}
+            />
+            <StatCard
+              icon={<IssueIcon />}
+              iconClass="green"
+              label="推荐 Issue"
+              value={
+                recommendedIssues.length > 0
+                  ? String(recommendedIssues.length)
+                  : '--'
+              }
+              change={
+                analysis
+                  ? `匹配度 ${Math.round((analysis.confidence || 0) * 100)}%`
+                  : 'AI 智能匹配'
+              }
+              changeUp={true}
+            />
+            <StatCard
+              icon={<SparklesIcon />}
+              iconClass="purple"
+              label="新手友好度"
+              value={
+                analysis
+                  ? getFriendlyLabel(analysis.beginnerFriendliness?.level)
+                  : '--'
+              }
+              change={
+                analysis
+                  ? `评分 ${analysis.beginnerFriendliness?.score || 0}/10`
+                  : 'AI 评估中'
+              }
+              changeUp={true}
+            />
+            <StatCard
+              icon={<ZapIcon />}
+              iconClass="blue"
+              label="贡献领域"
+              value={
+                analysis?.contributionAreas?.length
+                  ? String(analysis.contributionAreas.length)
+                  : '--'
+              }
+              change={
+                analysis?.domains?.length
+                  ? `${analysis.domains.slice(0, 2).join('、')}${analysis.domains.length > 2 ? '等' : ''}`
+                  : '分析中...'
+              }
+              changeUp={true}
+            />
+          </div>
+        )}
 
         {/* 分析网格 */}
         <div className="analysis-grid">

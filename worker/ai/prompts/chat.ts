@@ -4,9 +4,48 @@ export function chatSystemPrompt(params: {
   repoLanguage: string | null
   repoStars: number
   repoTopics: string[]
+  guideContext?: {
+    owner: string
+    repo: string
+    defaultBranch?: string
+    issueNumber?: number
+    issueTitle?: string
+    phaseNumber: number
+    phaseTitle: string
+    phaseGoal?: string
+    completedPhases: Array<{ phase: number; title: string }>
+    currentStepTitle?: string
+    currentCommands?: string[]
+    stuckHint?: string
+  } | null
 }): string {
-  const { repoName, repoDescription, repoLanguage, repoStars, repoTopics } =
+  const { repoName, repoDescription, repoLanguage, repoStars, repoTopics, guideContext } =
     params
+
+  const guideBlock = guideContext
+    ? `
+## 当前贡献指南进度（用户从「贡献指南」跳转而来，默认已知，不要再问「你在做什么」）
+- 仓库: ${guideContext.owner}/${guideContext.repo}${guideContext.defaultBranch ? `（默认分支 ${guideContext.defaultBranch}）` : ''}
+- 正在解决的 Issue: ${guideContext.issueNumber != null ? `#${guideContext.issueNumber}` : '未指定'}${guideContext.issueTitle ? ` ${guideContext.issueTitle}` : ''}
+- 当前章节: 第 ${guideContext.phaseNumber} 章「${guideContext.phaseTitle}」
+- 章节目标: ${guideContext.phaseGoal || '未提供'}
+- 已完成章节: ${
+        guideContext.completedPhases.length > 0
+          ? guideContext.completedPhases
+              .map((p) => `${p.phase}. ${p.title}`)
+              .join('；')
+          : '暂无'
+      }
+- 当前步骤: ${guideContext.currentStepTitle || '未指定具体步骤'}
+- 当前相关命令: ${
+        guideContext.currentCommands && guideContext.currentCommands.length > 0
+          ? guideContext.currentCommands.join(' && ')
+          : '无'
+      }
+${guideContext.stuckHint ? `- 用户卡住提示: ${guideContext.stuckHint}` : ''}
+
+请直接基于以上进度继续辅导：先确认理解用户当前步骤，再给出下一步可执行建议（命令、文件路径、预期结果）。不要让用户重复介绍背景。`
+    : ''
 
   return `你是 OpenSource Mentor 的 AI 导师，专门帮助开发者参与 ${repoName} 开源项目。
 
@@ -21,6 +60,7 @@ export function chatSystemPrompt(params: {
 - 主要语言: ${repoLanguage || '未知'}
 - Stars: ${repoStars}
 - 技术领域: ${repoTopics.length > 0 ? repoTopics.join(', ') : '暂无'}
+${guideBlock}
 
 ## 你的教学原则
 1. **引导式教学**：不要直接给答案，而是通过提问引导用户思考
@@ -38,6 +78,7 @@ export function chatSystemPrompt(params: {
 - 提供代码审查建议和最佳实践
 - 分享开源社区的文化和规范
 - 制定学习计划和贡献路线
+- 结合贡献指南当前章节，继续下一步辅导
 
 ## 回复格式
 回复要自然流畅，像真人导师在对话一样。

@@ -14,43 +14,48 @@ export type GuidePhaseTitle = (typeof GUIDE_PHASE_TITLES)[number]
 
 const PHASE_INSTRUCTIONS: Record<number, string> = {
   1: `### 大致了解
-- 用容易理解的语言介绍这个仓库是做什么的
-- 解释当前 Issue 要解决什么问题
-- 解释完成后的预期结果
-- 避免一开始堆大量专业术语
-- learningItems 顺序建议：仓库是什么 → Issue 问题 → 完成后的结果`,
+- actionIntro：用通俗语言说明仓库做什么、Issue 解决什么、完成后的结果
+- actionSteps：2-3 步“阅读型”行动，例如确认 Issue 标题、浏览 README 开头
+- 不要堆专业术语`,
   2: `### 环境准备
-- 基于真实 README / CONTRIBUTING / 项目配置引导 clone 与本地运行
-- 列出真实需要的语言、依赖、工具和版本（只写能确认的）
-- 给出仓库真实存在的安装、启动、测试命令（优先 confirmedCommands / packageScripts）
-- 不允许猜测不存在的命令；未确认时写“未在已读取文档中确认……”`,
+- actionIntro：先把项目跑起来
+- actionSteps 必须是可执行步骤，例如：
+  1. Clone Repository（含 git clone / cd 命令）
+  2. 安装依赖（真实命令）
+  3. 启动/检查项目（真实命令）
+- 每步包含 commands、expectedResult、checkboxLabel（如“我已经完成”“项目已经正常运行”）
+- 命令必须来自真实仓库上下文；没有就写“未在已读取文档中确认……”并仍给检查思路`,
   3: `### 理解项目
-- 先引导用户完整跑通项目
-- 解释整体架构和主要模块（只基于证据）
-- 根据真实文件树找出与当前 Issue 最相关的核心文件
-- 告诉用户应先阅读哪些文件，并解释各自职责
-- 文件路径必须来自 fileTree / confirmedFiles / issueRelatedFiles`,
+- actionIntro：先跑通，再读关键文件
+- fileRefs：列出 2-4 个真实路径（必须来自 confirmedFiles / issueRelatedFiles / fileTree）
+- 每个 fileRef 写清 reason（这个文件负责什么、和 Issue 有什么关系）
+- actionSteps：引导用户打开并阅读这些文件`,
   4: `### 复现问题
-- 根据 Issue 原始描述和仓库真实运行方式，一步一步引导复现
-- learningItems 中必须明确区分“预期行为”和“实际行为”
-- 如果无法可靠复现，明确说明缺少什么信息，不要猜测`,
+- actionIntro：围绕当前 Issue 复现
+- reproduce 必填：
+  - steps：复现步骤列表
+  - constructExample：如需构造的输入/路径示例
+  - expectedBehavior：预期行为
+  - actualBehavior：当前实际行为
+  - checkboxLabel：如“我成功复现了 #编号”
+- actionSteps 可补充运行检查命令`,
   5: `### 修正方案
-- 提出建议方案，并解释为什么这样改
-- 指出可能涉及的模块（尽量引用真实路径）
-- 必须区分“仓库确认事实”和“AI 建议”
-- 不要把推测描述成确定方案`,
+- actionIntro：区分“仓库确认事实”和“AI 建议”，各 1 句即可
+- actionSteps：只要 2-3 步，短句；指出可能涉及的文件（路径必须真实或明确未确认）
+- fileRefs：最多 3 个相关真实文件
+- 不要长篇论证，优先可执行下一步`,
   6: `### 实现与验证
-- 引导用户开始修改，并说明注意事项
-- 帮助用户确认修改是否真正解决 Issue
-- 验证步骤优先使用已确认的测试/运行命令；没有则明确写“未在仓库上下文中确认测试命令”
-- learningItems 至少写满 3 条：改哪里、怎么改、怎么验证
-- 即使证据不足，也要给出可执行的检查清单，不要返回空数组`,
+- actionIntro：开始修改并验证（1-2 句）
+- actionSteps：恰好 3 步——改哪里、怎么改、怎么验证；描述保持短句
+- commands 优先用已确认测试/检查命令；没有就明确未知
+- checkboxLabel：如“我已完成本地验证”`,
   7: `### PR 提交
-- 引导用户先进入现有“代码审查”功能检查修改
-- 审查通过后再进入现有“PR 生成器”
-- 结合真实 CONTRIBUTING / PR Template 说明项目要求；没有读到则写未确认
-- 最终引导用户提交 GitHub PR
-- recommendedIssues 保持空数组`,
+- actionIntro：提交前检查
+- actionSteps：
+  1. 去代码审查
+  2. 去 PR 生成器
+  3. 按 CONTRIBUTING / PR Template 检查
+- checkboxLabel：如“我已准备好提交 PR”`,
 }
 
 function buildSharedContextBlock(params: {
@@ -76,9 +81,9 @@ function buildSharedContextBlock(params: {
     issueContext,
   } = params
 
-  const readmeSnippet = readme ? readme.slice(0, 2800) : '（未读取到 README）'
+  const readmeSnippet = readme ? readme.slice(0, 2000) : '（未读取到 README）'
   const repositoryContextText = repositoryContext
-    ? JSON.stringify(repositoryContext).slice(0, 5200)
+    ? JSON.stringify(repositoryContext).slice(0, 3800)
     : '（未读取到额外仓库上下文）'
 
   const experienceDescription = {
@@ -121,7 +126,7 @@ ${readmeSnippet}
 ${repositoryContextText}`
 }
 
-/** 仅生成单章，缩短等待时间，便于前端渐进展示 */
+/** 仅生成单章，输出可执行行动块结构 */
 export function roadmapPhasePrompt(params: {
   repoName: string
   repoDescription: string | null
@@ -142,10 +147,13 @@ export function roadmapPhasePrompt(params: {
 
   const shared = buildSharedContextBlock(params)
   const instruction = PHASE_INSTRUCTIONS[phaseNumber]
+  const ownerRepo = params.repoName
 
-  return `你是一位资深开源贡献导师。请只生成 Contribution Guide 的第 ${phaseNumber} 章「${title}」，不要输出其他章节。
+  return `你是一位资深开源贡献导师。请只生成 Contribution Guide 的第 ${phaseNumber} 章「${title}」。
+输出必须是“可执行行动块”，不是空泛 bullet 列表。
 
-目标：围绕用户当前 Issue，帮助新手完成本章任务。内容使用中文。
+目标仓库：${ownerRepo}
+内容使用中文。
 
 ${shared}
 
@@ -157,23 +165,49 @@ ${instruction}
   "phase": ${phaseNumber},
   "title": "${title}",
   "goal": "本章导读，1-2 句",
-  "learningItems": ["3-5 条正文要点"],
+  "actionIntro": "先告诉用户这一章要达成什么",
+  "actionSteps": [
+    {
+      "title": "Step 1 · Clone Repository",
+      "description": "简短说明为什么做这一步",
+      "commands": ["git clone https://github.com/${ownerRepo}.git", "cd ${ownerRepo.split('/')[1] || 'repo'}"],
+      "expectedResult": "完成后你应该看到哪些文件/现象",
+      "checkboxLabel": "我已经完成"
+    }
+  ],
+  "fileRefs": [
+    {
+      "path": "真实/相对/路径.py",
+      "reason": "这个文件负责什么、和当前 Issue 的关系"
+    }
+  ],
+  "reproduce": {
+    "title": "复现 #编号",
+    "steps": ["步骤 1", "步骤 2"],
+    "constructExample": "需要构造的示例（可空字符串）",
+    "expectedBehavior": "预期行为",
+    "actualBehavior": "当前实际行为",
+    "checkboxLabel": "我成功复现了 Issue"
+  },
+  "learningItems": ["把 actionSteps 摘要成 3-5 条，兼容旧前端"],
   "recommendedIssues": [],
-  "estimatedDuration": "预计阅读/实践时间；不确定写待确认",
+  "estimatedDuration": "预计时间；不确定写待确认",
   "difficulty": "easy | medium | hard",
   "completionCriteria": ["2-4 条完成标准"],
-  "resources": ["真实来源；路径必须来自仓库上下文"],
-  "tips": ["可选：仅本章相关的 0-2 条提示"]
+  "resources": ["真实来源"]
 }
 
-## 证据与防幻觉规则
-1. 文件、目录、命令、类、函数、测试方式必须有仓库上下文证据。
-2. 没有证据就写“未在仓库上下文中确认”或“建议检查……”，禁止编造。
-3. title 必须精确为「${title}」，phase 必须为 ${phaseNumber}。
-4. 严格返回 JSON，不要有额外文字。`
+## 结构约束
+1. actionSteps 至少 2 项、至多 4 项；每项 title 用 “Step N · 标题” 格式。
+2. commands 只能使用仓库上下文能证明的命令；否则写明未确认，仍给检查思路。
+3. fileRefs.path 必须来自真实文件树；第 3 章强烈建议提供；其他章可按需，最多 3 个。
+4. 第 4 章 reproduce 必填；其他章 reproduce 可为 null。
+5. 不要编造不存在的文件/命令。
+6. title 必须精确为「${title}」，phase 必须为 ${phaseNumber}。
+7. 严格返回 JSON，不要有额外文字；字段值尽量短，避免冗长段落。`
 }
 
-/** @deprecated 全量生成；保留兼容。新流程请用 roadmapPhasePrompt */
+/** @deprecated 全量生成兼容 */
 export function roadmapPrompt(params: {
   repoName: string
   repoDescription: string | null
@@ -196,5 +230,6 @@ export function roadmapPrompt(params: {
 ${shared}
 
 必须返回 phases 数组，title 依次为：${GUIDE_PHASE_TITLES.join('、')}。
+每章尽量包含 actionIntro、actionSteps、fileRefs、reproduce（第4章）。
 全部中文。严格 JSON。无证据不编造。`
 }

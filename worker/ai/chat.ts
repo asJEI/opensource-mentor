@@ -4,6 +4,7 @@ import { chatSystemPrompt } from './prompts/chat'
 import type {
   ChatMessage,
   ChatResponse,
+  GuideMentorContext,
   RepositoryDto,
 } from './types'
 import { extractIssueNumbers, suggestNextSteps } from './validate'
@@ -14,15 +15,17 @@ export async function chatWithMentor(
     repository: RepositoryDto
     messages: ChatMessage[]
     userMessage: string
+    guideContext?: GuideMentorContext | null
   },
 ): Promise<ChatResponse> {
-  const { repository, messages, userMessage } = params
+  const { repository, messages, userMessage, guideContext } = params
   const systemPrompt = chatSystemPrompt({
     repoName: repository.fullName,
     repoDescription: repository.description,
     repoLanguage: repository.language,
     repoStars: repository.stars,
     repoTopics: repository.topics,
+    guideContext: guideContext || null,
   })
 
   try {

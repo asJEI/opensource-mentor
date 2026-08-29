@@ -72,9 +72,13 @@ function patchPhase(
 function isPhaseContentReady(phase: RoadmapPhase | null | undefined): boolean {
   if (!phase) return false
   if (phase.generationStatus !== 'ready') return false
-  if (!phase.goal?.trim()) return false
-  if (/暂未生成|正在生成|正在准备/.test(phase.goal)) return false
-  return Array.isArray(phase.learningItems) && phase.learningItems.length > 0
+  const hasActions = (phase.actionSteps?.length || 0) > 0
+  const hasFiles = (phase.fileRefs?.length || 0) > 0
+  const hasReproduce = (phase.reproduce?.steps?.length || 0) > 0
+  const hasLearning = (phase.learningItems?.length || 0) > 0
+  if (!phase.goal?.trim() && !phase.actionIntro?.trim()) return false
+  if (/暂未生成|正在生成|正在准备/.test(phase.goal || '')) return false
+  return hasActions || hasFiles || hasReproduce || hasLearning
 }
 
 function cacheKey(owner: string, repo: string, issueNumber: number) {
@@ -139,6 +143,10 @@ interface RoadmapState {
   retryPhase: (phaseNumber: number) => Promise<void>
   /** 只重试全部失败章节 */
   retryFailedPhases: () => Promise<void>
+  /** 切换行动步骤勾选 */
+  toggleActionStep: (phaseNumber: number, stepId: string) => void
+  /** 切换复现块勾选 */
+  toggleReproduceComplete: (phaseNumber: number) => void
   nextStep: () => void
   resetProgress: () => void
   updateStepStatus: (stepId: string, status: RoadmapStepStatus) => void
@@ -217,17 +225,35 @@ async function generateOnePhase(params: {
     issueContext?: Record<string, unknown> | null
   }
 }): Promise<RoadmapPhase> {
-  const phase = await aiService.generateRoadmapPhase(
-    params.owner,
-    params.repo,
-    params.phaseNumber,
-    params.userProfile,
-    params.shared,
-  )
-  if (!isPhaseContentReady({ ...phase, generationStatus: 'ready' })) {
-    throw new Error('本章生成结果为空')
+  const maxAttempts = 2
+  let lastError: unknown
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const phase = await aiService.generateRoadmapPhase(
+        params.owner,
+        params.repo,
+        params.phaseNumber,
+        params.userProfile,
+        params.shared,
+      )
+      if (!isPhaseContentReady({ ...phase, generationStatus: 'ready' })) {
+        throw new Error('本章生成结果为空')
+      }
+      return phase
+    } catch (error) {
+      lastError = error
+      const message = getErrorMessage(error, '')
+      const isRateLimited =
+        /限流|429|rate.?limit|过于频繁|额度已用完/i.test(message)
+      const isTimeout = /超时|timeout|timed out|aborted/i.test(message)
+      if ((!isRateLimited && !isTimeout) || attempt >= maxAttempts) break
+      // 限流/超时时稍等再打一次，避免整章立刻标失败
+      await new Promise((resolve) =>
+        setTimeout(resolve, (isTimeout ? 1500 : 2500) * attempt),
+      )
+    }
   }
-  return phase
+  throw lastError instanceof Error ? lastError : new Error('本章生成失败')
 }
 
 export const useRoadmapStore = create<RoadmapState>((set, get) => ({
@@ -455,6 +481,10 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
               : get().roadmap,
           })
           persistCurrent(get)
+          // 章与章之间稍作间隔，降低平台/上游 RPM 撞限
+          if (phaseNumber < titles.length) {
+            await new Promise((resolve) => setTimeout(resolve, 900))
+          }
         } catch (phaseError) {
           if (get().generationToken !== token) return
           const message = getErrorMessage(phaseError, '本章生成失败')
@@ -590,6 +620,35 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
     for (const phaseNumber of failed) {
       await get().retryPhase(phaseNumber)
     }
+  },
+
+  toggleActionStep: (phaseNumber, stepId) => {
+    const steps = get().steps.map((phase) => {
+      if (phase.phase !== phaseNumber) return phase
+      return {
+        ...phase,
+        actionSteps: (phase.actionSteps || []).map((step) =>
+          step.id === stepId ? { ...step, completed: !step.completed } : step,
+        ),
+      }
+    })
+    set({ steps, progress: calculateProgress(steps) })
+    persistCurrent(get)
+  },
+
+  toggleReproduceComplete: (phaseNumber) => {
+    const steps = get().steps.map((phase) => {
+      if (phase.phase !== phaseNumber || !phase.reproduce) return phase
+      return {
+        ...phase,
+        reproduce: {
+          ...phase.reproduce,
+          completed: !phase.reproduce.completed,
+        },
+      }
+    })
+    set({ steps, progress: calculateProgress(steps) })
+    persistCurrent(get)
   },
 
   nextStep: () => {

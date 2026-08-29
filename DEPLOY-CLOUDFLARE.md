@@ -90,7 +90,7 @@ npx wrangler secret put SUPABASE_SECRET_KEY
 - `DEFAULT_LLM_PROVIDER` / `DEFAULT_LLM_MODEL` / `DEFAULT_LLM_BASE_URL`
 - `LLM_TIMEOUT_MS`
 
-平台 AI 限流已通过 `wrangler.jsonc` 的 `PLATFORM_AI_RATE_LIMITER` 原生绑定配置为每个客户端每分钟 10 次，部署时会随 Worker 配置一并生效，无需创建额外 Secret。BYOK 请求不消耗平台额度。
+平台 AI 限流已通过 `wrangler.jsonc` 的 `PLATFORM_AI_RATE_LIMITER` 原生绑定配置为每个客户端每分钟 40 次，部署时会随 Worker 配置一并生效，无需创建额外 Secret。BYOK 请求不消耗平台额度。
 
 用户 BYOK（浏览器偏好设置）经请求头传入，**永不**存为 Worker Secret。
 

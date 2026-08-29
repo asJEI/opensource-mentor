@@ -39,7 +39,7 @@ export async function generateRoadmapPhase(
     phaseNumber: params.phaseNumber,
   })
 
-  const attempt = async (temperature: number) => {
+  const attempt = async (temperature: number, timeoutMs: number) => {
     const content = await client.chatCompletions({
       messages: [
         { role: 'system', content: systemPrompt },
@@ -47,7 +47,9 @@ export async function generateRoadmapPhase(
       ],
       temperature,
       topP: 0.9,
-      timeoutMs: 55_000,
+      // 限制输出长度，避免第 5/6 章写太长导致上游拖到超时
+      maxTokens: params.phaseNumber >= 5 ? 2200 : 2800,
+      timeoutMs,
       responseFormat: { type: 'json_object' },
     })
     return validateRoadmapPhaseResult(
@@ -56,15 +58,19 @@ export async function generateRoadmapPhase(
     )
   }
 
+  // 线上曾用 55s，第 5 章经常写到一半就超时；提到接近平台 LLM 上限
+  const phaseTimeoutMs =
+    params.phaseNumber >= 5 ? 110_000 : 95_000
+
   try {
     try {
-      return await attempt(0.6)
+      return await attempt(0.55, phaseTimeoutMs)
     } catch (firstError) {
-      // 内容不完整时自动重试一次，降低偶发空壳概率
+      // 仅内容不完整时重试；超时/限流不要叠第二次长请求
       const message =
         firstError instanceof Error ? firstError.message : String(firstError)
       if (!message.includes('内容不完整')) throw firstError
-      return await attempt(0.4)
+      return await attempt(0.3, Math.min(phaseTimeoutMs, 70_000))
     }
   } catch (error) {
     if (error instanceof ApiError) throw error

@@ -6,6 +6,7 @@ import type {
   Repository,
   IssueExplain,
   ChatMessage,
+  GuideMentorContext,
   PrDraft,
   Roadmap,
   RoadmapPhase,
@@ -229,7 +230,7 @@ class AiService {
       readme: shared.readme,
       repositoryContext: shared.repositoryContext,
       issueContext: shared.issueContext || undefined,
-    }), { timeout: 70_000 })
+    }), { timeout: 140_000 })
     return this.mapRoadmapPhase(data.phase, phase - 1)
   }
 
@@ -261,12 +262,14 @@ class AiService {
     repo: string,
     messages: ChatMessage[],
     message: string,
+    guideContext?: GuideMentorContext,
   ): Promise<ChatResponse> {
     const data = await bffPost<any>('/ai/chat', this.withProviderConfig({
       owner,
       repo,
       message,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      ...(guideContext ? { guideContext } : {}),
     }))
     return {
       message: data.message,
@@ -374,11 +377,47 @@ class AiService {
 
   private mapRoadmapPhase(phase: any, idx: number): RoadmapPhase {
     const learningItems = phase?.learningItems || []
+    const actionSteps = Array.isArray(phase?.actionSteps)
+      ? phase.actionSteps.map((step: any, stepIndex: number) => ({
+          id: step?.id || `step-${idx + 1}-${stepIndex + 1}`,
+          title: step?.title || `Step ${stepIndex + 1}`,
+          description: step?.description || '',
+          commands: Array.isArray(step?.commands) ? step.commands : [],
+          expectedResult: step?.expectedResult || '',
+          checkboxLabel: step?.checkboxLabel || '我已经完成',
+          completed: false,
+        }))
+      : []
+    const fileRefs = Array.isArray(phase?.fileRefs)
+      ? phase.fileRefs
+          .filter((item: any) => item?.path)
+          .map((item: any) => ({
+            path: String(item.path),
+            reason: String(item.reason || '建议阅读'),
+            githubUrl: typeof item.githubUrl === 'string' ? item.githubUrl : undefined,
+          }))
+      : []
+    const reproduce = phase?.reproduce
+      ? {
+          title: phase.reproduce.title || '',
+          steps: Array.isArray(phase.reproduce.steps) ? phase.reproduce.steps : [],
+          constructExample: phase.reproduce.constructExample || '',
+          expectedBehavior: phase.reproduce.expectedBehavior || '',
+          actualBehavior: phase.reproduce.actualBehavior || '',
+          checkboxLabel: phase.reproduce.checkboxLabel || '我成功复现了问题',
+          completed: false,
+        }
+      : null
+
     return {
       id: `phase-${idx}`,
       phase: phase?.phase || idx + 1,
       title: phase?.title || '',
       goal: phase?.goal || '',
+      actionIntro: phase?.actionIntro || '',
+      actionSteps,
+      fileRefs,
+      reproduce,
       learningItems,
       recommendedIssues: phase?.recommendedIssues || [],
       estimatedDuration: phase?.estimatedDuration || '',

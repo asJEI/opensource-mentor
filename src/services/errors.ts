@@ -66,7 +66,11 @@ export function getConnectionErrorMessage(
       case ErrorCode.AI_INVALID_BASE_URL:
         return 'Base URL 无法访问'
       case ErrorCode.AI_RATE_LIMIT:
-        return 'AI 服务触发限流，请稍后重试'
+        if (/平台|BYOK|自己的 API Key/i.test(message)) return message
+        return (
+          message ||
+          'AI 服务商触发限流。请稍等 30～60 秒后重试；贡献指南可只重试失败章节。'
+        )
       case ErrorCode.GITHUB_RATE_LIMIT:
         return message.includes('重置')
           ? message

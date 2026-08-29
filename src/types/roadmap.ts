@@ -1,105 +1,114 @@
 /**
- * 路线图相关类型定义
+ * 贡献指南 / 路线图类型
  */
 
-/** 步骤状态（用户阅读进度） */
 export type RoadmapStepStatus = 'pending' | 'current' | 'completed'
 
-/** 章节 AI 生成状态 */
 export type RoadmapGenerationStatus =
   | 'queued'
   | 'generating'
   | 'ready'
   | 'failed'
 
-/** 路线图任务 */
 export interface RoadmapTask {
-  /** 任务 ID */
   id: string
-  /** 任务描述文本 */
   text: string
-  /** 是否已完成 */
   completed: boolean
 }
 
-/** 路线图步骤（旧版，向后兼容） */
-export interface RoadmapStep {
-  /** 步骤 ID */
+/** 真实仓库文件引用 */
+export interface GuideFileRef {
+  path: string
+  reason: string
+  githubUrl?: string
+}
+
+/** 可执行行动步骤 */
+export interface GuideActionStep {
   id: string
-  /** 第几天 */
-  day: number
-  /** 步骤标题 */
   title: string
-  /** 步骤描述 */
+  description?: string
+  commands?: string[]
+  expectedResult?: string
+  checkboxLabel?: string
+  completed?: boolean
+}
+
+/** 复现问题专用块 */
+export interface GuideReproduceBlock {
+  title?: string
+  steps: string[]
+  constructExample?: string
+  expectedBehavior?: string
+  actualBehavior?: string
+  checkboxLabel?: string
+  completed?: boolean
+}
+
+export interface RoadmapStep {
+  id: string
+  day: number
+  title: string
   description: string
-  /** 任务列表 */
   tasks: RoadmapTask[]
-  /** 预计时长（分钟） */
   duration: number
-  /** 当前状态 */
   status: RoadmapStepStatus
 }
 
-/** 路线图进度 */
 export interface RoadmapProgress {
-  /** 当前步骤索引 */
   currentStep: number
-  /** 总步骤数 */
   totalSteps: number
-  /** 已完成步骤数 */
   completedSteps: number
-  /** 完成百分比（0-100） */
   percentage: number
 }
 
-// ============================================================
-// 后端返回的新版路线图结构
-// ============================================================
-
-/** 路线图阶段（后端返回结构） */
 export interface RoadmapPhase {
-  /** 阶段 ID（前端生成） */
   id: string
-  /** 阶段编号（1-based） */
   phase: number
-  /** 阶段标题 */
   title: string
-  /** 阶段目标（1-2 句话） */
   goal: string
-  /** 学习内容列表 */
+  /** 章节导语 */
+  actionIntro?: string
+  /** 结构化行动步骤 */
+  actionSteps?: GuideActionStep[]
+  /** 建议阅读的真实文件 */
+  fileRefs?: GuideFileRef[]
+  /** 复现专用块（第 4 章等） */
+  reproduce?: GuideReproduceBlock | null
+  /** 兼容旧字段：纯文本要点 */
   learningItems: string[]
-  /** 推荐实践 Issue */
   recommendedIssues: string[]
-  /** 预计完成时间 */
   estimatedDuration: string
-  /** 难度等级 */
   difficulty: 'easy' | 'medium' | 'hard'
-  /** 完成标准 */
   completionCriteria: string[]
-  /** 推荐资源 */
   resources: string[]
-  /** 前端扩展：状态 */
   status: RoadmapStepStatus
-  /** 前端扩展：任务列表（由 learningItems 转换） */
   tasks: RoadmapTask[]
-  /** 前端扩展：AI 生成状态 */
   generationStatus?: RoadmapGenerationStatus
-  /** 前端扩展：本章生成失败原因 */
   generationError?: string | null
 }
 
-/** 学习路线图（后端返回结构） */
 export interface Roadmap {
-  /** 路线图标题 */
   title: string
-  /** 路线图简介 */
   description: string
-  /** 总预计时间 */
   totalEstimatedTime: string
-  /** 阶段列表 */
   phases: RoadmapPhase[]
-  /** 给学习者的建议 */
   tips: string[]
-  /** 生成置信度 */
   confidence: number
+}
+
+/** 带给 AI 导师的贡献指南上下文 */
+export interface GuideMentorContext {
+  owner: string
+  repo: string
+  defaultBranch?: string
+  issueNumber?: number
+  issueTitle?: string
+  phaseNumber: number
+  phaseTitle: string
+  phaseGoal?: string
+  completedPhases: Array<{ phase: number; title: string }>
+  currentStepTitle?: string
+  currentCommands?: string[]
+  stuckHint?: string
 }

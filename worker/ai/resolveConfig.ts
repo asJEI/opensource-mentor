@@ -182,7 +182,7 @@ export async function resolveAIClient(
   })
   if (!rateLimit.success) {
     throw new ApiError(
-      '平台 AI 请求过于频繁，请稍后重试或使用自己的 API Key',
+      '平台 AI 每分钟额度已用完。请稍等约 1 分钟再试，或在设置里改用自己的 API Key（BYOK 不受平台限流）。',
       429,
       {
         errorCode: ErrorCode.AI_RATE_LIMIT,

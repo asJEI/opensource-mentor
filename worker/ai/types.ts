@@ -106,10 +106,37 @@ export interface PrDraft {
   improvementSuggestions: string[]
 }
 
+export interface GuideFileRef {
+  path: string
+  reason: string
+}
+
+export interface GuideActionStep {
+  id?: string
+  title: string
+  description?: string
+  commands?: string[]
+  expectedResult?: string
+  checkboxLabel?: string
+}
+
+export interface GuideReproduceBlock {
+  title?: string
+  steps: string[]
+  constructExample?: string
+  expectedBehavior?: string
+  actualBehavior?: string
+  checkboxLabel?: string
+}
+
 export interface RoadmapPhase {
   phase: number
   title: string
   goal: string
+  actionIntro?: string
+  actionSteps?: GuideActionStep[]
+  fileRefs?: GuideFileRef[]
+  reproduce?: GuideReproduceBlock | null
   learningItems: string[]
   recommendedIssues: string[]
   estimatedDuration: string
@@ -125,6 +152,22 @@ export interface Roadmap {
   phases: RoadmapPhase[]
   tips: string[]
   confidence: number
+}
+
+/** 从前端贡献指南带入 AI 导师的进度上下文 */
+export interface GuideMentorContext {
+  owner: string
+  repo: string
+  defaultBranch?: string
+  issueNumber?: number
+  issueTitle?: string
+  phaseNumber: number
+  phaseTitle: string
+  phaseGoal?: string
+  completedPhases: Array<{ phase: number; title: string }>
+  currentStepTitle?: string
+  currentCommands?: string[]
+  stuckHint?: string
 }
 
 export interface ChatMessage {

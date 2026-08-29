@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, Repository, Issue } from '@/types'
+import type { ChatMessage, GuideMentorContext, Issue, Repository } from '@/types'
 import { aiService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
 
@@ -28,6 +28,8 @@ interface ChatState {
   currentOwner: string
   /** 当前关联的仓库 name */
   currentRepo: string
+  /** 从贡献指南带入的进度上下文 */
+  guideContext: GuideMentorContext | null
 
   // ---- Actions ----
   /**
@@ -42,6 +44,8 @@ interface ChatState {
   ) => Promise<void>
   /** 设置当前仓库 */
   setCurrentRepository: (owner: string, repo: string) => void
+  /** 设置 / 清除贡献指南上下文 */
+  setGuideContext: (context: GuideMentorContext | null) => void
   /** 清空聊天记录 */
   clearChat: () => void
   /** 设置流式传输状态 */
@@ -55,16 +59,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   currentOwner: 'microsoft',
   currentRepo: 'vscode',
+  guideContext: null,
 
   sendMessage: async (
     content: string,
     context?: { repo?: Repository; issue?: Issue },
   ) => {
-    const { currentOwner, currentRepo, messages } = get()
+    const { currentOwner, currentRepo, messages, guideContext } = get()
 
     // 确定使用的仓库
-    const owner = context?.repo?.owner || currentOwner
-    const repo = context?.repo?.name || currentRepo
+    const owner = context?.repo?.owner || guideContext?.owner || currentOwner
+    const repo = context?.repo?.name || guideContext?.repo || currentRepo
 
     // 添加用户消息
     const userMessage: ChatMessage = {
@@ -81,7 +86,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }))
 
     try {
-      const response = await aiService.chat(owner, repo, messages, content)
+      const response = await aiService.chat(
+        owner,
+        repo,
+        messages,
+        content,
+        guideContext || undefined,
+      )
 
       // 添加 AI 回复
       const assistantMessage: ChatMessage = {
@@ -105,11 +116,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ currentOwner: owner, currentRepo: repo })
   },
 
+  setGuideContext: (context) => {
+    set({ guideContext: context })
+  },
+
   clearChat: () =>
     set({
       messages: [],
       sessionId: null,
       error: null,
+      guideContext: null,
     }),
 
   setStreaming: (value: boolean) => set({ isStreaming: value }),

@@ -34,7 +34,7 @@ export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
 export const ERROR_CODE_MESSAGES: Record<ErrorCode, string> = {
   AI_PROVIDER_ERROR: 'AI 服务暂时不可用，请稍后重试',
   AI_AUTH_ERROR: 'AI API Key 无效或无权限',
-  AI_RATE_LIMIT: 'AI 服务触发限流，请稍后重试',
+  AI_RATE_LIMIT: 'AI 服务商触发限流。请稍等后重试，或改用自己的 API Key',
   AI_TIMEOUT: 'AI 请求超时，请稍后重试',
   AI_NETWORK_ERROR: '无法连接 AI 服务商，请稍后重试',
   AI_NOT_CONFIGURED: '平台 AI API 尚未配置',
