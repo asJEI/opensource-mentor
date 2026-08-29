@@ -2,8 +2,15 @@
  * 路线图相关类型定义
  */
 
-/** 步骤状态 */
+/** 步骤状态（用户阅读进度） */
 export type RoadmapStepStatus = 'pending' | 'current' | 'completed'
+
+/** 章节 AI 生成状态 */
+export type RoadmapGenerationStatus =
+  | 'queued'
+  | 'generating'
+  | 'ready'
+  | 'failed'
 
 /** 路线图任务 */
 export interface RoadmapTask {
@@ -75,6 +82,10 @@ export interface RoadmapPhase {
   status: RoadmapStepStatus
   /** 前端扩展：任务列表（由 learningItems 转换） */
   tasks: RoadmapTask[]
+  /** 前端扩展：AI 生成状态 */
+  generationStatus?: RoadmapGenerationStatus
+  /** 前端扩展：本章生成失败原因 */
+  generationError?: string | null
 }
 
 /** 学习路线图（后端返回结构） */

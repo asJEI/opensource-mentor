@@ -10,6 +10,8 @@ import {
   handleExplainIssue,
   handleGeneratePr,
   handleGenerateRoadmap,
+  handleGenerateRoadmapPhase,
+  handlePrepareRoadmapContext,
   handleRecommendIssues,
   handleTestAIConnection,
 } from './ai/routes'
@@ -137,6 +139,20 @@ export default {
         request.method === 'POST'
       ) {
         return await handleRecommendIssues(request, env)
+      }
+
+      if (
+        url.pathname === '/api/ai/generate-roadmap-context' &&
+        request.method === 'POST'
+      ) {
+        return await handlePrepareRoadmapContext(request, env)
+      }
+
+      if (
+        url.pathname === '/api/ai/generate-roadmap-phase' &&
+        request.method === 'POST'
+      ) {
+        return await handleGenerateRoadmapPhase(request, env)
       }
 
       if (

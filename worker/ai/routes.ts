@@ -8,9 +8,10 @@ import { generatePrDraft } from './generatePr'
 import { isRecord } from './json'
 import { recommendIssues } from './recommend'
 import { resolveAIClient } from './resolveConfig'
-import { generateRoadmap } from './roadmap'
+import { generateRoadmap, generateRoadmapPhase } from './roadmap'
+import { GUIDE_PHASE_TITLES } from './prompts/roadmap'
 import { testAIConnection } from './testConnection'
-import type { ChatMessage, UserProfileContext } from './types'
+import type { ChatMessage, RepositoryDto, UserProfileContext } from './types'
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim()) {
@@ -529,17 +530,11 @@ export async function handleRecommendIssues(
   return success(recommendation)
 }
 
-/** POST /api/ai/generate-roadmap */
-export async function handleGenerateRoadmap(
+async function prepareRoadmapSharedContext(
   request: Request,
   env: PlatformEnv,
-): Promise<Response> {
-  const body = await parseJsonBody(request)
-  if (!isRecord(body)) {
-    throw new ApiError('请求体必须是 JSON 对象', 400, {
-      errorCode: 'VALIDATION_ERROR',
-    })
-  }
+  body: Record<string, unknown>,
+) {
   const { owner, repo } = requireOwnerRepo(body)
   const userLevel =
     body.userLevel === 'beginner' ||
@@ -548,7 +543,6 @@ export async function handleGenerateRoadmap(
       ? body.userLevel
       : undefined
   const userProfile = parseUserProfile(body.userProfile, userLevel)
-  const { client } = await resolveAIClient(env, request, body)
   const github = createGitHubService(request, env)
 
   let issueContext = isRecord(body.issueContext) ? body.issueContext : undefined
@@ -556,6 +550,27 @@ export async function handleGenerateRoadmap(
     isRecord(issueContext?.issue) ? issueContext.issue.number : NaN,
   )
   const hasSelectedIssue = Number.isFinite(issueNumber) && issueNumber > 0
+
+  // 若客户端已携带准备好的上下文，跳过重复 GitHub 拉取
+  const cachedRepository = isRecord(body.repository)
+    ? (body.repository as unknown as RepositoryDto)
+    : null
+  const cachedReadme = typeof body.readme === 'string' ? body.readme : null
+  const cachedRepoContext = isRecord(body.repositoryContext)
+    ? body.repositoryContext
+    : null
+
+  if (cachedRepository && cachedReadme !== null && cachedRepoContext) {
+    return {
+      owner,
+      repo,
+      userProfile,
+      repository: cachedRepository,
+      readme: cachedReadme,
+      repositoryContext: cachedRepoContext,
+      issueContext,
+    }
+  }
 
   const [repository, readme, liveIssue] = await Promise.all([
     github.getRepository(owner, repo),
@@ -581,10 +596,6 @@ export async function handleGenerateRoadmap(
     }
   }
 
-  // 已选定目标 Issue 时不再额外拉 good first issue，节省请求时间
-  const goodFirstIssues: Awaited<ReturnType<typeof github.getIssues>>['items'] =
-    []
-
   const repositoryContext = await collectRoadmapRepositoryContext(
     github,
     owner,
@@ -594,13 +605,111 @@ export async function handleGenerateRoadmap(
     issueContext,
   )
 
-  const roadmap = await generateRoadmap(client, {
+  return {
+    owner,
+    repo,
+    userProfile,
     repository,
     readme,
-    userProfile,
-    goodFirstIssues,
     repositoryContext,
     issueContext,
+  }
+}
+
+/** POST /api/ai/generate-roadmap-context — 只准备仓库上下文，不调用 LLM */
+export async function handlePrepareRoadmapContext(
+  request: Request,
+  env: PlatformEnv,
+): Promise<Response> {
+  const body = await parseJsonBody(request)
+  if (!isRecord(body)) {
+    throw new ApiError('请求体必须是 JSON 对象', 400, {
+      errorCode: 'VALIDATION_ERROR',
+    })
+  }
+
+  const prepared = await prepareRoadmapSharedContext(request, env, body)
+  const issue = isRecord(prepared.issueContext?.issue)
+    ? prepared.issueContext.issue
+    : null
+  const issueLabel =
+    typeof issue?.number === 'number' && typeof issue?.title === 'string'
+      ? `#${issue.number} ${issue.title}`
+      : prepared.repository.fullName
+
+  return success({
+    title: `贡献指南：${issueLabel}`,
+    description: '围绕当前 Issue 分步理解问题、准备环境、复现并提交 PR。',
+    totalEstimatedTime: '待确认',
+    phaseTitles: [...GUIDE_PHASE_TITLES],
+    repository: prepared.repository,
+    readme: prepared.readme,
+    repositoryContext: prepared.repositoryContext,
+    issueContext: prepared.issueContext || null,
+  })
+}
+
+/** POST /api/ai/generate-roadmap-phase — 生成单章，供前端渐进展示 */
+export async function handleGenerateRoadmapPhase(
+  request: Request,
+  env: PlatformEnv,
+): Promise<Response> {
+  const body = await parseJsonBody(request)
+  if (!isRecord(body)) {
+    throw new ApiError('请求体必须是 JSON 对象', 400, {
+      errorCode: 'VALIDATION_ERROR',
+    })
+  }
+
+  const phaseNumber = Number(body.phase)
+  if (
+    !Number.isInteger(phaseNumber) ||
+    phaseNumber < 1 ||
+    phaseNumber > GUIDE_PHASE_TITLES.length
+  ) {
+    throw new ApiError('phase 必须是 1-7 的整数', 400, {
+      errorCode: 'VALIDATION_ERROR',
+    })
+  }
+
+  const { client } = await resolveAIClient(env, request, body)
+  const prepared = await prepareRoadmapSharedContext(request, env, body)
+  const phase = await generateRoadmapPhase(client, {
+    repository: prepared.repository,
+    readme: prepared.readme,
+    userProfile: prepared.userProfile,
+    repositoryContext: prepared.repositoryContext,
+    issueContext: prepared.issueContext,
+    phaseNumber,
+  })
+
+  return success({
+    phase,
+    tips: [],
+  })
+}
+
+/** POST /api/ai/generate-roadmap */
+export async function handleGenerateRoadmap(
+  request: Request,
+  env: PlatformEnv,
+): Promise<Response> {
+  const body = await parseJsonBody(request)
+  if (!isRecord(body)) {
+    throw new ApiError('请求体必须是 JSON 对象', 400, {
+      errorCode: 'VALIDATION_ERROR',
+    })
+  }
+  const { client } = await resolveAIClient(env, request, body)
+  const prepared = await prepareRoadmapSharedContext(request, env, body)
+
+  const roadmap = await generateRoadmap(client, {
+    repository: prepared.repository,
+    readme: prepared.readme,
+    userProfile: prepared.userProfile,
+    goodFirstIssues: [],
+    repositoryContext: prepared.repositoryContext,
+    issueContext: prepared.issueContext,
   })
   return success(roadmap)
 }

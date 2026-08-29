@@ -8,6 +8,7 @@ import type {
   ChatMessage,
   PrDraft,
   Roadmap,
+  RoadmapPhase,
   RepoAnalysis,
   IssueRecommendation,
   ChatResponse,
@@ -177,7 +178,63 @@ class AiService {
   }
 
   /**
-   * AI 生成学习路线图
+   * 准备贡献指南上下文（不调用 LLM）
+   * POST /api/ai/generate-roadmap-context
+   */
+  async prepareRoadmapContext(
+    owner: string,
+    repo: string,
+    userProfile: UserProfileContext,
+    issueContext?: Record<string, unknown>,
+  ): Promise<{
+    title: string
+    description: string
+    totalEstimatedTime: string
+    phaseTitles: string[]
+    repository: Record<string, unknown>
+    readme: string
+    repositoryContext: Record<string, unknown>
+    issueContext: Record<string, unknown> | null
+  }> {
+    return bffPost('/ai/generate-roadmap-context', this.withProviderConfig({
+      owner,
+      repo,
+      userProfile,
+      issueContext,
+    }), { timeout: 60_000 })
+  }
+
+  /**
+   * 生成贡献指南单章
+   * POST /api/ai/generate-roadmap-phase
+   */
+  async generateRoadmapPhase(
+    owner: string,
+    repo: string,
+    phase: number,
+    userProfile: UserProfileContext,
+    shared: {
+      repository: Record<string, unknown>
+      readme: string
+      repositoryContext: Record<string, unknown>
+      issueContext?: Record<string, unknown> | null
+    },
+  ): Promise<RoadmapPhase> {
+    const data = await bffPost<any>('/ai/generate-roadmap-phase', this.withProviderConfig({
+      owner,
+      repo,
+      phase,
+      userProfile,
+      repository: shared.repository,
+      readme: shared.readme,
+      repositoryContext: shared.repositoryContext,
+      issueContext: shared.issueContext || undefined,
+    }), { timeout: 70_000 })
+    return this.mapRoadmapPhase(data.phase, phase - 1)
+  }
+
+  /**
+   * AI 生成学习路线图（全量，兼容）
    * POST /api/ai/generate-roadmap
    */
   async generateRoadmap(
@@ -315,30 +372,38 @@ class AiService {
     }
   }
 
+  private mapRoadmapPhase(phase: any, idx: number): RoadmapPhase {
+    const learningItems = phase?.learningItems || []
+    return {
+      id: `phase-${idx}`,
+      phase: phase?.phase || idx + 1,
+      title: phase?.title || '',
+      goal: phase?.goal || '',
+      learningItems,
+      recommendedIssues: phase?.recommendedIssues || [],
+      estimatedDuration: phase?.estimatedDuration || '',
+      difficulty: phase?.difficulty || 'medium',
+      completionCriteria: phase?.completionCriteria || [],
+      resources: phase?.resources || [],
+      status: idx === 0 ? 'current' : 'pending',
+      tasks: learningItems.map((item: string, ti: number) => ({
+        id: `task-${idx}-${ti}`,
+        text: item,
+        completed: false,
+      })),
+      generationStatus: 'ready',
+      generationError: null,
+    }
+  }
+
   private mapRoadmap(data: any): Roadmap {
     return {
       title: data.title || '',
       description: data.description || '',
       totalEstimatedTime: data.totalEstimatedTime || '',
-      phases: (data.phases || []).map((phase: any, idx: number) => ({
-        id: `phase-${idx}`,
-        phase: phase.phase || idx + 1,
-        title: phase.title || '',
-        goal: phase.goal || '',
-        learningItems: phase.learningItems || [],
-        recommendedIssues: phase.recommendedIssues || [],
-        estimatedDuration: phase.estimatedDuration || '',
-        difficulty: phase.difficulty || 'medium',
-        completionCriteria: phase.completionCriteria || [],
-        resources: phase.resources || [],
-        // 前端扩展字段
-        status: idx === 0 ? 'current' : 'pending',
-        tasks: (phase.learningItems || []).map((item: string, ti: number) => ({
-          id: `task-${idx}-${ti}`,
-          text: item,
-          completed: false,
-        })),
-      })),
+      phases: (data.phases || []).map((phase: any, idx: number) =>
+        this.mapRoadmapPhase(phase, idx),
+      ),
       tips: data.tips || [],
       confidence: data.confidence || 0.7,
     }

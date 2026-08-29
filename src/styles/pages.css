@@ -3439,6 +3439,126 @@
   flex-shrink: 0;
 }
 
+.guide-stream-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  color: var(--ink-2);
+  background: var(--accent-soft);
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.guide-step-cards {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.guide-step-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 84px;
+  padding: 12px;
+  color: var(--ink-2);
+  background: var(--bg-white);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.guide-step-card:hover,
+.guide-step-card.active {
+  border-color: rgba(129, 140, 248, 0.45);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.guide-step-card.ready {
+  color: var(--ink);
+}
+
+.guide-step-card.generating {
+  border-color: rgba(129, 140, 248, 0.55);
+}
+
+.guide-step-card.failed {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--danger);
+}
+
+.guide-step-card-number {
+  color: var(--muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.guide-step-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.guide-step-card-body strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.guide-step-card-body em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.guide-step-card-spinner,
+.guide-nav-dot {
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+  border: 2px solid rgba(129, 140, 248, 0.25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: guideSpin 0.8s linear infinite;
+}
+
+.guide-nav-item.generating {
+  border-color: rgba(129, 140, 248, 0.35);
+}
+
+.guide-phase-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 28px 0;
+  color: var(--muted);
+}
+
+@keyframes guideSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1100px) {
+  .guide-step-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .guide-step-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .guide-progress-pill {
   display: inline-flex;
   align-items: center;

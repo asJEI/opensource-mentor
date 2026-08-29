@@ -110,6 +110,19 @@ function EvidenceList({ title, items }: { title: string; items: string[] }) {
   )
 }
 
+function generationLabel(status?: RoadmapPhase['generationStatus']) {
+  switch (status) {
+    case 'ready':
+      return '已生成'
+    case 'generating':
+      return '生成中'
+    case 'failed':
+      return '失败'
+    default:
+      return '排队中'
+  }
+}
+
 function GuideArticle({
   section,
   isCompleted,
@@ -136,8 +149,39 @@ function GuideArticle({
   isLast: boolean
 }) {
   const phase = section.phase
+  const generationStatus = phase?.generationStatus
   const title = phase?.title || section.title
-  const goal = phase?.goal || '这一章还没有生成内容，请重新生成贡献指南。'
+
+  if (generationStatus === 'generating' || generationStatus === 'queued') {
+    return (
+      <article className="guide-reader">
+        <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
+        <h2>{title}</h2>
+        <div className="guide-phase-loading">
+          <div className="ai-loading-spinner" />
+          <p>
+            {generationStatus === 'generating'
+              ? '正在生成本章内容，请稍候…'
+              : '排队等待生成，可先阅读已完成的章节。'}
+          </p>
+        </div>
+      </article>
+    )
+  }
+
+  if (generationStatus === 'failed') {
+    return (
+      <article className="guide-reader">
+        <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
+        <h2>{title}</h2>
+        <p className="guide-reader-goal">
+          {phase?.generationError || '本章生成失败，请点击上方「重新生成」。'}
+        </p>
+      </article>
+    )
+  }
+
+  const goal = phase?.goal || '这一章还没有生成内容。'
   const learningItems = phase?.learningItems || []
   const completionCriteria = phase?.completionCriteria || []
   const resources = phase?.resources || []
@@ -160,12 +204,11 @@ function GuideArticle({
       <EvidenceList title={section.criteriaTitle} items={completionCriteria} />
       <EvidenceList title={section.resourcesTitle} items={resources} />
 
-      {isLast && (
+      {isLast && generationStatus === 'ready' && (
         <section className="guide-content-block guide-action-block">
           <h3>提交前的最后两步</h3>
           <p>
-            先用现有代码审查功能检查你的修改，再进入 PR 生成器整理标题、说明、测试方式和项目要求。
-            遇到卡点也可以去 AI 导师继续追问。
+            先用代码审查检查修改，再进入 PR 生成器整理说明。遇到卡点也可以问 AI 导师。
           </p>
           <div className="guide-action-row">
             <Button variant="secondary" onClick={onCodeReview}>去代码审查</Button>
@@ -175,10 +218,10 @@ function GuideArticle({
         </section>
       )}
 
-      {!isLast && (
+      {!isLast && generationStatus === 'ready' && (
         <section className="guide-content-block guide-action-block">
           <h3>卡住了？</h3>
-          <p>可以随时带着当前章节问题去问 AI 导师，或回到 Issue 分析页补充上下文。</p>
+          <p>可以带着当前章节问题去问 AI 导师。</p>
           <div className="guide-action-row">
             <Button variant="secondary" onClick={onMentor}>问 AI 导师</Button>
           </div>
@@ -193,6 +236,7 @@ function GuideArticle({
           variant={isCompleted ? 'secondary' : 'primary'}
           onClick={onComplete}
           icon={<CheckIcon />}
+          disabled={generationStatus !== 'ready'}
         >
           {isCompleted ? '已标记完成' : '标记本章完成'}
         </Button>
@@ -207,7 +251,9 @@ function GuideArticle({
 const Roadmap = () => {
   const roadmap = useRoadmapStore((s) => s.roadmap)
   const steps = useRoadmapStore((s) => s.steps)
+  const progress = useRoadmapStore((s) => s.progress)
   const isLoading = useRoadmapStore((s) => s.isLoading)
+  const isGeneratingMore = useRoadmapStore((s) => s.isGeneratingMore)
   const error = useRoadmapStore((s) => s.error)
   const loadRoadmap = useRoadmapStore((s) => s.loadRoadmap)
   const updateStepStatus = useRoadmapStore((s) => s.updateStepStatus)
@@ -220,23 +266,31 @@ const Roadmap = () => {
   )
   const navigate = useNavigate()
   const [activeIndex, setActiveIndex] = useState(0)
+  const [hasAutoFocused, setHasAutoFocused] = useState(false)
 
   useEffect(() => {
     if (currentOwner && currentRepoName && activeContributionIssue) {
+      setHasAutoFocused(false)
       loadRoadmap(currentOwner, currentRepoName)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOwner, currentRepoName, profileSignature, activeContributionIssue?.id])
 
+  // 第一章就绪后自动聚焦阅读
   useEffect(() => {
-    const currentIdx = steps.findIndex((step) => step.status === 'current')
-    if (currentIdx >= 0) setActiveIndex(currentIdx)
-  }, [steps])
+    if (hasAutoFocused) return
+    const firstReady = steps.findIndex((step) => step.generationStatus === 'ready')
+    if (firstReady >= 0) {
+      setActiveIndex(firstReady)
+      setHasAutoFocused(true)
+    }
+  }, [steps, hasAutoFocused])
 
   const sections = useMemo(() => normalizeSections(steps), [steps])
   const activeSection = sections[activeIndex] || sections[0]
   const completedCount = sections.filter((section) => section.phase?.status === 'completed').length
-  const hasData = steps.length > 0
+  const readyCount = sections.filter((section) => section.phase?.generationStatus === 'ready').length
+  const hasShell = steps.length > 0
   const issueTitle = activeContributionIssue
     ? `#${activeContributionIssue.issueNumber} ${activeContributionIssue.title}`
     : ''
@@ -246,11 +300,12 @@ const Roadmap = () => {
       navigate('/issues')
       return
     }
+    setHasAutoFocused(false)
     loadRoadmap(currentOwner, currentRepoName, { force: true })
   }
 
   const handleComplete = () => {
-    if (!activeSection?.phase?.id) return
+    if (!activeSection?.phase?.id || activeSection.phase.generationStatus !== 'ready') return
     updateStepStatus(activeSection.phase.id, 'completed')
     showToast('success', '已记录进度', `「${activeSection.title}」已完成`)
     if (activeIndex < sections.length - 1) {
@@ -277,42 +332,16 @@ const Roadmap = () => {
     )
   }
 
-  if (isLoading && !hasData) {
-    return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
-        <div className="app-page active">
-          <div className="ai-loading active">
-            <div className="ai-loading-spinner" />
-            <div className="ai-loading-title">正在生成贡献指南...</div>
-            <div className="ai-loading-desc">
-              正在读取 README、贡献文档、文件树与「{issueTitle}」，整理可执行的贡献指南（可能需要一两分钟）
-            </div>
-          </div>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  if (error && !hasData) {
-    return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
-        <div className="app-page active roadmap-shell">
-          <ErrorState error={error} onRetry={handleRetry} />
-        </div>
-      </AppLayout>
-    )
-  }
-
-  if (!isLoading && !hasData) {
+  if (error && !hasShell) {
     return (
       <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
         <div className="app-page active roadmap-shell">
           <AiPageError
-            title="还没有可阅读的贡献指南"
-            message={`已选定「${issueTitle}」，点击下方按钮基于真实仓库上下文生成贡献指南。`}
+            className="roadmap-error"
+            title="贡献指南加载失败"
+            message={error}
             onRetry={handleRetry}
-            retryLabel="生成贡献指南"
-            showSettingsLink={false}
+            retryLabel="重新加载"
           />
         </div>
       </AppLayout>
@@ -327,19 +356,56 @@ const Roadmap = () => {
             <span className="guide-eyebrow">贡献指南</span>
             <h1>{roadmap?.title || `围绕 ${issueTitle} 的贡献指南`}</h1>
             <p>
-              围绕「{issueTitle}」理解问题、准备环境、复现并准备 PR。
-              文中涉及文件与命令均应来自真实仓库上下文；未确认处会明确标注。
+              围绕「{issueTitle}」按步骤生成。第一章就绪即可先读，后续章节在后台继续生成。
             </p>
           </div>
           <div className="guide-header-actions">
             <span className="guide-progress-pill">
-              已完成 {completedCount}/{sections.length}
+              已生成 {readyCount}/{sections.length || 7}
+              {completedCount > 0 ? ` · 已完成 ${completedCount}` : ''}
             </span>
             <Button variant="secondary" onClick={handleRetry} loading={isLoading} icon={<RefreshIcon />}>
               重新生成
             </Button>
           </div>
         </header>
+
+        {(isLoading || isGeneratingMore) && (
+          <div className="guide-stream-banner">
+            {isLoading
+              ? '正在读取仓库文档与 Issue 上下文…'
+              : `后台继续生成后续章节（${progress.percentage}%）`}
+          </div>
+        )}
+
+        <div className="guide-step-cards">
+          {sections.map((section, index) => {
+            const status = section.phase?.generationStatus || 'queued'
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className={clsx(
+                  'guide-step-card',
+                  index === activeIndex && 'active',
+                  status === 'ready' && 'ready',
+                  status === 'generating' && 'generating',
+                  status === 'failed' && 'failed',
+                  section.phase?.status === 'completed' && 'completed',
+                )}
+                onClick={() => setActiveIndex(index)}
+              >
+                <span className="guide-step-card-number">{section.number}</span>
+                <span className="guide-step-card-body">
+                  <strong>{section.title}</strong>
+                  <em>{generationLabel(status)}</em>
+                </span>
+                {status === 'generating' && <span className="guide-step-card-spinner" />}
+                {status === 'ready' && section.phase?.status === 'completed' && <CheckIcon />}
+              </button>
+            )
+          })}
+        </div>
 
         <div className="guide-layout">
           <aside className="guide-sidebar">
@@ -353,36 +419,27 @@ const Roadmap = () => {
                     index === activeIndex && 'active',
                     section.phase?.status === 'current' && 'current',
                     section.phase?.status === 'completed' && 'completed',
+                    section.phase?.generationStatus === 'generating' && 'generating',
                   )}
                   onClick={() => setActiveIndex(index)}
                 >
                   <span className="guide-nav-number">{section.number}</span>
                   <span>{section.title}</span>
-                  {section.phase?.status === 'completed' && <CheckIcon />}
+                  {section.phase?.generationStatus === 'ready' &&
+                    section.phase?.status === 'completed' && <CheckIcon />}
+                  {section.phase?.generationStatus === 'generating' && (
+                    <span className="guide-nav-dot" />
+                  )}
                 </button>
               ))}
             </nav>
-            {roadmap?.tips && roadmap.tips.length > 0 && (
-              <div className="guide-sidebar-tips">
-                <div className="guide-sidebar-title">全局提示</div>
-                <ul>
-                  {roadmap.tips.slice(0, 4).map((tip, index) => (
-                    <li key={`tip-${index}`}>{tip}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </aside>
 
           {activeSection && (
             <GuideArticle
               section={activeSection}
               isCompleted={activeSection.phase?.status === 'completed'}
-              isCurrent={
-                activeSection.phase?.status === 'current' ||
-                (activeSection.phase?.status !== 'completed' &&
-                  activeIndex === sections.findIndex((s) => s.phase?.status === 'current'))
-              }
+              isCurrent={activeSection.phase?.status === 'current'}
               isFirst={activeIndex === 0}
               isLast={activeIndex === sections.length - 1}
               onComplete={handleComplete}
@@ -396,18 +453,6 @@ const Roadmap = () => {
         </div>
       </div>
     </AppLayout>
-  )
-}
-
-function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
-  return (
-    <AiPageError
-      className="roadmap-error"
-      title="贡献指南加载失败"
-      message={error}
-      onRetry={onRetry}
-      retryLabel="重新加载"
-    />
   )
 }
 

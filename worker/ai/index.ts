@@ -17,6 +17,8 @@ export {
   handleExplainIssue,
   handleGeneratePr,
   handleGenerateRoadmap,
+  handleGenerateRoadmapPhase,
+  handlePrepareRoadmapContext,
   handleRecommendIssues,
   handleTestAIConnection,
 } from './routes'

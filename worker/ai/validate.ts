@@ -5,8 +5,10 @@ import type {
   PrDraft,
   RepoAnalysis,
   Roadmap,
+  RoadmapPhase,
   UserProfileContext,
 } from './types'
+import { GUIDE_PHASE_TITLES } from './prompts/roadmap'
 
 export function validateRepoAnalysisResult(
   parsed: Record<string, unknown>,
@@ -164,18 +166,31 @@ export function validatePrDraftResult(
   }
 }
 
+export function validateRoadmapPhaseResult(
+  parsed: Record<string, unknown>,
+  phaseNumber: number,
+): RoadmapPhase {
+  const title = GUIDE_PHASE_TITLES[phaseNumber - 1] || `第 ${phaseNumber} 章`
+  return {
+    phase: phaseNumber,
+    title,
+    goal: String(parsed.goal || '本章内容暂未生成，请稍后重试。'),
+    learningItems: ensureStringArray(parsed.learningItems),
+    recommendedIssues: ensureStringArray(parsed.recommendedIssues),
+    estimatedDuration: String(parsed.estimatedDuration || '待确认'),
+    difficulty: ensureEnum(
+      parsed.difficulty,
+      ['easy', 'medium', 'hard'] as const,
+      'medium',
+    ),
+    completionCriteria: ensureStringArray(parsed.completionCriteria),
+    resources: ensureStringArray(parsed.resources),
+  }
+}
+
 export function validateRoadmapResult(
   parsed: Record<string, unknown>,
 ): Roadmap {
-  const guideTitles = [
-    '大致了解',
-    '环境准备',
-    '理解项目',
-    '复现问题',
-    '修正方案',
-    '实现与验证',
-    'PR 提交',
-  ]
   const phases = Array.isArray(parsed.phases) ? parsed.phases : []
   const parsedPhases = phases.filter(isRecord)
 
@@ -185,27 +200,12 @@ export function validateRoadmapResult(
       parsed.description || '围绕当前 Issue 理解问题、准备环境、完成修改并提交 PR。',
     ),
     totalEstimatedTime: String(parsed.totalEstimatedTime || '待确认'),
-    phases: guideTitles.map((title, idx) => {
+    phases: GUIDE_PHASE_TITLES.map((title, idx) => {
       const phase =
         parsedPhases.find((item) => Number(item.phase) === idx + 1) ||
         parsedPhases.find((item) => String(item.title || '').includes(title)) ||
         {}
-
-      return {
-        phase: idx + 1,
-        title,
-        goal: String(phase.goal || '本章内容暂未生成，请重新生成贡献指南。'),
-        learningItems: ensureStringArray(phase.learningItems),
-        recommendedIssues: ensureStringArray(phase.recommendedIssues),
-        estimatedDuration: String(phase.estimatedDuration || '待确认'),
-        difficulty: ensureEnum(
-          phase.difficulty,
-          ['easy', 'medium', 'hard'] as const,
-          'medium',
-        ),
-        completionCriteria: ensureStringArray(phase.completionCriteria),
-        resources: ensureStringArray(phase.resources),
-      }
+      return validateRoadmapPhaseResult(phase, idx + 1)
     }),
     tips: ensureStringArray(parsed.tips),
     confidence: Number(parsed.confidence) || 0.7,

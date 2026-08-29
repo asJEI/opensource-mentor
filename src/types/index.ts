@@ -51,6 +51,7 @@ export type {
   RoadmapTask,
   RoadmapProgress,
   RoadmapStepStatus,
+  RoadmapGenerationStatus,
   Roadmap,
   RoadmapPhase,
 } from './roadmap'
