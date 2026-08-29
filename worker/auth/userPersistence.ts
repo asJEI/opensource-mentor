@@ -24,9 +24,36 @@ export type DeveloperProfilePatch = {
 
 const APP_USER_SELECT = '*'
 const DEVELOPER_PROFILE_SELECT = '*'
+const OPTIONAL_PROFILE_COLUMNS = [
+  'github_profile',
+  'developer_profile',
+  'open_source_goal',
+  'preferred_tech_stack',
+  'contribution_time_budget',
+  'guidance_preference',
+] as const
 
 function encodeQuery(value: string | number): string {
   return encodeURIComponent(String(value))
+}
+
+function hasColumn(row: DeveloperProfileRow, column: string): boolean {
+  return Object.prototype.hasOwnProperty.call(row, column)
+}
+
+function pickKnownProfilePatch(
+  row: DeveloperProfileRow,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(patch).filter(([key]) => {
+      if (key === 'updated_at') return hasColumn(row, key)
+      if ((OPTIONAL_PROFILE_COLUMNS as readonly string[]).includes(key)) {
+        return hasColumn(row, key)
+      }
+      return true
+    }),
+  )
 }
 
 async function findAppUserByGitHubId(
@@ -108,8 +135,6 @@ async function insertDeveloperProfile(
   const base = {
     profile_setup_status: 'not_started',
     profile_confirmed: false,
-    github_profile: githubProfile,
-    developer_profile: developerProfile,
   }
 
   const inserted = await supabase.request<DeveloperProfileRow[]>(
@@ -139,7 +164,68 @@ async function insertDeveloperProfile(
   if (!inserted[0]) {
     throw new ApiError('创建 Developer Profile 失败', 502)
   }
-  return inserted[0]
+  return patchProfileSnapshot(
+    env,
+    inserted[0],
+    appUserId,
+    githubProfile,
+    developerProfile,
+  )
+}
+
+async function patchDeveloperProfile(
+  env: PlatformEnv,
+  existing: DeveloperProfileRow,
+  appUserId: string,
+  patch: Record<string, unknown>,
+): Promise<DeveloperProfileRow> {
+  const relationColumn = existing.user_id ? 'user_id' : 'app_user_id'
+  const supabase = createSupabaseClient(env)
+  const knownPatch = pickKnownProfilePatch(existing, patch)
+
+  if (Object.keys(knownPatch).length === 0) return existing
+
+  const updated = await supabase.request<DeveloperProfileRow[]>(
+    `/developer_profiles?${relationColumn}=eq.${encodeQuery(appUserId)}&select=${DEVELOPER_PROFILE_SELECT}`,
+    {
+      method: 'PATCH',
+      prefer: 'return=representation',
+      body: JSON.stringify(knownPatch),
+    },
+  )
+  return updated[0] ?? existing
+}
+
+async function patchProfileSnapshot(
+  env: PlatformEnv,
+  existing: DeveloperProfileRow,
+  appUserId: string,
+  githubProfile?: unknown,
+  developerProfile?: unknown,
+): Promise<DeveloperProfileRow> {
+  const patch = pickKnownProfilePatch(existing, {
+    github_profile: githubProfile,
+    developer_profile: developerProfile,
+    updated_at: new Date().toISOString(),
+  })
+  if (Object.keys(patch).length === 0) return existing
+
+  try {
+    return await patchDeveloperProfile(env, existing, appUserId, patch)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (
+      message.includes('Could not find') ||
+      message.includes('column') ||
+      message.includes('schema cache')
+    ) {
+      console.warn(
+        '[supabase] developer profile snapshot columns unavailable, skipping optional profile persistence',
+      )
+      return existing
+    }
+    throw error
+  }
 }
 
 export async function persistOAuthUser(
@@ -152,21 +238,14 @@ export async function persistOAuthUser(
   const existingProfile = await findDeveloperProfile(env, appUser.id)
 
   if (existingProfile) {
-    const relationColumn = existingProfile.user_id ? 'user_id' : 'app_user_id'
-    const supabase = createSupabaseClient(env)
-    const updated = await supabase.request<DeveloperProfileRow[]>(
-      `/developer_profiles?${relationColumn}=eq.${encodeQuery(appUser.id)}&select=${DEVELOPER_PROFILE_SELECT}`,
-      {
-        method: 'PATCH',
-        prefer: 'return=representation',
-        body: JSON.stringify({
-          github_profile: githubProfile,
-          developer_profile: developerProfile,
-          updated_at: new Date().toISOString(),
-        }),
-      },
+    const updated = await patchProfileSnapshot(
+      env,
+      existingProfile,
+      appUser.id,
+      githubProfile,
+      developerProfile,
     )
-    return { appUser, developerProfile: updated[0] ?? existingProfile }
+    return { appUser, developerProfile: updated }
   }
 
   if (!isNew) {
@@ -212,19 +291,30 @@ export async function updateDeveloperProfile(
   if (!existing) {
     throw new ApiError('Developer Profile 不存在', 404)
   }
-  const relationColumn = existing.user_id ? 'user_id' : 'app_user_id'
-  const supabase = createSupabaseClient(env)
-  const updated = await supabase.request<DeveloperProfileRow[]>(
-    `/developer_profiles?${relationColumn}=eq.${encodeQuery(appUserId)}&select=${DEVELOPER_PROFILE_SELECT}`,
-    {
-      method: 'PATCH',
-      prefer: 'return=representation',
-      body: JSON.stringify({
-        ...patch,
-        updated_at: new Date().toISOString(),
-      }),
-    },
-  )
-  if (!updated[0]) throw new ApiError('更新 Developer Profile 失败', 502)
-  return updated[0]
+  const cleanPatch = pickKnownProfilePatch(existing, {
+    ...patch,
+    updated_at: new Date().toISOString(),
+  })
+  const updated = await patchDeveloperProfile(
+    env,
+    existing,
+    appUserId,
+    cleanPatch,
+  ).catch(async (error) => {
+    const fallbackPatch = {
+      profile_setup_status: patch.profile_setup_status,
+      profile_confirmed: patch.profile_confirmed,
+      updated_at: new Date().toISOString(),
+    }
+    return patchDeveloperProfile(
+      env,
+      existing,
+      appUserId,
+      Object.fromEntries(
+        Object.entries(fallbackPatch).filter(([, value]) => value !== undefined),
+      ),
+    )
+  })
+  if (!updated) throw new ApiError('更新 Developer Profile 失败', 502)
+  return updated
 }
