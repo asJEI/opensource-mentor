@@ -887,7 +887,7 @@ const Dashboard = () => {
           <>
             <JourneyActions
               title="仓库已理解，选择下一步"
-              description="推荐先从适合的 Issue 开始，也可以先看学习路线或直接问 AI Mentor。"
+              description="推荐先从适合的 Issue 开始，也可以先看 Contribution Guide 或直接问 AI Mentor。"
               paths={[
                 {
                   title: '查看推荐 Issue',
@@ -896,8 +896,8 @@ const Dashboard = () => {
                   primary: true,
                 },
                 {
-                  title: '生成学习路线',
-                  description: '按阶段规划这次贡献要学什么',
+                  title: '打开 Contribution Guide',
+                  description: '围绕当前 Issue 阅读贡献指南',
                   path: '/roadmap',
                 },
                 {

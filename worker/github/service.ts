@@ -210,6 +210,55 @@ export class GitHubService {
       return null
     }
   }
+
+  async getRawFile(
+    owner: string,
+    repo: string,
+    path: string,
+  ): Promise<string> {
+    try {
+      const { data } = await this.client.getJson<string>(
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path
+          .split('/')
+          .map(encodeURIComponent)
+          .join('/')}`,
+        { accept: 'application/vnd.github.v3.raw' },
+      )
+      return typeof data === 'string' ? data : JSON.stringify(data)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return ''
+      }
+      throw error
+    }
+  }
+
+  async getRepositoryTree(
+    owner: string,
+    repo: string,
+    branch: string,
+  ): Promise<Array<{ path: string; type: 'blob' | 'tree' }>> {
+    if (!branch) return []
+    try {
+      const { data } = await this.client.getJson<{
+        tree?: Array<{ path?: string; type?: string }>
+      }>(
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}`,
+        { query: { recursive: 1 } },
+      )
+      return (data.tree || [])
+        .filter((item) => item.path && (item.type === 'blob' || item.type === 'tree'))
+        .map((item) => ({
+          path: String(item.path),
+          type: item.type as 'blob' | 'tree',
+        }))
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return []
+      }
+      throw error
+    }
+  }
 }
 
 function mapRepository(data: Record<string, any>): RepositoryDto {

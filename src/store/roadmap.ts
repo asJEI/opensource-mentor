@@ -47,10 +47,10 @@ interface RoadmapState {
 
   // ---- Actions ----
   /**
-   * 加载/生成路线图
+   * 加载/生成 Contribution Guide
    * 调用 aiService.generateRoadmap
    */
-  loadRoadmap: (owner: string, repo: string) => Promise<void>
+  loadRoadmap: (owner: string, repo: string, options?: { force?: boolean }) => Promise<void>
   /** 进入下一阶段 */
   nextStep: () => void
   /** 重置进度 */
@@ -78,49 +78,62 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   currentRepo: '',
   profileSignature: '',
 
-  loadRoadmap: async (owner: string, repo: string) => {
+  loadRoadmap: async (owner, repo, options) => {
     const userProfile = getEffectiveUserProfileContext()
     const repositoryState = useRepositoryStore.getState()
     const activeIssue = repositoryState.activeContributionIssue
-    const issueContext = activeIssue
-      ? {
-          issue: {
-            number: activeIssue.issueNumber,
-            title: activeIssue.title,
-            body: activeIssue.body,
+    if (!activeIssue) {
+      set({
+        isLoading: false,
+        error: null,
+        roadmap: null,
+        steps: [],
+        progress: initialProgress,
+        currentOwner: owner,
+        currentRepo: repo,
+        profileSignature: '',
+      })
+      return
+    }
+
+    const issueContext = {
+      issue: {
+        number: activeIssue.issueNumber,
+        title: activeIssue.title,
+        body: activeIssue.body,
+        language: activeIssue.language,
+        analysis: activeIssue.analysis,
+        whyThisFitsYou: activeIssue.whyThisFitsYou,
+        matchScore: activeIssue.matchScore,
+      },
+      repository: repositoryState.currentRepo
+        ? {
+            fullName: repositoryState.currentRepo.fullName,
+            description: repositoryState.currentRepo.description,
+            language: repositoryState.currentRepo.language,
+            stars: repositoryState.currentRepo.stars,
+            forks: repositoryState.currentRepo.forks,
+            issuesCount: repositoryState.currentRepo.issuesCount,
+            defaultBranch: repositoryState.currentRepo.defaultBranch,
+          }
+        : {
+            fullName: activeIssue.repository.fullName,
+            description: activeIssue.repository.description,
             language: activeIssue.language,
-            analysis: activeIssue.analysis,
-            whyThisFitsYou: activeIssue.whyThisFitsYou,
-            matchScore: activeIssue.matchScore,
+            stars: activeIssue.repository.stars,
+            forks: activeIssue.repository.forks,
+            issuesCount: activeIssue.repository.openIssues,
+            defaultBranch: activeIssue.repository.defaultBranch,
           },
-          repository: repositoryState.currentRepo
-            ? {
-                fullName: repositoryState.currentRepo.fullName,
-                description: repositoryState.currentRepo.description,
-                language: repositoryState.currentRepo.language,
-                stars: repositoryState.currentRepo.stars,
-                forks: repositoryState.currentRepo.forks,
-                issuesCount: repositoryState.currentRepo.issuesCount,
-                defaultBranch: repositoryState.currentRepo.defaultBranch,
-              }
-            : {
-                fullName: activeIssue.repository.fullName,
-                description: activeIssue.repository.description,
-                language: activeIssue.language,
-                stars: activeIssue.repository.stars,
-                forks: activeIssue.repository.forks,
-                issuesCount: activeIssue.repository.openIssues,
-                defaultBranch: activeIssue.repository.defaultBranch,
-              },
-          confirmedContext: repositoryState.currentExplain?.confirmedContext ?? [],
-          possibleAreasToInspect:
-            repositoryState.currentExplain?.possibleAreasToInspect ?? [],
-        }
-      : undefined
+      confirmedContext: repositoryState.currentExplain?.confirmedContext ?? [],
+      possibleAreasToInspect:
+        repositoryState.currentExplain?.possibleAreasToInspect ?? [],
+    }
 
     const profileSignature = JSON.stringify({ userProfile, issueContext })
     const current = get()
     if (
+      !options?.force &&
       current.roadmap &&
       !current.error &&
       current.currentOwner === owner &&
@@ -162,7 +175,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         get().currentOwner !== owner ||
         get().currentRepo !== repo
       ) return
-      const message = getErrorMessage(err, '路线图生成失败，请稍后重试')
+      const message = getErrorMessage(err, 'Contribution Guide 生成失败，请稍后重试')
       set({ isLoading: false, error: message })
     }
   },
@@ -205,9 +218,22 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
 
   updateStepStatus: (stepId: string, status: RoadmapStepStatus) => {
     const { steps } = get()
-    const newSteps = steps.map((step) =>
-      step.id === stepId ? { ...step, status } : step,
-    )
+    const targetIndex = steps.findIndex((step) => step.id === stepId)
+    if (targetIndex < 0) return
+
+    const newSteps = steps.map((step, index) => {
+      if (step.id === stepId) {
+        return { ...step, status }
+      }
+      if (
+        status === 'completed' &&
+        index === targetIndex + 1 &&
+        step.status === 'pending'
+      ) {
+        return { ...step, status: 'current' as RoadmapStepStatus }
+      }
+      return step
+    })
     const progress = calculateProgress(newSteps)
     set({ steps: newSteps, progress })
   },

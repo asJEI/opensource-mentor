@@ -167,29 +167,46 @@ export function validatePrDraftResult(
 export function validateRoadmapResult(
   parsed: Record<string, unknown>,
 ): Roadmap {
+  const guideTitles = [
+    '大致了解',
+    '环境准备',
+    '理解项目',
+    '复现问题',
+    '修正方案',
+    '实现与验证',
+    'PR 提交',
+  ]
   const phases = Array.isArray(parsed.phases) ? parsed.phases : []
+  const parsedPhases = phases.filter(isRecord)
 
   return {
-    title: String(parsed.title || '开源贡献学习路线图'),
+    title: String(parsed.title || 'Issue 贡献指南'),
     description: String(
-      parsed.description || '帮助你从零开始参与开源项目',
+      parsed.description || '围绕当前 Issue 理解问题、准备环境、完成修改并提交 PR。',
     ),
-    totalEstimatedTime: String(parsed.totalEstimatedTime || '2-4 周'),
-    phases: phases.filter(isRecord).map((phase, idx) => ({
-      phase: Number(phase.phase) || idx + 1,
-      title: String(phase.title || `第 ${idx + 1} 阶段`),
-      goal: String(phase.goal || ''),
-      learningItems: ensureStringArray(phase.learningItems),
-      recommendedIssues: ensureStringArray(phase.recommendedIssues),
-      estimatedDuration: String(phase.estimatedDuration || '1 周'),
-      difficulty: ensureEnum(
-        phase.difficulty,
-        ['easy', 'medium', 'hard'] as const,
-        'medium',
-      ),
-      completionCriteria: ensureStringArray(phase.completionCriteria),
-      resources: ensureStringArray(phase.resources),
-    })),
+    totalEstimatedTime: String(parsed.totalEstimatedTime || '待确认'),
+    phases: guideTitles.map((title, idx) => {
+      const phase =
+        parsedPhases.find((item) => Number(item.phase) === idx + 1) ||
+        parsedPhases.find((item) => String(item.title || '').includes(title)) ||
+        {}
+
+      return {
+        phase: idx + 1,
+        title,
+        goal: String(phase.goal || '本章内容暂未生成，请重新生成 Contribution Guide。'),
+        learningItems: ensureStringArray(phase.learningItems),
+        recommendedIssues: ensureStringArray(phase.recommendedIssues),
+        estimatedDuration: String(phase.estimatedDuration || '待确认'),
+        difficulty: ensureEnum(
+          phase.difficulty,
+          ['easy', 'medium', 'hard'] as const,
+          'medium',
+        ),
+        completionCriteria: ensureStringArray(phase.completionCriteria),
+        resources: ensureStringArray(phase.resources),
+      }
+    }),
     tips: ensureStringArray(parsed.tips),
     confidence: Number(parsed.confidence) || 0.7,
   }

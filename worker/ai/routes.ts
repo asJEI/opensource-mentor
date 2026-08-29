@@ -31,6 +31,232 @@ function requireOwnerRepo(body: Record<string, unknown>): {
   }
 }
 
+const CONTRIBUTING_PATHS = [
+  'CONTRIBUTING.md',
+  '.github/CONTRIBUTING.md',
+  'docs/CONTRIBUTING.md',
+]
+
+const PR_TEMPLATE_PATHS = [
+  'PULL_REQUEST_TEMPLATE.md',
+  '.github/PULL_REQUEST_TEMPLATE.md',
+  '.github/pull_request_template.md',
+]
+
+const PROJECT_CONFIG_PATHS = [
+  'package.json',
+  'pnpm-lock.yaml',
+  'package-lock.json',
+  'yarn.lock',
+  'pyproject.toml',
+  'requirements.txt',
+  'uv.lock',
+  'Cargo.toml',
+  'go.mod',
+  'Makefile',
+]
+
+const RELEVANT_FILE_HINTS = [
+  'src/',
+  'app/',
+  'lib/',
+  'packages/',
+  'tests/',
+  'test/',
+  '__tests__/',
+  'docs/',
+  'examples/',
+  '.github/',
+]
+
+function truncateContext(value: string, max = 4000): string {
+  return value.length > max ? `${value.slice(0, max)}\n…（已截断）` : value
+}
+
+function extractPackageMeta(projectConfigs: Array<{ path: string; content: string }>) {
+  const packageJson = projectConfigs.find((item) =>
+    /(^|\/)package\.json$/i.test(item.path),
+  )
+  if (!packageJson) {
+    return {
+      scripts: [] as Array<{ name: string; command: string }>,
+      engines: null as Record<string, unknown> | null,
+      packageManager: null as string | null,
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(packageJson.content) as {
+      scripts?: Record<string, unknown>
+      engines?: Record<string, unknown>
+      packageManager?: unknown
+    }
+    const scripts = Object.entries(parsed.scripts || {})
+      .filter(([, value]) => typeof value === 'string' && value.trim())
+      .slice(0, 30)
+      .map(([name, command]) => ({ name, command: String(command) }))
+
+    return {
+      scripts,
+      engines: parsed.engines || null,
+      packageManager:
+        typeof parsed.packageManager === 'string' ? parsed.packageManager : null,
+    }
+  } catch {
+    return {
+      scripts: [] as Array<{ name: string; command: string }>,
+      engines: null as Record<string, unknown> | null,
+      packageManager: null as string | null,
+    }
+  }
+}
+
+function extractConfirmedCommands(params: {
+  readme: string
+  contributingDocs: Array<{ path: string; content: string }>
+  packageScripts: Array<{ name: string; command: string }>
+}) {
+  const commandPattern =
+    /(?:^|\n)\s*(?:\$\s*)?((?:npm|pnpm|yarn|bun|pip|uv|cargo|go|make|docker(?:-compose)?)\s+[^\n`]+)/gi
+  const sources = [
+    params.readme,
+    ...params.contributingDocs.map((item) => item.content),
+  ]
+  const fromDocs: string[] = []
+  for (const source of sources) {
+    for (const match of source.matchAll(commandPattern)) {
+      const command = match[1]?.trim()
+      if (command && !fromDocs.includes(command)) fromDocs.push(command)
+      if (fromDocs.length >= 20) break
+    }
+    if (fromDocs.length >= 20) break
+  }
+
+  return {
+    fromDocs,
+    fromPackageScripts: params.packageScripts.map(
+      (item) => `${item.name}: ${item.command}`,
+    ),
+  }
+}
+
+function scoreIssueRelatedPaths(
+  paths: Array<{ path: string; type: 'blob' | 'tree' }>,
+  issueContext?: Record<string, unknown>,
+) {
+  const issue = isRecord(issueContext?.issue) ? issueContext.issue : null
+  const text = [
+    typeof issue?.title === 'string' ? issue.title : '',
+    typeof issue?.body === 'string' ? issue.body : '',
+    Array.isArray(issueContext?.confirmedContext)
+      ? issueContext.confirmedContext.join(' ')
+      : '',
+    Array.isArray(issueContext?.possibleAreasToInspect)
+      ? issueContext.possibleAreasToInspect.join(' ')
+      : '',
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  const tokens = Array.from(
+    new Set(
+      text
+        .split(/[^a-z0-9_./-]+/i)
+        .map((token) => token.trim().toLowerCase())
+        .filter((token) => token.length >= 3 && token.length <= 48),
+    ),
+  ).slice(0, 40)
+
+  if (tokens.length === 0) return [] as string[]
+
+  return paths
+    .filter((item) => item.type === 'blob')
+    .map((item) => {
+      const pathLower = item.path.toLowerCase()
+      const score = tokens.reduce(
+        (sum, token) => (pathLower.includes(token) ? sum + 1 : sum),
+        0,
+      )
+      return { path: item.path, score }
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 25)
+    .map((item) => item.path)
+}
+
+async function collectRoadmapRepositoryContext(
+  github: ReturnType<typeof createGitHubService>,
+  owner: string,
+  repo: string,
+  defaultBranch: string,
+  readme: string,
+  issueContext?: Record<string, unknown>,
+) {
+  const [contributingDocs, prTemplates, projectConfigs, fileTree] =
+    await Promise.all([
+      readExistingFiles(github, owner, repo, CONTRIBUTING_PATHS, 3000),
+      readExistingFiles(github, owner, repo, PR_TEMPLATE_PATHS, 2500),
+      readExistingFiles(github, owner, repo, PROJECT_CONFIG_PATHS, 2500),
+      github.getRepositoryTree(owner, repo, defaultBranch).catch(() => []),
+    ])
+
+  const relevantPaths = fileTree
+    .filter(
+      (item) =>
+        RELEVANT_FILE_HINTS.some((hint) => item.path.startsWith(hint)) ||
+        /(^|\/)(readme|contributing|package\.json|pyproject\.toml|requirements\.txt|cargo\.toml|go\.mod|makefile)$/i.test(
+          item.path,
+        ),
+    )
+    .slice(0, 250)
+
+  const packageMeta = extractPackageMeta(projectConfigs)
+  const confirmedCommands = extractConfirmedCommands({
+    readme,
+    contributingDocs,
+    packageScripts: packageMeta.scripts,
+  })
+  const issueRelatedFiles = scoreIssueRelatedPaths(relevantPaths, issueContext)
+
+  return {
+    defaultBranch,
+    contributingDocs,
+    prTemplates,
+    projectConfigs,
+    packageScripts: packageMeta.scripts,
+    packageEngines: packageMeta.engines,
+    packageManager: packageMeta.packageManager,
+    confirmedCommands,
+    fileTree: relevantPaths,
+    confirmedFiles: relevantPaths
+      .filter((item) => item.type === 'blob')
+      .map((item) => item.path),
+    confirmedDirectories: relevantPaths
+      .filter((item) => item.type === 'tree')
+      .map((item) => item.path),
+    issueRelatedFiles,
+  }
+}
+
+async function readExistingFiles(
+  github: ReturnType<typeof createGitHubService>,
+  owner: string,
+  repo: string,
+  paths: string[],
+  maxChars: number,
+) {
+  const results = await Promise.all(
+    paths.map(async (path) => {
+      const content = await github.getRawFile(owner, repo, path).catch(() => '')
+      return content ? { path, content: truncateContext(content, maxChars) } : null
+    }),
+  )
+  return results.filter(
+    (item): item is { path: string; content: string } => item !== null,
+  )
+}
+
 async function parseJsonBody(request: Request): Promise<unknown> {
   try {
     return await request.json()
@@ -348,12 +574,47 @@ export async function handleGenerateRoadmap(
     goodFirstIssues = []
   }
 
+  let issueContext = isRecord(body.issueContext) ? body.issueContext : undefined
+  const issueNumber = Number(
+    isRecord(issueContext?.issue) ? issueContext.issue.number : NaN,
+  )
+  if (Number.isFinite(issueNumber) && issueNumber > 0) {
+    try {
+      const liveIssue = await github.getIssue(owner, repo, issueNumber)
+      issueContext = {
+        ...(issueContext || {}),
+        issue: {
+          ...(isRecord(issueContext?.issue) ? issueContext.issue : {}),
+          number: liveIssue.number,
+          title: liveIssue.title,
+          body: liveIssue.body,
+          labels: liveIssue.labels.map((label) => label.name),
+          state: liveIssue.state,
+          htmlUrl: liveIssue.htmlUrl,
+        },
+        liveIssueFetched: true,
+      }
+    } catch {
+      // Keep client-provided issue context when GitHub fetch fails.
+    }
+  }
+
+  const repositoryContext = await collectRoadmapRepositoryContext(
+    github,
+    owner,
+    repo,
+    repository.defaultBranch,
+    readme,
+    issueContext,
+  )
+
   const roadmap = await generateRoadmap(client, {
     repository,
     readme,
     userProfile,
     goodFirstIssues,
-    issueContext: isRecord(body.issueContext) ? body.issueContext : undefined,
+    repositoryContext,
+    issueContext,
   })
   return success(roadmap)
 }
