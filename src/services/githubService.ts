@@ -136,6 +136,19 @@ class GithubService {
     return ''
   }
 
+  /**
+   * 获取仓库分支列表
+   * GET /api/repository/branches?owner=&repo=
+   */
+  async listBranches(owner: string, repo: string): Promise<string[]> {
+    const data = await bffGet<any>('/repository/branches', {
+      params: { owner, repo },
+    })
+    return Array.isArray(data.branches)
+      ? data.branches.filter((name: unknown): name is string => typeof name === 'string')
+      : []
+  }
+
   // ============================================================
   // DTO 映射（后端数据 -> 前端类型）
   // ============================================================

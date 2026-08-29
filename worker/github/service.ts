@@ -254,6 +254,39 @@ export class GitHubService {
     return typeof data === 'string' ? data : JSON.stringify(data)
   }
 
+  /**
+   * List branch names for a repository (paginated, capped).
+   */
+  async listBranches(
+    owner: string,
+    repo: string,
+    options?: { maxPages?: number; perPage?: number },
+  ): Promise<string[]> {
+    const perPage = Math.min(Math.max(options?.perPage ?? 100, 1), 100)
+    const maxPages = Math.min(Math.max(options?.maxPages ?? 3, 1), 5)
+    const names: string[] = []
+    const seen = new Set<string>()
+
+    for (let page = 1; page <= maxPages; page += 1) {
+      const { data } = await this.client.getJson<
+        Array<Record<string, unknown>>
+      >(
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`,
+        { query: { per_page: perPage, page } },
+      )
+      if (!Array.isArray(data) || data.length === 0) break
+      for (const item of data) {
+        const name = String(item.name || '').trim()
+        if (!name || seen.has(name)) continue
+        seen.add(name)
+        names.push(name)
+      }
+      if (data.length < perPage) break
+    }
+
+    return names
+  }
+
   private mapPullRequestFile(file: Record<string, unknown>): PullRequestFile {
     return {
       filename: String(file.filename || ''),

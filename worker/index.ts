@@ -29,6 +29,7 @@ import { getPlatformConfigStatus, type PlatformEnv } from './config'
 import {
   handleGetIssues,
   handleGetRepository,
+  handleGetRepositoryBranches,
   handleTestGitHubConnection,
 } from './github/routes'
 import {
@@ -58,6 +59,9 @@ export default {
         })
       }
 
+      if (url.pathname === '/api/repository/branches' && request.method === 'GET') {
+        return await handleGetRepositoryBranches(request, env)
+      }
       if (url.pathname === '/api/repository' && request.method === 'GET') {
         return await handleGetRepository(request, env)
       }

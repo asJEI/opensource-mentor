@@ -37,6 +37,19 @@ export async function handleGetRepository(
   return success(repository)
 }
 
+/** GET /api/repository/branches?owner=&repo= */
+export async function handleGetRepositoryBranches(
+  request: Request,
+  env: PlatformEnv,
+): Promise<Response> {
+  const url = new URL(request.url)
+  const owner = requireQuery(url.searchParams, 'owner')
+  const repo = requireQuery(url.searchParams, 'repo')
+  const service = createGitHubService(request, env)
+  const branches = await service.listBranches(owner, repo)
+  return success({ owner, repo, branches, total: branches.length })
+}
+
 /** GET /api/issues?owner=&repo=&... */
 export async function handleGetIssues(
   request: Request,

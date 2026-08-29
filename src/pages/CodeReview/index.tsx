@@ -15,6 +15,7 @@ import {
   useToastStore,
   useUserStore,
 } from '@/store'
+import { githubService } from '@/services'
 import type { CandidateIssue, RecommendedIssue } from '@/types'
 
 function parseGitHubRepoUrl(raw: string): {
@@ -57,6 +58,36 @@ function parseGitHubRepoUrl(raw: string): {
   }
 
   return null
+}
+
+function rankBranches(branches: string[], issueNumber?: number): string[] {
+  const issueKey = issueNumber ? String(issueNumber) : ''
+  return [...branches].sort((a, b) => {
+    const aIssue = issueKey && a.includes(issueKey) ? 1 : 0
+    const bIssue = issueKey && b.includes(issueKey) ? 1 : 0
+    if (aIssue !== bIssue) return bIssue - aIssue
+    const aDefault = a === 'main' || a === 'master' ? 1 : 0
+    const bDefault = b === 'main' || b === 'master' ? 1 : 0
+    if (aDefault !== bDefault) return aDefault - bDefault
+    return a.localeCompare(b)
+  })
+}
+
+function pickSuggestedBranch(
+  branches: string[],
+  issueNumber?: number,
+): string {
+  const ranked = rankBranches(branches, issueNumber)
+  const issueKey = issueNumber ? String(issueNumber) : ''
+  if (issueKey) {
+    const matched = ranked.find((name) => name.includes(issueKey))
+    if (matched) return matched
+  }
+  return (
+    ranked.find((name) => name !== 'main' && name !== 'master') ||
+    ranked[0] ||
+    ''
+  )
 }
 
 const CodeIcon = () => (
@@ -180,6 +211,9 @@ const CodeReview = () => {
   const [prUrlInput, setPrUrlInput] = useState('')
   const [forkRepoUrl, setForkRepoUrl] = useState('')
   const [forkBranch, setForkBranch] = useState('')
+  const [forkBranches, setForkBranches] = useState<string[]>([])
+  const [branchesLoading, setBranchesLoading] = useState(false)
+  const [branchesError, setBranchesError] = useState<string | null>(null)
 
   const boundIssue = useMemo(() => {
     if (activeContributionIssue) return toReviewIssue(activeContributionIssue)
@@ -239,6 +273,38 @@ const CodeReview = () => {
     setCompareInput({ headOwner: githubUsername })
   }, [githubUsername, compareInput.headOwner, setCompareInput])
 
+  const loadForkBranches = async (
+    owner: string,
+    repo: string,
+    preferredBranch?: string,
+  ) => {
+    if (!owner || !repo) return
+    setBranchesLoading(true)
+    setBranchesError(null)
+    try {
+      const branches = await githubService.listBranches(owner, repo)
+      const ranked = rankBranches(branches, boundIssue?.number)
+      setForkBranches(ranked)
+      const nextBranch =
+        preferredBranch && ranked.includes(preferredBranch)
+          ? preferredBranch
+          : forkBranch && ranked.includes(forkBranch)
+            ? forkBranch
+            : pickSuggestedBranch(ranked, boundIssue?.number)
+      if (nextBranch) {
+        setForkBranch(nextBranch)
+        setCompareInput({ headRef: nextBranch })
+      }
+    } catch (err) {
+      setForkBranches([])
+      setBranchesError(
+        err instanceof Error ? err.message : '加载分支列表失败，可手动填写',
+      )
+    } finally {
+      setBranchesLoading(false)
+    }
+  }
+
   const applyForkRepoUrl = (raw: string) => {
     setForkRepoUrl(raw)
     const parsed = parseGitHubRepoUrl(raw)
@@ -251,7 +317,38 @@ const CodeReview = () => {
     if (parsed.branch) {
       setForkBranch(parsed.branch)
     }
+    void loadForkBranches(parsed.owner, parsed.repo, parsed.branch || undefined)
   }
+
+  // 登录后自动填入个人 Fork 地址并拉取分支
+  useEffect(() => {
+    if (forkRepoUrl) return
+    if (!githubUsername || !upstreamRepo) return
+    const url = `https://github.com/${githubUsername}/${upstreamRepo}`
+    setForkRepoUrl(url)
+    setCompareInput({
+      headOwner: githubUsername,
+      headRepo: upstreamRepo,
+    })
+    void loadForkBranches(githubUsername, upstreamRepo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [githubUsername, upstreamRepo])
+
+  // Issue 变化时，优先自动选中含 Issue 编号的分支
+  useEffect(() => {
+    if (!forkBranches.length || !boundIssue?.number) return
+    const issueKey = String(boundIssue.number)
+    if (forkBranch.includes(issueKey)) return
+    const suggested = pickSuggestedBranch(forkBranches, boundIssue.number)
+    if (!suggested || !suggested.includes(issueKey)) return
+    setForkBranch(suggested)
+    setCompareInput({ headRef: suggested })
+  }, [
+    boundIssue?.number,
+    forkBranches,
+    forkBranch,
+    setCompareInput,
+  ])
 
   const handleSelectIssue = (issue: RecommendedIssue) => {
     setSelectedIssue(toReviewIssue(issue))
@@ -526,7 +623,7 @@ const CodeReview = () => {
                   <label className="form-label">
                     你的 Fork 仓库链接
                     <span className="form-hint">
-                      粘贴个人仓库地址即可，用户名会自动识别
+                      粘贴后自动识别用户名并加载分支
                       {githubUsername
                         ? `（当前登录：${githubUsername}）`
                         : isAuthenticated
@@ -540,24 +637,76 @@ const CodeReview = () => {
                     placeholder={`https://github.com/${githubUsername || 'your-username'}/${upstreamRepo || 'repo'}`}
                     value={forkRepoUrl}
                     onChange={(e) => applyForkRepoUrl(e.target.value)}
+                    onBlur={() => {
+                      const parsed = parseGitHubRepoUrl(forkRepoUrl)
+                      if (!parsed) return
+                      void loadForkBranches(
+                        parsed.owner,
+                        parsed.repo,
+                        parsed.branch || forkBranch || undefined,
+                      )
+                    }}
                   />
 
                   <label className="form-label" style={{ marginTop: 14 }}>
-                    你的分支名
+                    你的分支
                     <span className="form-hint">
-                      已 push 的分支；若链接含 /tree/分支 会自动填入
+                      {branchesLoading
+                        ? '正在从 GitHub 加载分支…'
+                        : boundIssue?.number
+                          ? `优先匹配含 #${boundIssue.number} 的分支，一般无需手填`
+                          : '从列表选择你已 push 的改动分支'}
                     </span>
                   </label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="fix/issue-15"
-                    value={forkBranch || compareInput.headRef}
-                    onChange={(e) => {
-                      setForkBranch(e.target.value)
-                      setCompareInput({ headRef: e.target.value })
-                    }}
-                  />
+                  {forkBranches.length > 0 ? (
+                    <select
+                      className="form-input"
+                      value={
+                        forkBranches.includes(forkBranch)
+                          ? forkBranch
+                          : forkBranches[0]
+                      }
+                      onChange={(e) => {
+                        setForkBranch(e.target.value)
+                        setCompareInput({ headRef: e.target.value })
+                      }}
+                    >
+                      {forkBranches.map((name) => (
+                        <option key={name} value={name}>
+                          {boundIssue?.number &&
+                          name.includes(String(boundIssue.number))
+                            ? `⭐ ${name}（匹配 Issue #${boundIssue.number}）`
+                            : name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="fix/issue-15"
+                      value={forkBranch || compareInput.headRef}
+                      onChange={(e) => {
+                        setForkBranch(e.target.value)
+                        setCompareInput({ headRef: e.target.value })
+                      }}
+                    />
+                  )}
+                  {branchesError ? (
+                    <div className="form-tip" style={{ color: '#f87171' }}>
+                      {branchesError}
+                    </div>
+                  ) : null}
+                  {forkBranches.length > 0 ? (
+                    <div className="form-tip">
+                      已加载 {forkBranches.length} 个分支
+                      {boundIssue?.number &&
+                      forkBranch.includes(String(boundIssue.number))
+                        ? `，已自动选中与 Issue #${boundIssue.number} 相关的分支`
+                        : '，可在列表中切换'}
+                      。仍可粘贴带 /tree/分支 的仓库链接自动识别。
+                    </div>
+                  ) : null}
 
                   <label className="form-label" style={{ marginTop: 14 }}>
                     对比上游分支
@@ -581,10 +730,7 @@ const CodeReview = () => {
                       {upstreamOwner || 'upstream'}/{upstreamRepo || 'repo'}:
                       {compareInput.baseRef || 'main'}
                       ...
-                      {compareInput.headOwner ||
-                        githubUsername ||
-                        'you'}
-                      :
+                      {compareInput.headOwner || githubUsername || 'you'}:
                       {forkBranch || compareInput.headRef || 'branch'}
                     </code>{' '}
                     的变更进行审查
