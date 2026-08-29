@@ -25,6 +25,9 @@ export type {
   MatchDetails,
   IssueFilter,
   IssueRecommendation,
+  CandidateIssue,
+  CandidateIssuesMeta,
+  CandidateIssuesResult,
 } from './issue'
 
 // AI / LLM 相关

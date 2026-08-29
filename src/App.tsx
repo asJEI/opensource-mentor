@@ -87,7 +87,7 @@ function App() {
 
     const params = new URLSearchParams(location.search)
     if (params.get('github_login') === 'success') {
-      navigate('/dashboard', { replace: true })
+      navigate('/issues', { replace: true })
       return
     }
 

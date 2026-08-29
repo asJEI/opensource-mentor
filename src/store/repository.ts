@@ -5,9 +5,11 @@ import type {
   Issue,
   IssueExplain,
   RecommendedIssue,
+  CandidateIssue,
+  CandidateIssuesMeta,
   LoadingState,
 } from '@/types'
-import { repositoryService } from '@/services'
+import { githubService, repositoryService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
 
@@ -21,6 +23,7 @@ function loadSavedRepository(): {
   owner: string
   repoName: string
   hasData: boolean
+  activeIssue: CandidateIssue | null
 } {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -31,21 +34,38 @@ function loadSavedRepository(): {
           owner: parsed.owner,
           repoName: parsed.repoName,
           hasData: true,
+          activeIssue: parsed.activeIssue ?? null,
         }
       }
     }
   } catch {
     // 忽略读取错误
   }
-  return { owner: 'microsoft', repoName: 'vscode', hasData: false }
+  return { owner: 'microsoft', repoName: 'vscode', hasData: false, activeIssue: null }
 }
 
 /**
  * 保存仓库信息到 localStorage
  */
-function saveRepositoryToStorage(owner: string, repoName: string) {
+function saveRepositoryToStorage(
+  owner: string,
+  repoName: string,
+  activeIssue?: CandidateIssue | null,
+) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ owner, repoName }))
+    const previous = localStorage.getItem(STORAGE_KEY)
+    const previousIssue =
+      activeIssue === undefined && previous
+        ? JSON.parse(previous).activeIssue ?? null
+        : null
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        owner,
+        repoName,
+        activeIssue: activeIssue === undefined ? previousIssue : activeIssue,
+      }),
+    )
   } catch {
     // 忽略保存错误
   }
@@ -85,6 +105,13 @@ interface RepositoryState {
   issuesError: string | null
   /** 当前选中的推荐 Issue */
   selectedIssue: RecommendedIssue | null
+  /** 登录后根据用户画像拉取的候选 Issue */
+  candidateIssues: CandidateIssue[]
+  candidateIssuesMeta: CandidateIssuesMeta | null
+  candidateIssuesStatus: LoadingState
+  candidateIssuesError: string | null
+  /** 用户点击 Start Contribution 后选中的当前贡献 Issue */
+  activeContributionIssue: CandidateIssue | null
   /** 当前仓库 owner */
   currentOwner: string
   /** 当前仓库 name */
@@ -118,6 +145,10 @@ interface RepositoryState {
   ) => Promise<void>
   /** 选中某个推荐 Issue */
   selectIssue: (issue: RecommendedIssue | null) => void
+  /** 加载登录用户候选 Issue */
+  loadCandidateIssues: () => Promise<void>
+  /** 选择候选 Issue 开始贡献 */
+  startContribution: (issue: CandidateIssue) => void
   /** 设置当前仓库信息 */
   setCurrentRepo: (repo: Repository | null) => void
   /** 清空仓库相关所有状态 */
@@ -148,7 +179,12 @@ export const useRepositoryStore = create<RepositoryState>((set) => {
     recommendedIssues: [],
     issuesStatus: 'idle',
     issuesError: null,
-    selectedIssue: null,
+    selectedIssue: savedRepo.activeIssue,
+    candidateIssues: [],
+    candidateIssuesMeta: null,
+    candidateIssuesStatus: 'idle',
+    candidateIssuesError: null,
+    activeContributionIssue: savedRepo.activeIssue,
     currentOwner: savedRepo.owner,
     currentRepoName: savedRepo.repoName,
     currentExplain: null,
@@ -218,6 +254,44 @@ export const useRepositoryStore = create<RepositoryState>((set) => {
     selectIssue: (issue: RecommendedIssue | null) =>
       set({ selectedIssue: issue }),
 
+    loadCandidateIssues: async () => {
+      const requestId = ++issuesRequestId
+      set({
+        candidateIssuesStatus: 'loading',
+        candidateIssuesError: null,
+      })
+      try {
+        const result = await githubService.getCandidateIssues()
+        if (requestId !== issuesRequestId) return
+        set({
+          candidateIssues: result.issues,
+          candidateIssuesMeta: result.meta,
+          candidateIssuesStatus: 'success',
+        })
+      } catch (err) {
+        if (requestId !== issuesRequestId) return
+        const message = getErrorMessage(err, '加载候选 Issue 失败，请稍后重试')
+        set({
+          candidateIssuesStatus: 'error',
+          candidateIssuesError: message,
+        })
+      }
+    },
+
+    startContribution: (issue: CandidateIssue) => {
+      set({
+        activeContributionIssue: issue,
+        selectedIssue: issue,
+        currentOwner: issue.repository.owner,
+        currentRepoName: issue.repository.name,
+        analysisStatus: 'idle',
+        analysisError: null,
+        issuesStatus: 'idle',
+        issuesError: null,
+      })
+      saveRepositoryToStorage(issue.repository.owner, issue.repository.name, issue)
+    },
+
     setCurrentRepo: (repo: Repository | null) => set({ currentRepo: repo }),
 
     explainIssue: async (owner, name, issue) => {
@@ -264,6 +338,11 @@ export const useRepositoryStore = create<RepositoryState>((set) => {
         issuesStatus: 'idle',
         issuesError: null,
         selectedIssue: null,
+        candidateIssues: [],
+        candidateIssuesMeta: null,
+        candidateIssuesStatus: 'idle',
+        candidateIssuesError: null,
+        activeContributionIssue: null,
         currentOwner: 'microsoft',
         currentRepoName: 'vscode',
         currentExplain: null,

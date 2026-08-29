@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
-import { Card } from '@/components/ui'
+import { Button, Card } from '@/components/ui'
 import { useToastStore, useRepositoryStore } from '@/store'
 import {
   NextStepCard,
@@ -26,6 +26,7 @@ import {
   isBeginnerFriendly,
   parseRepoInput,
 } from './components'
+import type { CandidateIssue } from '@/types'
 
 const Dashboard = () => {
   const showToast = useToastStore((s) => s.showToast)
@@ -44,6 +45,11 @@ const Dashboard = () => {
   )
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
+  const activeContributionIssue = useRepositoryStore((s) => s.activeContributionIssue)
+  const currentExplain = useRepositoryStore((s) => s.currentExplain)
+  const explainStatus = useRepositoryStore((s) => s.explainStatus)
+  const explainError = useRepositoryStore((s) => s.explainError)
+  const explainIssue = useRepositoryStore((s) => s.explainIssue)
 
   // 输入框初始值从 store 读取（支持页面切换和刷新后保持）
   const [repoInput, setRepoInput] = useState(
@@ -70,12 +76,15 @@ const Dashboard = () => {
   }
 
   // 是否正在加载（分析或 Issue 任一在加载）
-  const isLoading = analysisStatus === 'loading' || issuesStatus === 'loading'
+  const isIssueMode = Boolean(activeContributionIssue)
+  const isLoading = isIssueMode
+    ? analysisStatus === 'loading'
+    : analysisStatus === 'loading' || issuesStatus === 'loading'
 
   // 是否已完成分析（分析和 Issue 都成功）
   const hasAnalyzed =
     analysisStatus === 'success' &&
-    issuesStatus === 'success' &&
+    (isIssueMode || issuesStatus === 'success') &&
     analysis !== null
 
   // 是否有错误
@@ -90,12 +99,24 @@ const Dashboard = () => {
   // 页面加载时：如果还没分析过，自动触发当前仓库分析
   // 如果已有分析结果（用户切换页面后回来），则保留现有状态不重新加载
   useEffect(() => {
+    if (activeContributionIssue) {
+      const { owner, name } = activeContributionIssue.repository
+      setRepoInput(`${owner}/${name}`)
+      if (analysisStatus === 'idle') {
+        analyzeRepo(owner, name)
+      }
+      if (explainStatus === 'idle') {
+        explainIssue(owner, name, activeContributionIssue)
+      }
+      return
+    }
+
     if (analysisStatus === 'idle') {
       analyzeRepo(currentOwner, currentRepoName)
       loadRecommendedIssues(currentOwner, currentRepoName, { perPage: 10 })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [activeContributionIssue])
 
   /**
    * 处理分析按钮点击
@@ -160,7 +181,9 @@ const Dashboard = () => {
             <div>
               <h1 className="page-title">仓库分析</h1>
               <p className="page-subtitle">
-                输入 GitHub 仓库地址，AI 智能分析项目结构与难度
+                {activeContributionIssue
+                  ? '围绕你选择的 Issue 理解仓库、任务背景和下一步思路'
+                  : '输入 GitHub 仓库地址，AI 智能分析项目结构与难度'}
               </p>
             </div>
             <div className="repo-pill">
@@ -170,8 +193,49 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {activeContributionIssue && (
+          <section className="selected-issue-panel">
+            <div className="selected-issue-header">
+              <div>
+                <h3>当前 Issue</h3>
+                <h2 className="selected-issue-title">
+                  {activeContributionIssue.repository.fullName}#
+                  {activeContributionIssue.issueNumber} ·{' '}
+                  {activeContributionIssue.title}
+                </h2>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => window.open(activeContributionIssue.issueUrl, '_blank', 'noopener,noreferrer')}
+              >
+                在 GitHub 查看
+              </Button>
+            </div>
+            <div className="selected-issue-grid">
+              <div>
+                <h3>Issue 基本信息</h3>
+                <p>
+                  Open · 评论 {activeContributionIssue.comments} · 更新于{' '}
+                  {new Date(activeContributionIssue.updatedAt).toLocaleDateString('zh-CN')}
+                </p>
+              </div>
+              <div>
+                <h3>技术栈</h3>
+                <p>{activeContributionIssue.language || currentRepo?.language || '后续补充'}</p>
+              </div>
+              <div>
+                <h3>标签</h3>
+                <p>
+                  {activeContributionIssue.labels.map((label: CandidateIssue['labels'][number]) => label.name).join('、') ||
+                    '无标签'}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* 首次使用引导 */}
-        {showOnboarding && (
+        {showOnboarding && !activeContributionIssue && (
           <div className="onboarding-card">
             <div className="onboarding-header">
               <div className="onboarding-title">
@@ -479,40 +543,48 @@ const Dashboard = () => {
                 marginTop: currentRepo ? '0' : '16px',
               }}
             >
-              <input
-                type="text"
-                className="form-input"
-                value={repoInput}
-                onChange={(e) => setRepoInput(e.target.value)}
-                placeholder="https://github.com/owner/repo"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAnalyze()
-                  }
-                }}
-              />
-              <button
-                className="analyze-btn"
-                onClick={hasAnalyzed ? handleReanalyze : handleAnalyze}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="btn-spinner" />
-                    分析中...
-                  </>
-                ) : hasAnalyzed ? (
-                  <>
-                    <RefreshIcon />
-                    重新分析
-                  </>
-                ) : (
-                  <>
-                    <ZapIcon />
-                    开始分析
-                  </>
-                )}
-              </button>
+              {activeContributionIssue ? (
+                <div className="profile-default-notice">
+                  已根据当前 Issue 自动选择仓库：{activeContributionIssue.repository.fullName}
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={repoInput}
+                    onChange={(e) => setRepoInput(e.target.value)}
+                    placeholder="https://github.com/owner/repo"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAnalyze()
+                      }
+                    }}
+                  />
+                  <button
+                    className="analyze-btn"
+                    onClick={hasAnalyzed ? handleReanalyze : handleAnalyze}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <span className="btn-spinner" />
+                        分析中...
+                      </>
+                    ) : hasAnalyzed ? (
+                      <>
+                        <RefreshIcon />
+                        重新分析
+                      </>
+                    ) : (
+                      <>
+                        <ZapIcon />
+                        开始分析
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           </Card>
 
@@ -655,7 +727,55 @@ const Dashboard = () => {
                   推荐入门 Issue
                 </div>
                 <div className="suggested-issues-list">
-                  {displayIssues.length > 0 ? (
+                  {activeContributionIssue ? (
+                    <>
+                      <div className="suggested-issue">
+                        <div className="suggested-issue-icon">
+                          <CheckIcon />
+                        </div>
+                        <span className="suggested-issue-text">
+                          当前任务：{activeContributionIssue.title}
+                        </span>
+                      </div>
+                      {explainStatus === 'loading' && (
+                        <div className="suggested-issue">
+                          <div className="suggested-issue-icon">
+                            <span className="step-spinner" />
+                          </div>
+                          <span className="suggested-issue-text">
+                            正在生成当前 Issue 简要分析…
+                          </span>
+                        </div>
+                      )}
+                      {currentExplain && (
+                        <>
+                          <div className="ai-summary-text">
+                            <strong>AI 对当前 Issue 的简要分析：</strong>{' '}
+                            {currentExplain.summary}
+                          </div>
+                          <div
+                            style={{
+                              marginTop: 14,
+                              fontSize: 14,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Suggested Approach
+                          </div>
+                          <ol className="suggested-approach-list">
+                            {currentExplain.steps.slice(0, 5).map((step) => (
+                              <li key={step}>{step}</li>
+                            ))}
+                          </ol>
+                        </>
+                      )}
+                      {explainStatus === 'error' && (
+                        <div className="profile-default-notice">
+                          {explainError || '当前 Issue 简要分析暂时不可用'}
+                        </div>
+                      )}
+                    </>
+                  ) : displayIssues.length > 0 ? (
                     displayIssues.map((issue, i) => (
                       <div key={i} className="suggested-issue">
                         <div className="suggested-issue-icon">

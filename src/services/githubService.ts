@@ -1,6 +1,8 @@
 import { bffGet, bffPost } from './request'
 import { BYOK_HEADERS } from '@shared/byok'
 import type {
+  CandidateIssue,
+  CandidateIssuesResult,
   ConnectionTestResult,
   Issue,
   IssueLabel,
@@ -55,6 +57,28 @@ class GithubService {
       total: data.total,
       page: data.page,
       perPage: data.perPage,
+    }
+  }
+
+  /**
+   * 获取当前登录用户的候选 Issue
+   * GET /api/issues/candidates
+   */
+  async getCandidateIssues(): Promise<CandidateIssuesResult> {
+    const data = await bffGet<any>('/issues/candidates')
+    return {
+      issues: (data.issues || []).map((item: any) =>
+        this.mapCandidateIssue(item),
+      ),
+      meta: {
+        queries: data.meta?.queries || [],
+        rawCount: data.meta?.rawCount || 0,
+        deduplicatedCount: data.meta?.deduplicatedCount || 0,
+        filteredCount: data.meta?.filteredCount || 0,
+        languages: data.meta?.languages || [],
+        warnings: data.meta?.warnings || [],
+        failedQueries: data.meta?.failedQueries || [],
+      },
     }
   }
 
@@ -133,6 +157,55 @@ class GithubService {
       updatedAt: data.updatedAt || '',
       htmlUrl: data.htmlUrl || '',
       assignees: [],
+    }
+  }
+
+  private mapCandidateIssue(data: any): CandidateIssue {
+    const labels = (data.labels || []).map((label: any, index: number): IssueLabel => {
+      if (typeof label === 'string') {
+        return {
+          id: `${data.id || data.issueUrl || 'label'}-${index}`,
+          name: label,
+          color: '64748b',
+          description: '',
+        }
+      }
+      return {
+        id: String(label.id ?? `${data.id || data.issueUrl || 'label'}-${index}`),
+        name: label.name || '',
+        color: label.color || '64748b',
+        description: label.description || '',
+      }
+    })
+
+    return {
+      id: String(data.id),
+      number: data.issueNumber ?? data.number,
+      issueNumber: data.issueNumber ?? data.number,
+      title: data.title || '',
+      body: data.body || '',
+      state: data.state || 'open',
+      author: data.user?.login || '',
+      authorAvatar: data.user?.avatarUrl || '',
+      labels,
+      comments: data.comments || 0,
+      createdAt: data.createdAt || '',
+      updatedAt: data.updatedAt || '',
+      htmlUrl: data.issueUrl || data.htmlUrl || '',
+      issueUrl: data.issueUrl || data.htmlUrl || '',
+      assignees: (data.assignees || []).map((assignee: any) =>
+        typeof assignee === 'string' ? assignee : assignee.login,
+      ).filter(Boolean),
+      assignee: data.assignee || null,
+      repository: data.repository || {
+        owner: '',
+        name: '',
+        fullName: '',
+        url: '',
+      },
+      language: data.language || null,
+      languageSource: data.languageSource || 'unknown',
+      user: data.user || { login: '', avatarUrl: '' },
     }
   }
 }

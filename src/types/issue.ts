@@ -110,6 +110,40 @@ export interface IssueRecommendation {
   summary: string
 }
 
+/** 服务端候选 Issue 搜索结果（尚未做最终推荐排序） */
+export interface CandidateIssue extends Issue {
+  issueNumber: number
+  issueUrl: string
+  repository: {
+    owner: string
+    name: string
+    fullName: string
+    url: string
+  }
+  language: string | null
+  languageSource: 'query' | 'unknown'
+  user: {
+    login: string
+    avatarUrl: string
+  }
+  assignee: { login: string; avatarUrl: string } | null
+}
+
+export interface CandidateIssuesMeta {
+  queries: string[]
+  rawCount: number
+  deduplicatedCount: number
+  filteredCount: number
+  languages: string[]
+  warnings: string[]
+  failedQueries: Array<{ query: string; message: string; status?: number }>
+}
+
+export interface CandidateIssuesResult {
+  issues: CandidateIssue[]
+  meta: CandidateIssuesMeta
+}
+
 /** Issue 筛选条件 */
 export interface IssueFilter {
   /** 按难度筛选 */
