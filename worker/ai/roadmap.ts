@@ -2,7 +2,12 @@ import { ApiError } from '../http'
 import type { AIClient } from './client'
 import { parseJsonSafely } from './json'
 import { systemPrompt } from './prompts/explain'
-import { roadmapPhasePrompt, roadmapPrompt } from './prompts/roadmap'
+import {
+  roadmapPhasePrompt,
+  roadmapPhaseRepairPrompt,
+  roadmapPhaseSystemPrompt,
+  roadmapPrompt,
+} from './prompts/roadmap'
 import type {
   IssueDto,
   RepositoryDto,
@@ -39,38 +44,82 @@ export async function generateRoadmapPhase(
     phaseNumber: params.phaseNumber,
   })
 
-  const attempt = async (temperature: number, timeoutMs: number) => {
-    const content = await client.chatCompletions({
+  // 2/4/6 章结构更重；给足输出额度，避免 JSON 截断导致“内容不完整”
+  const maxTokens =
+    params.phaseNumber === 2 ||
+    params.phaseNumber === 4 ||
+    params.phaseNumber === 6
+      ? 3200
+      : params.phaseNumber >= 5
+        ? 2600
+        : 2800
+
+  const phaseTimeoutMs =
+    params.phaseNumber >= 5 ||
+    params.phaseNumber === 2 ||
+    params.phaseNumber === 4
+      ? 110_000
+      : 95_000
+
+  const callModel = async (
+    temperature: number,
+    timeoutMs: number,
+    userContent: string,
+  ): Promise<string> =>
+    client.chatCompletions({
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt },
+        { role: 'system', content: roadmapPhaseSystemPrompt },
+        { role: 'user', content: userContent },
       ],
       temperature,
-      topP: 0.9,
-      // 限制输出长度，避免第 5/6 章写太长导致上游拖到超时
-      maxTokens: params.phaseNumber >= 5 ? 2200 : 2800,
+      topP: 0.85,
+      maxTokens,
       timeoutMs,
       responseFormat: { type: 'json_object' },
     })
-    return validateRoadmapPhaseResult(
-      parseJsonSafely(content),
-      params.phaseNumber,
-    )
-  }
 
-  // 线上曾用 55s，第 5 章经常写到一半就超时；提到接近平台 LLM 上限
-  const phaseTimeoutMs =
-    params.phaseNumber >= 5 ? 110_000 : 95_000
+  const parseAndValidate = (content: string): RoadmapPhase =>
+    validateRoadmapPhaseResult(parseJsonSafely(content), params.phaseNumber)
 
   try {
+    let firstRaw = ''
     try {
-      return await attempt(0.55, phaseTimeoutMs)
+      firstRaw = await callModel(0.35, phaseTimeoutMs, prompt)
+      return parseAndValidate(firstRaw)
     } catch (firstError) {
-      // 仅内容不完整时重试；超时/限流不要叠第二次长请求
       const message =
         firstError instanceof Error ? firstError.message : String(firstError)
+      // 超时/限流等直接抛出；仅内容不完整走修复
       if (!message.includes('内容不完整')) throw firstError
-      return await attempt(0.3, Math.min(phaseTimeoutMs, 70_000))
+
+      const repairPrompt = roadmapPhaseRepairPrompt({
+        phaseNumber: params.phaseNumber,
+        previousOutput: firstRaw || '（上一版为空或无法解析）',
+      })
+
+      try {
+        const repairedRaw = await callModel(
+          0.2,
+          Math.min(phaseTimeoutMs, 80_000),
+          firstRaw
+            ? repairPrompt
+            : `${prompt}\n\n注意：上一次输出不完整。请务必填满 goal、actionIntro、actionSteps（至少 2 项对象）。`,
+        )
+        return parseAndValidate(repairedRaw)
+      } catch (secondError) {
+        const secondMessage =
+          secondError instanceof Error
+            ? secondError.message
+            : String(secondError)
+        if (!secondMessage.includes('内容不完整')) throw secondError
+
+        const lastRaw = await callModel(
+          0.15,
+          Math.min(phaseTimeoutMs, 80_000),
+          `${prompt}\n\n最后机会：必须输出含至少 2 个 actionSteps 对象的完整 JSON。`,
+        )
+        return parseAndValidate(lastRaw)
+      }
     }
   } catch (error) {
     if (error instanceof ApiError) throw error

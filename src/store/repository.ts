@@ -149,7 +149,10 @@ interface RepositoryState {
   selectIssue: (issue: RecommendedIssue | null) => void
   /** 加载登录用户候选 Issue */
   loadCandidateIssues: () => Promise<void>
-  analyzeCandidateIssue: (issue: CandidateIssue) => Promise<void>
+  analyzeCandidateIssue: (
+    issue: CandidateIssue,
+    options?: { force?: boolean },
+  ) => Promise<void>
   /** 选择候选 Issue 开始贡献 */
   startContribution: (issue: CandidateIssue) => void
   /** 设置当前仓库信息 */
@@ -289,9 +292,10 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
       }
     },
 
-    analyzeCandidateIssue: async (issue: CandidateIssue) => {
+    analyzeCandidateIssue: async (issue: CandidateIssue, options) => {
       const currentStatus = get().candidateIssueAnalysisStatus[issue.id]
-      if (currentStatus === 'loading' || currentStatus === 'success') return
+      if (currentStatus === 'loading') return
+      if (currentStatus === 'success' && !options?.force) return
 
       set((state) => ({
         candidateIssueAnalysisStatus: {

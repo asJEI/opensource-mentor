@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout'
 import {
@@ -10,6 +10,7 @@ import {
   AiPageError,
 } from '@/components/business'
 import { useCodeReviewStore, useRepositoryStore, useToastStore } from '@/store'
+import type { CandidateIssue, RecommendedIssue } from '@/types'
 
 // ==================== 图标组件 ====================
 const CodeIcon = () => (
@@ -51,10 +52,54 @@ const AlertIcon = () => (
   </svg>
 )
 
+function mapAnalysisDifficulty(
+  value?: string | null,
+): RecommendedIssue['difficulty'] {
+  const lower = (value || '').toLowerCase()
+  if (lower.includes('beginner') || lower === 'easy') return 'easy'
+  if (lower.includes('advanced') || lower === 'hard' || lower === 'expert') {
+    return 'hard'
+  }
+  return 'medium'
+}
+
+function estimateHoursFromText(raw?: string | null): number | undefined {
+  if (!raw?.trim()) return undefined
+  const hours = raw.match(/(\d+(?:\.\d+)?)\s*小时|(\d+(?:\.\d+)?)\s*h\b/i)
+  if (hours) return Number(hours[1] || hours[2])
+  if (/weekend|周末/i.test(raw)) return 8
+  if (/day|天/i.test(raw)) return 6
+  if (/week|周/i.test(raw)) return 20
+  return undefined
+}
+
+/** 将当前贡献 Issue / 推荐 Issue 统一成审查页可用结构 */
+function toReviewIssue(
+  issue: CandidateIssue | RecommendedIssue,
+): RecommendedIssue {
+  const candidate = issue as CandidateIssue
+  const recommended = issue as RecommendedIssue
+  const number = candidate.issueNumber || issue.number
+  const analysisDifficulty = candidate.analysis?.difficulty
+  const analysisTime = candidate.analysis?.estimatedTime
+
+  return {
+    ...issue,
+    number,
+    htmlUrl: issue.htmlUrl || candidate.issueUrl || issue.htmlUrl,
+    difficulty:
+      recommended.difficulty ||
+      (analysisDifficulty ? mapAnalysisDifficulty(analysisDifficulty) : 'medium'),
+    estimatedTime:
+      typeof recommended.estimatedTime === 'number'
+        ? recommended.estimatedTime
+        : estimateHoursFromText(analysisTime) || 2,
+  }
+}
+
 // ==================== CodeReview 页面 ====================
 const CodeReview = () => {
   const navigate = useNavigate()
-  // 分开调用 store 避免无限重渲染
   const status = useCodeReviewStore((s) => s.status)
   const progress = useCodeReviewStore((s) => s.progress)
   const result = useCodeReviewStore((s) => s.result)
@@ -73,33 +118,63 @@ const CodeReview = () => {
   const recommendedIssues = useRepositoryStore((s) => s.recommendedIssues)
   const issuesStatus = useRepositoryStore((s) => s.issuesStatus)
   const loadRecommendedIssues = useRepositoryStore((s) => s.loadRecommendedIssues)
+  const activeContributionIssue = useRepositoryStore(
+    (s) => s.activeContributionIssue,
+  )
   const setSelectedIssue = useCodeReviewStore((s) => s.setSelectedIssue)
   const showToast = useToastStore((s) => s.showToast)
 
-  // Demo 预设的 PR 链接
   const DEMO_PR_URL = 'https://github.com/microsoft/vscode/pull/325329'
 
-  // 提交方式：pr 链接 / 粘贴 diff / 上传文件（后两者为未完成状态，仅作展示）
   const [submitMode, setSubmitMode] = useState<'pr' | 'diff' | 'file'>('pr')
   const [prUrlInput, setPrUrlInput] = useState(DEMO_PR_URL)
 
-  const repoName = `${currentOwner || 'microsoft'}/${currentRepoName || 'vscode'}`
+  // 优先绑定用户已选的贡献 Issue，再回退到审查页本地选择
+  const boundIssue = useMemo(() => {
+    if (activeContributionIssue) return toReviewIssue(activeContributionIssue)
+    if (selectedIssue) return toReviewIssue(selectedIssue)
+    return null
+  }, [activeContributionIssue, selectedIssue])
 
-  // 空状态时自动加载推荐 Issue 列表，方便用户直接选择
+  const repoName = activeContributionIssue
+    ? activeContributionIssue.repository.fullName
+    : `${currentOwner || 'microsoft'}/${currentRepoName || 'vscode'}`
+
+  // 进入页面时同步当前贡献 Issue，直接进入提交界面
   useEffect(() => {
-    if (!selectedIssue && recommendedIssues.length === 0 && issuesStatus === 'idle') {
+    if (!activeContributionIssue) return
+    const next = toReviewIssue(activeContributionIssue)
+    if (
+      selectedIssue?.number === next.number &&
+      selectedIssue?.title === next.title
+    ) {
+      return
+    }
+    setSelectedIssue(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeContributionIssue?.id, activeContributionIssue?.issueNumber])
+
+  // 仅在没有当前 Issue 时，才加载推荐列表供手动选择
+  useEffect(() => {
+    if (
+      !boundIssue &&
+      recommendedIssues.length === 0 &&
+      issuesStatus === 'idle'
+    ) {
       loadRecommendedIssues(currentOwner, currentRepoName, { perPage: 5 })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIssue])
+  }, [boundIssue])
 
-  // 直接选择 Issue，无需跳转
-  const handleSelectIssue = (issue: any) => {
-    setSelectedIssue(issue)
-    showToast('success', '已选择 Issue', `已选择 #${issue.number}，可以开始提交代码了`)
+  const handleSelectIssue = (issue: RecommendedIssue) => {
+    setSelectedIssue(toReviewIssue(issue))
+    showToast(
+      'success',
+      '已选择 Issue',
+      `已选择 #${issue.number}，可以开始提交代码了`,
+    )
   }
 
-  // 开始审查
   const handleStartReview = () => {
     if (submitMode === 'pr') {
       if (!prUrlInput.trim()) {
@@ -128,20 +203,18 @@ const CodeReview = () => {
     }, 800)
   }
 
-  // 未选择 Issue 的空状态
-  if (!selectedIssue && status === 'idle') {
+  // 未选择 Issue 的空状态（仅当全局也没有当前贡献 Issue）
+  if (!boundIssue && status === 'idle') {
     return (
-      <AppLayout
-        breadcrumbs={[
-          { label: '代码审查' },
-        ]}
-      >
+      <AppLayout breadcrumbs={[{ label: '代码审查' }]}>
         <div className="app-page active code-review-page">
           <div className="page-header">
             <div className="page-title-row">
               <div>
                 <h1 className="page-title">代码审查</h1>
-                <p className="page-subtitle">AI 导师帮你检查代码，确保第一次贡献就高质量通过</p>
+                <p className="page-subtitle">
+                  AI 导师帮你检查代码，确保第一次贡献就高质量通过
+                </p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span className="repo-pill">
@@ -162,10 +235,13 @@ const CodeReview = () => {
                 <AlertIcon />
               </div>
               <h2>选择一个 Issue 开始代码审查</h2>
-              <p className="empty-desc">代码审查需要针对具体的 Issue 和你提交的代码进行。</p>
-              <p className="empty-desc">从下方推荐中选一个，或去 Issue 推荐页查看更多。</p>
+              <p className="empty-desc">
+                代码审查需要针对具体的 Issue 和你提交的代码进行。
+              </p>
+              <p className="empty-desc">
+                从下方推荐中选一个，或去 Issue 推荐页查看更多。
+              </p>
 
-              {/* 推荐 Issue 快捷选择 */}
               {issuesStatus === 'loading' && (
                 <div className="quick-issues-loading">
                   <div className="loading-spinner" />
@@ -176,7 +252,14 @@ const CodeReview = () => {
               {issuesStatus === 'success' && recommendedIssues.length > 0 && (
                 <div className="quick-issues">
                   <div className="quick-issues-title">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                       <polyline points="22 4 12 14.01 9 11.01" />
                     </svg>
@@ -190,22 +273,38 @@ const CodeReview = () => {
                         onClick={() => handleSelectIssue(issue)}
                       >
                         <div className="quick-issue-header">
-                          <span className="quick-issue-number">#{issue.number}</span>
-                          <span className={`quick-issue-difficulty difficulty-${issue.difficulty || 'medium'}`}>
-                            {issue.difficulty === 'easy' ? '新手友好' : issue.difficulty === 'hard' ? '较有挑战' : '中等难度'}
+                          <span className="quick-issue-number">
+                            #{issue.number}
+                          </span>
+                          <span
+                            className={`quick-issue-difficulty difficulty-${issue.difficulty || 'medium'}`}
+                          >
+                            {issue.difficulty === 'easy'
+                              ? '新手友好'
+                              : issue.difficulty === 'hard'
+                                ? '较有挑战'
+                                : '中等难度'}
                           </span>
                         </div>
                         <div className="quick-issue-title">{issue.title}</div>
                         <div className="quick-issue-meta">
                           <span>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <circle cx="12" cy="12" r="10" />
                               <polyline points="12 6 12 12 16 14" />
                             </svg>
                             约 {issue.estimatedTime || 2} 小时
                           </span>
                           <span className="quick-issue-score">
-                            匹配度 {issue.recommendationScore ?? issue.matchScore ?? 0}
+                            匹配度{' '}
+                            {issue.recommendationScore ?? issue.matchScore ?? 0}
                           </span>
                         </div>
                       </div>
@@ -227,21 +326,18 @@ const CodeReview = () => {
     )
   }
 
-  const issue = selectedIssue!
+  const issue = boundIssue!
 
   return (
-    <AppLayout
-      breadcrumbs={[
-        { label: '代码审查' },
-      ]}
-    >
+    <AppLayout breadcrumbs={[{ label: '代码审查' }]}>
       <div className="app-page active code-review-page">
-        {/* 页面标题区 */}
         <div className="page-header">
           <div className="page-title-row">
             <div>
               <h1 className="page-title">代码审查</h1>
-              <p className="page-subtitle">AI 导师帮你检查代码，确保第一次贡献就高质量通过</p>
+              <p className="page-subtitle">
+                AI 导师帮你检查代码，确保第一次贡献就高质量通过
+              </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span className="repo-pill">
@@ -256,26 +352,33 @@ const CodeReview = () => {
           </div>
         </div>
 
-        {/* Issue 上下文卡片（粘性顶部） */}
         <div className="code-review__issue-context">
           <IssueContextCard
             issue={{
               number: issue.number,
               title: issue.title,
-              labels: issue.labels.map((l) => ({ name: l.name, color: l.color })),
+              labels: (issue.labels || []).map((l) => ({
+                name: l.name,
+                color: l.color,
+              })),
               htmlUrl: issue.htmlUrl,
             }}
             repoName={repoName}
             difficulty={
-              issue.difficulty === 'easy' ? '入门'
-              : issue.difficulty === 'hard' ? '进阶'
-              : '中等'
+              issue.difficulty === 'easy'
+                ? '入门'
+                : issue.difficulty === 'hard'
+                  ? '进阶'
+                  : '中等'
             }
-            estimatedTime={issue.estimatedTime ? `${issue.estimatedTime} 小时` : '2-3 小时'}
+            estimatedTime={
+              issue.estimatedTime
+                ? `${issue.estimatedTime} 小时`
+                : '2-3 小时'
+            }
           />
         </div>
 
-        {/* 初始状态：提交代码表单 */}
         {status === 'idle' && (
           <div className="code-review__submit">
             <div className="submit-card card">
@@ -290,16 +393,17 @@ const CodeReview = () => {
                 </div>
               </div>
 
-              {/* Demo 说明 */}
               <div className="demo-notice">
                 <div className="demo-notice__icon">💡</div>
                 <div className="demo-notice__content">
                   <strong>Demo 版本说明</strong>
-                  <p>当前为演示版本，仅支持 PR 链接方式提交。已为你预设了示例 PR，点击「开始 AI 审查」即可体验完整流程。</p>
+                  <p>
+                    当前为演示版本，仅支持 PR 链接方式提交。已为你预设了示例
+                    PR，点击「开始 AI 审查」即可体验完整流程。
+                  </p>
                 </div>
               </div>
 
-              {/* 提交方式切换 */}
               <div className="submit-modes">
                 <button
                   className={submitMode === 'pr' ? 'active' : ''}
@@ -312,7 +416,11 @@ const CodeReview = () => {
                   className={`mode-disabled ${submitMode === 'diff' ? 'active' : ''}`}
                   onClick={() => {
                     setSubmitMode('diff')
-                    showToast('info', '功能开发中', '粘贴 Diff 功能即将上线，敬请期待～')
+                    showToast(
+                      'info',
+                      '功能开发中',
+                      '粘贴 Diff 功能即将上线，敬请期待～',
+                    )
                   }}
                   title="功能开发中，敬请期待"
                 >
@@ -324,7 +432,11 @@ const CodeReview = () => {
                   className={`mode-disabled ${submitMode === 'file' ? 'active' : ''}`}
                   onClick={() => {
                     setSubmitMode('file')
-                    showToast('info', '功能开发中', '文件上传功能即将上线，敬请期待～')
+                    showToast(
+                      'info',
+                      '功能开发中',
+                      '文件上传功能即将上线，敬请期待～',
+                    )
                   }}
                   title="功能开发中，敬请期待"
                 >
@@ -334,12 +446,13 @@ const CodeReview = () => {
                 </button>
               </div>
 
-              {/* PR 链接模式 */}
               {submitMode === 'pr' && (
                 <div className="submit-form">
                   <label className="form-label">
                     GitHub PR 链接
-                    <span className="form-hint">输入 GitHub Pull Request 链接进行审查</span>
+                    <span className="form-hint">
+                      输入 GitHub Pull Request 链接进行审查
+                    </span>
                   </label>
                   <input
                     type="text"
@@ -354,25 +467,30 @@ const CodeReview = () => {
                 </div>
               )}
 
-              {/* 粘贴 Diff 模式（未完成） */}
               {submitMode === 'diff' && (
                 <div className="submit-form mode-disabled-content">
                   <div className="mode-disabled-icon">🚧</div>
                   <h4>粘贴 Diff 功能开发中</h4>
-                  <p>该功能即将上线，敬请期待～<br/>目前请使用 PR 链接方式提交代码审查。</p>
+                  <p>
+                    该功能即将上线，敬请期待～
+                    <br />
+                    目前请使用 PR 链接方式提交代码审查。
+                  </p>
                 </div>
               )}
 
-              {/* 上传文件模式（未完成） */}
               {submitMode === 'file' && (
                 <div className="submit-form mode-disabled-content">
                   <div className="mode-disabled-icon">🚧</div>
                   <h4>文件上传功能开发中</h4>
-                  <p>该功能即将上线，敬请期待～<br/>目前请使用 PR 链接方式提交代码审查。</p>
+                  <p>
+                    该功能即将上线，敬请期待～
+                    <br />
+                    目前请使用 PR 链接方式提交代码审查。
+                  </p>
                 </div>
               )}
 
-              {/* 提交按钮 */}
               <div className="submit-actions">
                 <button
                   className="btn btn-primary btn-lg"
@@ -388,18 +506,12 @@ const CodeReview = () => {
           </div>
         )}
 
-        {/* AI 审查状态（审查中/完成） */}
         {(status === 'queued' || status === 'running') && (
           <div className="code-review__progress">
-            <ReviewProgress
-              status={status}
-              progress={progress}
-              error={error}
-            />
+            <ReviewProgress status={status} progress={progress} error={error} />
           </div>
         )}
 
-        {/* 审查结果（完成后显示） */}
         {status === 'completed' && result && (
           <div className="code-review__result">
             <ReviewResultPanel
@@ -412,7 +524,6 @@ const CodeReview = () => {
           </div>
         )}
 
-        {/* 失败状态 */}
         {status === 'failed' && (
           <AiPageError
             className="code-review__error"
@@ -423,8 +534,9 @@ const CodeReview = () => {
           />
         )}
 
-        {/* 底部操作栏（仅审查完成后显示） */}
-        {(status === 'completed' || status === 'running' || status === 'queued') && (
+        {(status === 'completed' ||
+          status === 'running' ||
+          status === 'queued') && (
           <ReviewActionBar
             status={status}
             onFixCode={handleFixCode}
@@ -432,7 +544,6 @@ const CodeReview = () => {
           />
         )}
 
-        {/* 下一步引导：审查完成后引导去生成 PR */}
         {status === 'completed' && result && (
           <NextStepCard
             currentStep={5}

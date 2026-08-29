@@ -12,50 +12,136 @@ export const GUIDE_PHASE_TITLES = [
 
 export type GuidePhaseTitle = (typeof GUIDE_PHASE_TITLES)[number]
 
+/** 单章生成专用 system，避免被通用解释 prompt 冲淡 */
+export const roadmapPhaseSystemPrompt = `你是 OpenSource Mentor 的贡献指南生成器。
+只输出一个合法 JSON 对象，不要 Markdown，不要代码围栏，不要额外说明。
+默认使用简体中文。
+硬性规则：
+1. 必须包含非空 goal、非空 actionIntro、至少 2 个 actionSteps。
+2. actionSteps 必须是对象数组，每项至少有 title 字符串。
+3. 没有证据时不要编造文件路径/命令；可写“未在已读取文档中确认”，但仍要给出可执行检查思路。
+4. 字段值保持短句，优先保证结构完整，不要写成长文导致 JSON 被截断。`
+
 const PHASE_INSTRUCTIONS: Record<number, string> = {
-  1: `### 大致了解
-- actionIntro：用通俗语言说明仓库做什么、Issue 解决什么、完成后的结果
-- actionSteps：2-3 步“阅读型”行动，例如确认 Issue 标题、浏览 README 开头
-- 不要堆专业术语`,
-  2: `### 环境准备
-- actionIntro：先把项目跑起来
-- actionSteps 必须是可执行步骤，例如：
-  1. Clone Repository（含 git clone / cd 命令）
-  2. 安装依赖（真实命令）
-  3. 启动/检查项目（真实命令）
-- 每步包含 commands、expectedResult、checkboxLabel（如“我已经完成”“项目已经正常运行”）
-- 命令必须来自真实仓库上下文；没有就写“未在已读取文档中确认……”并仍给检查思路`,
+  1: `### 大致了解（阅读型）
+必填 actionSteps 2-3 步，例如：
+- Step 1 · 确认 Issue 目标
+- Step 2 · 浏览 README 开头
+- Step 3 · 弄清完成后的结果
+commands 可为空数组。reproduce 必须为 null。fileRefs 可为空数组。`,
+  2: `### 环境准备（可执行）
+必填 actionSteps 恰好 3 步：
+1. Step 1 · Clone Repository（commands 含 git clone 与 cd）
+2. Step 2 · 安装依赖（真实包管理命令；未知则写检查 package.json/requirements 的思路）
+3. Step 3 · 启动或检查项目
+每步都要有 expectedResult、checkboxLabel。
+reproduce 必须为 null。`,
   3: `### 理解项目
-- actionIntro：先跑通，再读关键文件
-- fileRefs：列出 2-4 个真实路径（必须来自 confirmedFiles / issueRelatedFiles / fileTree）
-- 每个 fileRef 写清 reason（这个文件负责什么、和 Issue 有什么关系）
-- actionSteps：引导用户打开并阅读这些文件`,
+必填：
+- fileRefs：2-3 个真实相对路径（来自上下文文件树）
+- actionSteps：2-3 步，引导打开并阅读这些文件
+reproduce 必须为 null。`,
   4: `### 复现问题
-- actionIntro：围绕当前 Issue 复现
-- reproduce 必填：
-  - steps：复现步骤列表
-  - constructExample：如需构造的输入/路径示例
-  - expectedBehavior：预期行为
-  - actualBehavior：当前实际行为
-  - checkboxLabel：如“我成功复现了 #编号”
-- actionSteps 可补充运行检查命令`,
+必填 reproduce（不可为 null）：
+- steps：至少 2 条复现步骤
+- expectedBehavior / actualBehavior
+- checkboxLabel
+另给 actionSteps 2 步（可含检查命令）。
+fileRefs 可为空。`,
   5: `### 修正方案
-- actionIntro：区分“仓库确认事实”和“AI 建议”，各 1 句即可
-- actionSteps：只要 2-3 步，短句；指出可能涉及的文件（路径必须真实或明确未确认）
-- fileRefs：最多 3 个相关真实文件
-- 不要长篇论证，优先可执行下一步`,
+actionSteps：2-3 步短句；fileRefs 最多 3 个。
+reproduce 必须为 null。不要长篇论证。`,
   6: `### 实现与验证
-- actionIntro：开始修改并验证（1-2 句）
-- actionSteps：恰好 3 步——改哪里、怎么改、怎么验证；描述保持短句
-- commands 优先用已确认测试/检查命令；没有就明确未知
-- checkboxLabel：如“我已完成本地验证”`,
+actionSteps 恰好 3 步：改哪里、怎么改、怎么验证。
+commands 优先用已确认测试命令。
+reproduce 必须为 null。`,
   7: `### PR 提交
-- actionIntro：提交前检查
-- actionSteps：
-  1. 去代码审查
-  2. 去 PR 生成器
-  3. 按 CONTRIBUTING / PR Template 检查
-- checkboxLabel：如“我已准备好提交 PR”`,
+actionSteps 3 步：去代码审查、去 PR 生成器、按 CONTRIBUTING 检查。
+reproduce 必须为 null。fileRefs 可为空。`,
+}
+
+function buildMinimalSchemaExample(phaseNumber: number, ownerRepo: string): string {
+  const title = GUIDE_PHASE_TITLES[phaseNumber - 1]
+  const repoName = ownerRepo.split('/')[1] || 'repo'
+  const base = {
+    phase: phaseNumber,
+    title,
+    goal: '本章导读（1 句）',
+    actionIntro: '这一章要达成什么（1 句）',
+    actionSteps: [
+      {
+        title: 'Step 1 · 示例步骤',
+        description: '为什么做',
+        commands: [] as string[],
+        expectedResult: '完成后应看到什么',
+        checkboxLabel: '我已经完成',
+      },
+      {
+        title: 'Step 2 · 示例步骤',
+        description: '为什么做',
+        commands: [] as string[],
+        expectedResult: '完成后应看到什么',
+        checkboxLabel: '我已经完成',
+      },
+    ],
+    fileRefs: [] as Array<{ path: string; reason: string }>,
+    reproduce: null as null | Record<string, unknown>,
+    learningItems: ['步骤摘要 1', '步骤摘要 2'],
+    recommendedIssues: [] as string[],
+    estimatedDuration: '待确认',
+    difficulty: 'medium',
+    completionCriteria: ['完成本章勾选'],
+    resources: [] as string[],
+  }
+
+  if (phaseNumber === 2) {
+    base.actionSteps = [
+      {
+        title: 'Step 1 · Clone Repository',
+        description: '先拿到代码',
+        commands: [
+          `git clone https://github.com/${ownerRepo}.git`,
+          `cd ${repoName}`,
+        ],
+        expectedResult: '本地出现项目目录与 README',
+        checkboxLabel: '我已经完成',
+      },
+      {
+        title: 'Step 2 · 安装依赖',
+        description: '装好运行所需依赖',
+        commands: ['# 按仓库文档执行安装命令'],
+        expectedResult: '依赖安装成功、无报错',
+        checkboxLabel: '我已经完成',
+      },
+      {
+        title: 'Step 3 · 启动或检查项目',
+        description: '确认项目能跑起来或至少完成基础检查',
+        commands: ['# 按 README 启动/检查'],
+        expectedResult: '服务启动或检查通过',
+        checkboxLabel: '项目已经正常运行',
+      },
+    ]
+  }
+
+  if (phaseNumber === 3) {
+    base.fileRefs = [
+      { path: 'README.md', reason: '先了解项目入口与运行方式' },
+      { path: 'package.json', reason: '确认脚本与依赖（路径以真实文件树为准）' },
+    ]
+  }
+
+  if (phaseNumber === 4) {
+    base.reproduce = {
+      title: '复现问题',
+      steps: ['按 Issue 描述准备输入', '运行相关检查/命令', '观察结果是否符合预期'],
+      constructExample: '',
+      expectedBehavior: '预期应发生什么',
+      actualBehavior: '当前实际发生了什么',
+      checkboxLabel: '我成功复现了问题',
+    }
+  }
+
+  return JSON.stringify(base, null, 2)
 }
 
 function buildSharedContextBlock(params: {
@@ -81,9 +167,9 @@ function buildSharedContextBlock(params: {
     issueContext,
   } = params
 
-  const readmeSnippet = readme ? readme.slice(0, 2000) : '（未读取到 README）'
+  const readmeSnippet = readme ? readme.slice(0, 1600) : '（未读取到 README）'
   const repositoryContextText = repositoryContext
-    ? JSON.stringify(repositoryContext).slice(0, 3800)
+    ? JSON.stringify(repositoryContext).slice(0, 3200)
     : '（未读取到额外仓库上下文）'
 
   const experienceDescription = {
@@ -103,7 +189,7 @@ function buildSharedContextBlock(params: {
 - 不得假设用户掌握特定语言`
 
   const selectedIssueText = issueContext
-    ? JSON.stringify(issueContext).slice(0, 3200)
+    ? JSON.stringify(issueContext).slice(0, 2400)
     : '（严重缺失：用户尚未选择具体 Issue）'
 
   return `## 仓库信息
@@ -148,63 +234,43 @@ export function roadmapPhasePrompt(params: {
   const shared = buildSharedContextBlock(params)
   const instruction = PHASE_INSTRUCTIONS[phaseNumber]
   const ownerRepo = params.repoName
+  const schemaExample = buildMinimalSchemaExample(phaseNumber, ownerRepo)
 
-  return `你是一位资深开源贡献导师。请只生成 Contribution Guide 的第 ${phaseNumber} 章「${title}」。
-输出必须是“可执行行动块”，不是空泛 bullet 列表。
-
+  return `请只生成贡献指南第 ${phaseNumber} 章「${title}」的 JSON。
 目标仓库：${ownerRepo}
-内容使用中文。
 
 ${shared}
 
 ## 本章写作要求
 ${instruction}
 
-## 必须返回严格 JSON（只含一章）
-{
-  "phase": ${phaseNumber},
-  "title": "${title}",
-  "goal": "本章导读，1-2 句",
-  "actionIntro": "先告诉用户这一章要达成什么",
-  "actionSteps": [
-    {
-      "title": "Step 1 · Clone Repository",
-      "description": "简短说明为什么做这一步",
-      "commands": ["git clone https://github.com/${ownerRepo}.git", "cd ${ownerRepo.split('/')[1] || 'repo'}"],
-      "expectedResult": "完成后你应该看到哪些文件/现象",
-      "checkboxLabel": "我已经完成"
-    }
-  ],
-  "fileRefs": [
-    {
-      "path": "真实/相对/路径.py",
-      "reason": "这个文件负责什么、和当前 Issue 的关系"
-    }
-  ],
-  "reproduce": {
-    "title": "复现 #编号",
-    "steps": ["步骤 1", "步骤 2"],
-    "constructExample": "需要构造的示例（可空字符串）",
-    "expectedBehavior": "预期行为",
-    "actualBehavior": "当前实际行为",
-    "checkboxLabel": "我成功复现了 Issue"
-  },
-  "learningItems": ["把 actionSteps 摘要成 3-5 条，兼容旧前端"],
-  "recommendedIssues": [],
-  "estimatedDuration": "预计时间；不确定写待确认",
-  "difficulty": "easy | medium | hard",
-  "completionCriteria": ["2-4 条完成标准"],
-  "resources": ["真实来源"]
+## 输出模板（字段名必须一致，按此结构填写真实内容）
+${schemaExample}
+
+## 绝对禁止
+- 返回空对象、缺少 actionSteps、actionSteps 为字符串数组
+- 第 4 章把 reproduce 设为 null
+- 输出 JSON 以外的任何文字
+- 为了“写好看”而省略必填字段
+
+请直接输出完整 JSON。`
 }
 
-## 结构约束
-1. actionSteps 至少 2 项、至多 4 项；每项 title 用 “Step N · 标题” 格式。
-2. commands 只能使用仓库上下文能证明的命令；否则写明未确认，仍给检查思路。
-3. fileRefs.path 必须来自真实文件树；第 3 章强烈建议提供；其他章可按需，最多 3 个。
-4. 第 4 章 reproduce 必填；其他章 reproduce 可为 null。
-5. 不要编造不存在的文件/命令。
-6. title 必须精确为「${title}」，phase 必须为 ${phaseNumber}。
-7. 严格返回 JSON，不要有额外文字；字段值尽量短，避免冗长段落。`
+/** 内容不完整时的二次修复提示 */
+export function roadmapPhaseRepairPrompt(params: {
+  phaseNumber: number
+  previousOutput: string
+}): string {
+  const title = GUIDE_PHASE_TITLES[params.phaseNumber - 1] || `第 ${params.phaseNumber} 章`
+  return `上一版第 ${params.phaseNumber} 章「${title}」JSON 不完整或无法通过校验。
+请基于下面内容重写一个完整 JSON（只输出 JSON）：
+- 必须有非空 goal、actionIntro
+- actionSteps 至少 2 个对象，每项含 title
+- 第 4 章必须有 reproduce.steps
+- 保持简体中文，字段尽量短
+
+上一版输出：
+${params.previousOutput.slice(0, 3500)}`
 }
 
 /** @deprecated 全量生成兼容 */
@@ -230,6 +296,7 @@ export function roadmapPrompt(params: {
 ${shared}
 
 必须返回 phases 数组，title 依次为：${GUIDE_PHASE_TITLES.join('、')}。
-每章尽量包含 actionIntro、actionSteps、fileRefs、reproduce（第4章）。
+每章必须包含 goal、actionIntro、actionSteps（至少 2 项）。
+第 4 章必须包含 reproduce。
 全部中文。严格 JSON。无证据不编造。`
 }

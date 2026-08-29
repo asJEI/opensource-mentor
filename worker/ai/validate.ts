@@ -186,24 +186,55 @@ export function validateRoadmapPhaseResult(
     else if (isRecord(parsed.phases[0])) source = parsed.phases[0]
   }
 
+  // actionSteps：优先对象数组；若模型误给字符串数组，也升格为步骤对象
   const actionStepsRaw = Array.isArray(source.actionSteps)
-    ? source.actionSteps.filter(isRecord)
-    : []
-  const actionSteps = actionStepsRaw.map((item, index) => ({
-    id: typeof item.id === 'string' ? item.id : `step-${phaseNumber}-${index + 1}`,
-    title: String(item.title || `Step ${index + 1}`).trim(),
-    description:
-      typeof item.description === 'string' ? item.description.trim() : undefined,
-    commands: ensureStringArray(item.commands),
-    expectedResult:
-      typeof item.expectedResult === 'string'
-        ? item.expectedResult.trim()
-        : undefined,
-    checkboxLabel:
-      typeof item.checkboxLabel === 'string' && item.checkboxLabel.trim()
-        ? item.checkboxLabel.trim()
-        : '我已经完成',
-  }))
+    ? source.actionSteps
+    : Array.isArray(source.steps) &&
+        source.steps.some((item) => isRecord(item))
+      ? source.steps
+      : []
+
+  const actionSteps = actionStepsRaw
+    .map((item, index) => {
+      if (typeof item === 'string' && item.trim()) {
+        return {
+          id: `step-${phaseNumber}-${index + 1}`,
+          title: item.trim().startsWith('Step')
+            ? item.trim()
+            : `Step ${index + 1} · ${item.trim()}`,
+          description: undefined,
+          commands: [] as string[],
+          expectedResult: undefined,
+          checkboxLabel: '我已经完成',
+        }
+      }
+      if (!isRecord(item)) return null
+      const title = String(
+        item.title || item.name || item.text || item.step || '',
+      ).trim()
+      if (!title) return null
+      return {
+        id:
+          typeof item.id === 'string'
+            ? item.id
+            : `step-${phaseNumber}-${index + 1}`,
+        title,
+        description:
+          typeof item.description === 'string'
+            ? item.description.trim()
+            : undefined,
+        commands: ensureStringArray(item.commands),
+        expectedResult:
+          typeof item.expectedResult === 'string'
+            ? item.expectedResult.trim()
+            : undefined,
+        checkboxLabel:
+          typeof item.checkboxLabel === 'string' && item.checkboxLabel.trim()
+            ? item.checkboxLabel.trim()
+            : '我已经完成',
+      }
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
 
   const fileRefsRaw = Array.isArray(source.fileRefs) ? source.fileRefs : []
   const fileRefs = fileRefsRaw
@@ -244,11 +275,11 @@ export function validateRoadmapPhaseResult(
     }
   }
 
+  // learningItems 不要再吞掉 steps（steps 可能是行动步骤对象）
   const learningItems = ensureStringArray(
     source.learningItems ??
       source.items ??
       source.points ??
-      source.steps ??
       source.content ??
       source.bulletPoints,
   )
@@ -268,17 +299,21 @@ export function validateRoadmapPhaseResult(
     fileRefs.length > 0 ||
     (reproduce && reproduce.steps.length > 0)
 
-  if ((!goal && !actionIntro) || (derivedLearningItems.length === 0 && !hasStructuredContent)) {
+  // 有结构化步骤就放行；缺 goal 后面自动补
+  if (!hasStructuredContent && derivedLearningItems.length === 0) {
     throw new Error(
       `第 ${phaseNumber} 章内容不完整（缺少 goal/actionSteps）`,
     )
   }
 
+  // 若缺 goal 但有步骤，自动补 goal，降低空壳失败
+  const resolvedGoal = goal || actionIntro || `${title}：按步骤完成本章任务`
+
   return {
     phase: phaseNumber,
     title,
-    goal: goal || actionIntro || title,
-    actionIntro: actionIntro || undefined,
+    goal: resolvedGoal,
+    actionIntro: actionIntro || resolvedGoal,
     actionSteps,
     fileRefs,
     reproduce,

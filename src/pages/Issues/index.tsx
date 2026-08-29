@@ -43,6 +43,60 @@ function formatDate(value: string): string {
   })
 }
 
+function localizeDifficulty(raw?: string | null): string {
+  if (!raw?.trim()) return '难度未知'
+  const value = raw.trim().toLowerCase()
+  const map: Record<string, string> = {
+    beginner: '入门',
+    'beginner+': '入门+',
+    easy: '入门',
+    intermediate: '中等',
+    medium: '中等',
+    advanced: '进阶',
+    hard: '进阶',
+    expert: '专家',
+  }
+  return map[value] || raw.trim()
+}
+
+function localizeEstimatedTime(raw?: string | null): string {
+  if (!raw?.trim()) return '时间未知'
+  const value = raw.trim()
+  if (/[\u4e00-\u9fff]/.test(value)) return value
+  const lower = value.toLowerCase()
+  if (/weekend/.test(lower)) return '约一个周末'
+  if (/few hours|couple of hours|2-4\s*h|2–4\s*h/.test(lower)) return '约几小时'
+  if (/half.?day/.test(lower)) return '约半天'
+  if (/\b1-3h\b|1–3h/.test(lower)) return '约 1-3 小时'
+  if (/\b3-6h\b|3–6h/.test(lower)) return '约 3-6 小时'
+  if (/\b6-12h\b|6–12h/.test(lower)) return '约 6-12 小时'
+  if (/\bday\b|1 day|one day/.test(lower)) return '约一天'
+  if (/week\b|1 week|one week/.test(lower)) return '约一周'
+  const range = lower.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*h/)
+  if (range) return `约 ${range[1]}-${range[2]} 小时`
+  if (/hour|\bh\b/.test(lower)) {
+    const hours = value.match(/\d+(?:\.\d+)?/)?.[0]
+    return hours ? `约 ${hours} 小时` : '约数小时'
+  }
+  return value
+}
+
+function localizeScope(raw?: string | null): string {
+  if (!raw?.trim()) return '未知'
+  const value = raw.trim().toLowerCase()
+  if (value === 'small') return '较小'
+  if (value === 'medium') return '中等'
+  if (value === 'large') return '较大'
+  return raw.trim()
+}
+
+function looksLikeEnglishSummary(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  if (/[\u4e00-\u9fff]/.test(trimmed)) return false
+  return /[A-Za-z]{3,}/.test(trimmed)
+}
+
 const CandidateIssueCard = ({
   issue,
   expanded,
@@ -86,8 +140,12 @@ const CandidateIssueCard = ({
           {technologies.slice(0, 3).map((technology) => (
             <span key={technology}>{technology}</span>
           ))}
-          {analysis?.difficulty && <span>{analysis.difficulty}</span>}
-          {analysis?.estimatedTime && <span>{analysis.estimatedTime}</span>}
+          {analysis?.difficulty && (
+            <span>{localizeDifficulty(analysis.difficulty)}</span>
+          )}
+          {analysis?.estimatedTime && (
+            <span>{localizeEstimatedTime(analysis.estimatedTime)}</span>
+          )}
         </span>
       </button>
 
@@ -96,7 +154,16 @@ const CandidateIssueCard = ({
           <div className="issue-expanded-grid">
             <section>
               <h3>Issue 简介</h3>
-              <p>{analysis?.summary || issue.title}</p>
+              <p>
+                {analysisStatus === 'loading'
+                  ? '正在生成中文简介…'
+                  : analysis?.summary &&
+                      !looksLikeEnglishSummary(analysis.summary)
+                    ? analysis.summary
+                    : analysis?.summary
+                      ? '正在准备中文简介…'
+                      : issue.title}
+              </p>
             </section>
             <section>
               <h3>为什么适合你</h3>
@@ -111,7 +178,11 @@ const CandidateIssueCard = ({
             </section>
             <section>
               <h3>你可能会接触的技术</h3>
-              <p>{technologies.length ? technologies.join(' · ') : '暂无明确技术栈'}</p>
+              <p>
+                {technologies.length
+                  ? technologies.join(' · ')
+                  : '暂无明确技术栈'}
+              </p>
             </section>
             <section>
               <h3>仓库基本信息</h3>
@@ -120,16 +191,18 @@ const CandidateIssueCard = ({
                   {issue.repository.fullName}
                 </a>
                 {' · '}
-                Star {issue.repository.stars ?? '未知'} · Fork {issue.repository.forks ?? '未知'} ·
-                Open Issues {issue.repository.openIssues ?? '未知'} · 更新于{' '}
+                Star {issue.repository.stars ?? '未知'} · Fork{' '}
+                {issue.repository.forks ?? '未知'} · 开放 Issues{' '}
+                {issue.repository.openIssues ?? '未知'} · 更新于{' '}
                 {formatDate(issue.repository.updatedAt || issue.updatedAt)}
               </p>
             </section>
             <section>
               <h3>匹配信息</h3>
               <p>
-                {analysis?.difficulty || '难度未知'} · {analysis?.estimatedTime || '时间未知'} ·
-                范围 {analysis?.scopeAssessment || '未知'}
+                {localizeDifficulty(analysis?.difficulty)} ·{' '}
+                {localizeEstimatedTime(analysis?.estimatedTime)} · 范围{' '}
+                {localizeScope(analysis?.scopeAssessment)}
               </p>
             </section>
           </div>
@@ -203,11 +276,19 @@ const Issues = () => {
       while (running < concurrency && cursor < issues.length) {
         const issue = issues[cursor]
         cursor += 1
-        if (!issue || issue.analysis) continue
+        if (!issue) continue
+        const needsChineseRefresh = Boolean(
+          issue.analysis?.summary &&
+            looksLikeEnglishSummary(issue.analysis.summary),
+        )
+        if (issue.analysis && !needsChineseRefresh) continue
         const currentStatus = analysisStatusByIssue[issue.id]
-        if (currentStatus === 'loading' || currentStatus === 'success') continue
+        if (currentStatus === 'loading') continue
+        if (currentStatus === 'success' && !needsChineseRefresh) continue
         running += 1
-        void analyzeCandidateIssue(issue).finally(() => {
+        void analyzeCandidateIssue(issue, {
+          force: needsChineseRefresh,
+        }).finally(() => {
           running -= 1
           runNext()
         })
