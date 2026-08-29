@@ -91,6 +91,10 @@ for each row execute function public.set_updated_at();
 alter table public.app_users enable row level security;
 alter table public.developer_profiles enable row level security;
 
+grant usage on schema public to service_role;
+grant select, insert, update, delete on table public.app_users to service_role;
+grant select, insert, update, delete on table public.developer_profiles to service_role;
+
 -- No public client policies are added on purpose.
 -- The Cloudflare Worker must use SUPABASE_SECRET_KEY with the Supabase service_role key.
 -- Do not expose that key to the browser.
