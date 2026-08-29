@@ -37,6 +37,7 @@ type SupabaseErrorBody = {
 export class SupabaseRestClient {
   private readonly restUrl: string
   private readonly secretKey: string
+  private readonly isJwtKey: boolean
 
   constructor(env: PlatformEnv) {
     const supabaseUrl = env.SUPABASE_URL?.trim()
@@ -48,6 +49,7 @@ export class SupabaseRestClient {
     }
     this.restUrl = `${supabaseUrl}/rest/v1`
     this.secretKey = secretKey
+    this.isJwtKey = secretKey.split('.').length === 3
   }
 
   async request<T>(
@@ -58,8 +60,11 @@ export class SupabaseRestClient {
       ...init,
       headers: {
         apikey: this.secretKey,
-        Authorization: `Bearer ${this.secretKey}`,
+        ...(this.isJwtKey
+          ? { Authorization: `Bearer ${this.secretKey}` }
+          : {}),
         'Content-Type': 'application/json',
+        'User-Agent': 'opensource-mentor-worker',
         ...(init.prefer ? { Prefer: init.prefer } : {}),
         ...(init.headers ?? {}),
       },
