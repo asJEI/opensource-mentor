@@ -6,6 +6,7 @@ import type {
   IssueExplain,
   RecommendedIssue,
   CandidateIssue,
+  CandidateIssueAnalysisResult,
   CandidateIssuesMeta,
   LoadingState,
 } from '@/types'
@@ -110,6 +111,7 @@ interface RepositoryState {
   candidateIssuesMeta: CandidateIssuesMeta | null
   candidateIssuesStatus: LoadingState
   candidateIssuesError: string | null
+  candidateIssueAnalysisStatus: Record<string, LoadingState>
   /** 用户点击 Start Contribution 后选中的当前贡献 Issue */
   activeContributionIssue: CandidateIssue | null
   /** 当前仓库 owner */
@@ -147,6 +149,7 @@ interface RepositoryState {
   selectIssue: (issue: RecommendedIssue | null) => void
   /** 加载登录用户候选 Issue */
   loadCandidateIssues: () => Promise<void>
+  analyzeCandidateIssue: (issue: CandidateIssue) => Promise<void>
   /** 选择候选 Issue 开始贡献 */
   startContribution: (issue: CandidateIssue) => void
   /** 设置当前仓库信息 */
@@ -165,7 +168,7 @@ interface RepositoryState {
 // 从 localStorage 读取保存的仓库信息
 const savedRepo = loadSavedRepository()
 
-export const useRepositoryStore = create<RepositoryState>((set) => {
+export const useRepositoryStore = create<RepositoryState>((set, get) => {
   let analysisRequestId = 0
   let issuesRequestId = 0
   let explainRequestId = 0
@@ -184,6 +187,7 @@ export const useRepositoryStore = create<RepositoryState>((set) => {
     candidateIssuesMeta: null,
     candidateIssuesStatus: 'idle',
     candidateIssuesError: null,
+    candidateIssueAnalysisStatus: {},
     activeContributionIssue: savedRepo.activeIssue,
     currentOwner: savedRepo.owner,
     currentRepoName: savedRepo.repoName,
@@ -267,6 +271,13 @@ export const useRepositoryStore = create<RepositoryState>((set) => {
           candidateIssues: result.issues,
           candidateIssuesMeta: result.meta,
           candidateIssuesStatus: 'success',
+          candidateIssueAnalysisStatus: result.issues.reduce<Record<string, LoadingState>>(
+            (acc, issue) => {
+              acc[issue.id] = issue.analysis ? 'success' : 'idle'
+              return acc
+            },
+            {},
+          ),
         })
       } catch (err) {
         if (requestId !== issuesRequestId) return
@@ -275,6 +286,50 @@ export const useRepositoryStore = create<RepositoryState>((set) => {
           candidateIssuesStatus: 'error',
           candidateIssuesError: message,
         })
+      }
+    },
+
+    analyzeCandidateIssue: async (issue: CandidateIssue) => {
+      const currentStatus = get().candidateIssueAnalysisStatus[issue.id]
+      if (currentStatus === 'loading' || currentStatus === 'success') return
+
+      set((state) => ({
+        candidateIssueAnalysisStatus: {
+          ...state.candidateIssueAnalysisStatus,
+          [issue.id]: 'loading',
+        },
+      }))
+
+      try {
+        const result: CandidateIssueAnalysisResult =
+          await githubService.analyzeCandidateIssue(issue)
+        set((state) => ({
+          candidateIssues: state.candidateIssues
+            .map((candidate) =>
+              candidate.id === result.issueId
+                ? {
+                    ...candidate,
+                    analysis: result.analysis,
+                    whyThisFitsYou: result.whyThisFitsYou,
+                    matchScore: result.matchScore,
+                    candidateMatchDetails: result.matchDetails,
+                    recommendationFallback: result.recommendationFallback,
+                  }
+                : candidate,
+            )
+            .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0)),
+          candidateIssueAnalysisStatus: {
+            ...state.candidateIssueAnalysisStatus,
+            [result.issueId]: 'success',
+          },
+        }))
+      } catch {
+        set((state) => ({
+          candidateIssueAnalysisStatus: {
+            ...state.candidateIssueAnalysisStatus,
+            [issue.id]: 'error',
+          },
+        }))
       }
     },
 
@@ -342,6 +397,7 @@ export const useRepositoryStore = create<RepositoryState>((set) => {
         candidateIssuesMeta: null,
         candidateIssuesStatus: 'idle',
         candidateIssuesError: null,
+        candidateIssueAnalysisStatus: {},
         activeContributionIssue: null,
         currentOwner: 'microsoft',
         currentRepoName: 'vscode',

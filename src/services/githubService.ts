@@ -2,6 +2,7 @@ import { bffGet, bffPost } from './request'
 import { BYOK_HEADERS } from '@shared/byok'
 import type {
   CandidateIssue,
+  CandidateIssueAnalysisResult,
   CandidateIssuesResult,
   ConnectionTestResult,
   Issue,
@@ -80,6 +81,25 @@ class GithubService {
         warnings: data.meta?.warnings || [],
         failedQueries: data.meta?.failedQueries || [],
       },
+    }
+  }
+
+  /**
+   * 渐进式分析单个候选 Issue
+   * POST /api/issues/candidates/analyze
+   */
+  async analyzeCandidateIssue(
+    issue: CandidateIssue,
+  ): Promise<CandidateIssueAnalysisResult> {
+    const data = await bffPost<any>('/issues/candidates/analyze', { issue })
+    return {
+      issueId: String(data.issueId),
+      analysis: data.analysis,
+      whyThisFitsYou: data.whyThisFitsYou || [],
+      matchScore: data.matchScore || 0,
+      matchDetails: data.matchDetails,
+      fromCache: Boolean(data.fromCache),
+      recommendationFallback: Boolean(data.recommendationFallback),
     }
   }
 
@@ -208,6 +228,7 @@ class GithubService {
       languageSource: data.languageSource || 'unknown',
       user: data.user || { login: '', avatarUrl: '' },
       analysis: data.analysis,
+      whyThisFitsYou: data.whyThisFitsYou || [],
       matchScore: data.matchScore,
       candidateMatchDetails: data.matchDetails ?? data.candidateMatchDetails,
       recommendationFallback: Boolean(data.recommendationFallback),

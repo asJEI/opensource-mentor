@@ -143,6 +143,7 @@ export interface CandidateIssue extends Issue {
     scopeAssessment: 'small' | 'medium' | 'large'
     confidence: number
   }
+  whyThisFitsYou?: string[]
   matchScore?: number
   candidateMatchDetails?: {
     technologyMatch: number
@@ -152,6 +153,16 @@ export interface CandidateIssue extends Issue {
     repositoryHealth: number
   }
   recommendationFallback?: boolean
+}
+
+export interface CandidateIssueAnalysisResult {
+  issueId: string
+  analysis: NonNullable<CandidateIssue['analysis']>
+  whyThisFitsYou: string[]
+  matchScore: number
+  matchDetails: NonNullable<CandidateIssue['candidateMatchDetails']>
+  fromCache: boolean
+  recommendationFallback: boolean
 }
 
 export interface CandidateIssuesMeta {

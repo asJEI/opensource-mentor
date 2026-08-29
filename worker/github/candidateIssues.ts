@@ -42,7 +42,6 @@ type IssueLLMAnalysis = {
   summary: string
   difficulty: IssueDifficulty
   estimatedTime: string
-  whyThisFitsYou: string[]
   technologies: string[]
   scopeAssessment: ScopeAssessment
   confidence: number
@@ -89,6 +88,7 @@ type CandidateIssue = {
     avatarUrl: string
   }
   analysis?: IssueLLMAnalysis
+  whyThisFitsYou?: string[]
   matchScore?: number
   matchDetails?: MatchDetails
   recommendationFallback?: boolean
@@ -123,6 +123,22 @@ function stringArray(value: unknown): string[] {
     ...new Set(
       value
         .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+function labelNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [
+    ...new Set(
+      value
+        .flatMap((item) => {
+          if (typeof item === 'string') return [item]
+          if (isRecord(item) && typeof item.name === 'string') return [item.name]
+          return []
+        })
         .map((item) => item.trim())
         .filter(Boolean),
     ),
@@ -330,7 +346,6 @@ function fallbackAnalysis(issue: CandidateIssue): IssueLLMAnalysis {
     summary: issue.title,
     difficulty: hasBeginnerLabel(issue) ? 'Beginner' : 'Beginner+',
     estimatedTime: '未知',
-    whyThisFitsYou: ['当前展示基于 GitHub 公开字段，AI 分析暂时不可用。'],
     technologies: [
       issue.language,
       ...issue.labels.filter((label) =>
@@ -359,10 +374,6 @@ function validateIssueAnalysis(
       fallback.difficulty,
     ),
     estimatedTime: estimatedTime.slice(0, 40),
-    whyThisFitsYou: ensureStringArray(
-      parsed.whyThisFitsYou,
-      fallback.whyThisFitsYou,
-    ).slice(0, 4),
     technologies: ensureStringArray(
       parsed.technologies,
       fallback.technologies,
@@ -486,10 +497,37 @@ function calculateMatchScore(
   return { matchScore, matchDetails }
 }
 
+function createWhyThisFitsYou(
+  issue: CandidateIssue,
+  analysis: IssueLLMAnalysis,
+  user: OnboardingContext,
+): string[] {
+  const reasons: string[] = []
+  const techScore = technologyMatchScore(issue, analysis, user)
+  if (techScore >= 50 && user.technologies.length > 0) {
+    reasons.push('它和你当前选择或常用的技术栈有重合。')
+  }
+  if (
+    difficultyToLevelScore(user.level, analysis.difficulty) >= 80 ||
+    hasBeginnerLabel(issue)
+  ) {
+    reasons.push('任务难度相对可控，适合作为下一次开源贡献。')
+  }
+  if (timeBudgetToScore(user.timeBudget, analysis.estimatedTime) >= 80) {
+    reasons.push('预计投入时间和你的时间偏好比较接近。')
+  }
+  if (analysis.scopeAssessment === 'small') {
+    reasons.push('改动范围看起来较小，适合先从局部理解和验证开始。')
+  }
+  if (reasons.length === 0) {
+    reasons.push('它具备较清晰的 Issue 描述，可以作为候选任务进一步评估。')
+  }
+  return reasons.slice(0, 3)
+}
+
 async function analyzeIssueWithLLM(
   client: AIClient,
   issue: CandidateIssue,
-  user: OnboardingContext,
 ): Promise<IssueLLMAnalysis> {
   const content = await client.chatCompletions({
     messages: [
@@ -500,16 +538,13 @@ async function analyzeIssueWithLLM(
       },
       {
         role: 'user',
-        content: `请分析这个 GitHub Issue 是否适合当前开发者，并严格返回 JSON：{"summary":"这个 Issue 要做什么","difficulty":"Beginner | Beginner+ | Intermediate | Advanced","estimatedTime":"1-3h","whyThisFitsYou":["..."],"technologies":["Python","CLI","JSON","Testing"],"scopeAssessment":"small | medium | large","confidence":0.0}
+        content: `请分析这个 GitHub Issue 本身，并严格返回 JSON：{"summary":"这个 Issue 要做什么","difficulty":"Beginner | Beginner+ | Intermediate | Advanced","estimatedTime":"1-3h","technologies":["Python","CLI","JSON","Testing"],"scopeAssessment":"small | medium | large","confidence":0.0}
 
 要求：
 - 保守判断难度，不要因为标签叫 good first issue 就无条件判定很简单。
 - estimatedTime 使用短字符串，例如 "1-3h"、"3-6h"、"A weekend"。
-- whyThisFitsYou 最多 3 条，必须基于输入事实。
 - 不要返回 matchScore。
-
-用户画像：
-${JSON.stringify(user)}
+- 不要输出用户匹配原因；这里只分析 Issue 本身。
 
 Issue：
 ${JSON.stringify({
@@ -539,6 +574,104 @@ function passesBasicFilters(item: GitHubSearchIssueItemDto): boolean {
   if (!item.body || item.body.trim().length < MIN_BODY_LENGTH) return false
   if (!isRecentlyUpdated(item.updatedAt)) return false
   return true
+}
+
+async function readJsonBody(request: Request): Promise<Record<string, unknown>> {
+  try {
+    const body = (await request.json()) as unknown
+    if (!isRecord(body)) throw new ApiError('请求体必须是 JSON 对象', 400)
+    return body
+  } catch (error) {
+    if (error instanceof ApiError) throw error
+    throw new ApiError('请求体必须是合法 JSON', 400)
+  }
+}
+
+function candidateIssueFromBody(body: Record<string, unknown>): CandidateIssue {
+  const issue = isRecord(body.issue) ? body.issue : body
+  const repository = isRecord(issue.repository) ? issue.repository : {}
+  const user = isRecord(issue.user) ? issue.user : {}
+  const id = Number(issue.id)
+  const issueNumber = Number(issue.issueNumber ?? issue.number)
+  const title = typeof issue.title === 'string' ? issue.title : ''
+  const issueUrl =
+    typeof issue.issueUrl === 'string'
+      ? issue.issueUrl
+      : typeof issue.htmlUrl === 'string'
+        ? issue.htmlUrl
+        : ''
+  const updatedAt = typeof issue.updatedAt === 'string' ? issue.updatedAt : ''
+  if (!Number.isFinite(id) || !Number.isFinite(issueNumber) || !title || !updatedAt) {
+    throw new ApiError('Issue 数据不完整，无法分析', 400)
+  }
+  return {
+    id,
+    issueNumber,
+    title,
+    body: typeof issue.body === 'string' ? issue.body : '',
+    issueUrl,
+    repository: {
+      owner: String(repository.owner || ''),
+      name: String(repository.name || ''),
+      fullName: String(repository.fullName || ''),
+      url: String(repository.url || ''),
+      description:
+        typeof repository.description === 'string'
+          ? repository.description
+          : null,
+      stars: Number(repository.stars) || 0,
+      forks: Number(repository.forks) || 0,
+      openIssues: Number(repository.openIssues) || 0,
+      topics: stringArray(repository.topics),
+      defaultBranch: String(repository.defaultBranch || ''),
+      updatedAt: String(repository.updatedAt || ''),
+    },
+    labels: labelNames(issue.labels),
+    language: typeof issue.language === 'string' ? issue.language : null,
+    languageSource: issue.languageSource === 'query' ? 'query' : 'unknown',
+    state: issue.state === 'closed' ? 'closed' : 'open',
+    comments: Number(issue.comments) || 0,
+    assignee: null,
+    assignees: [],
+    createdAt: typeof issue.createdAt === 'string' ? issue.createdAt : '',
+    updatedAt,
+    user: {
+      login: typeof user.login === 'string' ? user.login : '',
+      avatarUrl: typeof user.avatarUrl === 'string' ? user.avatarUrl : '',
+    },
+  }
+}
+
+function issueAnalysisCacheRequest(issue: CandidateIssue): Request {
+  const key = encodeURIComponent(`${issue.id}:${issue.updatedAt}`)
+  return new Request(`https://opensource-mentor.internal/issue-analysis/${key}`)
+}
+
+async function readCachedIssueAnalysis(
+  issue: CandidateIssue,
+): Promise<IssueLLMAnalysis | null> {
+  const cached = await caches.default.match(issueAnalysisCacheRequest(issue))
+  if (!cached) return null
+  try {
+    return validateIssueAnalysis(await cached.json(), issue)
+  } catch {
+    return null
+  }
+}
+
+async function writeCachedIssueAnalysis(
+  issue: CandidateIssue,
+  analysis: IssueLLMAnalysis,
+): Promise<void> {
+  await caches.default.put(
+    issueAnalysisCacheRequest(issue),
+    new Response(JSON.stringify(analysis), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'public, max-age=604800',
+      },
+    }),
+  )
 }
 
 export async function handleGetCandidateIssues(
@@ -618,89 +751,28 @@ export async function handleGetCandidateIssues(
     .slice(0, MAX_PRESELECTED_ISSUES)
     .map((entry) => entry.issue)
 
-  const issuesWithRepositories: CandidateIssue[] = []
-  for (const issue of preselectedIssues.slice(0, MAX_LLM_ANALYZED_ISSUES)) {
-    try {
-      const repository = await github.getRepository(
-        issue.repository.owner,
-        issue.repository.name,
-      )
-      issuesWithRepositories.push({
-        ...issue,
-        repository: repositorySummary(repository),
-        language: issue.language || repository.language,
-        languageSource: issue.language ? issue.languageSource : 'unknown',
-      })
-    } catch (error) {
-      console.warn('[candidate-issues] repository enrichment failed', {
-        repository: issue.repository.fullName,
-        message: error instanceof Error ? error.message : 'unknown error',
-      })
-      issuesWithRepositories.push(issue)
-    }
-  }
-
-  let llmUnavailable = false
-  let aiClient = null as AIClient | null
-  let aiClientUnavailable = false
-  try {
-    aiClient = (await resolveAIClient(env, request, undefined)).client
-  } catch (error) {
-    llmUnavailable = true
-    aiClientUnavailable = true
-    warnings.push('AI 推荐分析暂时不可用，已使用基础 GitHub 字段降级展示。')
-    console.warn('[candidate-issues] AI client unavailable, using fallback', {
-      message: error instanceof Error ? error.message : 'unknown error',
-    })
-  }
-
-  const analyzedIssues = await Promise.all(
-    issuesWithRepositories.map(async (issue) => {
+  const recommendedIssues = await Promise.all(
+    preselectedIssues.slice(0, MAX_LLM_ANALYZED_ISSUES).map(async (issue) => {
       try {
-        if (!aiClient) throw new Error('AI client unavailable')
-        const analysis = await analyzeIssueWithLLM(aiClient, issue, onboarding)
-        const { matchScore, matchDetails } = calculateMatchScore(
-          issue,
-          analysis,
-          onboarding,
+        const repository = await github.getRepository(
+          issue.repository.owner,
+          issue.repository.name,
         )
         return {
           ...issue,
-          analysis,
-          matchScore,
-          matchDetails,
-          recommendationFallback: false,
+          repository: repositorySummary(repository),
+          language: issue.language || repository.language,
+          languageSource: issue.language ? issue.languageSource : 'unknown',
         }
       } catch (error) {
-        llmUnavailable = true
-        console.warn('[candidate-issues] issue LLM analysis fallback', {
-          issue: `${issue.repository.fullName}#${issue.issueNumber}`,
+        console.warn('[candidate-issues] repository enrichment failed', {
+          repository: issue.repository.fullName,
           message: error instanceof Error ? error.message : 'unknown error',
         })
-        const analysis = fallbackAnalysis(issue)
-        const { matchScore, matchDetails } = calculateMatchScore(
-          issue,
-          analysis,
-          onboarding,
-        )
-        return {
-          ...issue,
-          analysis,
-          matchScore,
-          matchDetails,
-          recommendationFallback: true,
-        }
+        return issue
       }
     }),
   )
-
-  const recommendedIssues = analyzedIssues
-    .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
-    .slice(0, MAX_LLM_ANALYZED_ISSUES)
-
-  if (llmUnavailable && !aiClientUnavailable) {
-    warnings.push('部分 Issue 的 AI 分析不可用，已使用基础 GitHub 字段降级展示。')
-  }
 
   console.info('[candidate-issues] fetched', {
     technologies,
@@ -732,5 +804,59 @@ export async function handleGetCandidateIssues(
         recentUpdateDays: RECENT_UPDATE_DAYS,
       },
     } satisfies CandidateIssuesMeta,
+  })
+}
+
+export async function handleAnalyzeCandidateIssue(
+  request: Request,
+  env: PlatformEnv,
+): Promise<Response> {
+  const session = await readSession(request, env)
+  if (!session) throw new ApiError('未登录', 401)
+
+  const currentUser = await readCurrentUser(env, session.githubId)
+  if (!currentUser || currentUser.appUser.id !== session.userId) {
+    throw new ApiError('登录状态已失效', 401)
+  }
+
+  const profileRow = currentUser.developerProfile as Record<string, unknown>
+  const technologies = getPreferredTechnologies(profileRow)
+  const onboarding = getOnboardingContext(profileRow, technologies)
+  const issue = candidateIssueFromBody(await readJsonBody(request))
+
+  let analysis = await readCachedIssueAnalysis(issue)
+  let fromCache = Boolean(analysis)
+  let fallback = false
+
+  if (!analysis) {
+    try {
+      const { client } = await resolveAIClient(env, request, undefined)
+      analysis = await analyzeIssueWithLLM(client, issue)
+      await writeCachedIssueAnalysis(issue, analysis)
+    } catch (error) {
+      fallback = true
+      console.warn('[candidate-issues] issue analysis fallback', {
+        issue: `${issue.repository.fullName}#${issue.issueNumber}`,
+        message: error instanceof Error ? error.message : 'unknown error',
+      })
+      analysis = fallbackAnalysis(issue)
+      fromCache = false
+    }
+  }
+
+  const { matchScore, matchDetails } = calculateMatchScore(
+    issue,
+    analysis,
+    onboarding,
+  )
+
+  return success({
+    issueId: String(issue.id),
+    analysis,
+    whyThisFitsYou: createWhyThisFitsYou(issue, analysis, onboarding),
+    matchScore,
+    matchDetails,
+    fromCache,
+    recommendationFallback: fallback,
   })
 }

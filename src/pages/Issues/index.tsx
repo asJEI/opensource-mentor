@@ -46,11 +46,13 @@ function formatDate(value: string): string {
 const CandidateIssueCard = ({
   issue,
   expanded,
+  analysisStatus,
   onToggle,
   onStart,
 }: {
   issue: CandidateIssue
   expanded: boolean
+  analysisStatus: 'idle' | 'loading' | 'success' | 'error'
   onToggle: () => void
   onStart: () => void
 }) => {
@@ -59,9 +61,11 @@ const CandidateIssueCard = ({
     ? analysis.technologies
     : [issue.language].filter((item): item is string => Boolean(item))
   const shortReason =
-    analysis?.whyThisFitsYou?.[0] ||
+    issue.whyThisFitsYou?.[0] ||
     (issue.recommendationFallback
       ? 'AI 分析暂时不可用，已根据 GitHub 基础字段推荐。'
+      : analysisStatus === 'loading' || analysisStatus === 'idle'
+        ? '正在分析匹配度…'
       : '该 Issue 与你的当前画像存在一定匹配。')
 
   return (
@@ -97,8 +101,8 @@ const CandidateIssueCard = ({
             <section>
               <h3>为什么适合你</h3>
               <ul className="issue-fit-list">
-                {(analysis?.whyThisFitsYou?.length
-                  ? analysis.whyThisFitsYou
+                {(issue.whyThisFitsYou?.length
+                  ? issue.whyThisFitsYou
                   : [shortReason]
                 ).map((reason) => (
                   <li key={reason}>{reason}</li>
@@ -159,11 +163,17 @@ const Issues = () => {
   const meta = useRepositoryStore((state) => state.candidateIssuesMeta)
   const status = useRepositoryStore((state) => state.candidateIssuesStatus)
   const error = useRepositoryStore((state) => state.candidateIssuesError)
+  const analysisStatusByIssue = useRepositoryStore(
+    (state) => state.candidateIssueAnalysisStatus,
+  )
   const loadCandidateIssues = useRepositoryStore(
     (state) => state.loadCandidateIssues,
   )
   const startContribution = useRepositoryStore(
     (state) => state.startContribution,
+  )
+  const analyzeCandidateIssue = useRepositoryStore(
+    (state) => state.analyzeCandidateIssue,
   )
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -180,6 +190,35 @@ const Issues = () => {
       showToast('error', '候选 Issue 加载失败', error)
     }
   }, [error, issues.length, showToast, status])
+
+  useEffect(() => {
+    if (status !== 'success' || issues.length === 0) return
+    let cancelled = false
+    let cursor = 0
+    let running = 0
+    const concurrency = 3
+
+    const runNext = () => {
+      if (cancelled) return
+      while (running < concurrency && cursor < issues.length) {
+        const issue = issues[cursor]
+        cursor += 1
+        if (!issue || issue.analysis) continue
+        const currentStatus = analysisStatusByIssue[issue.id]
+        if (currentStatus === 'loading' || currentStatus === 'success') continue
+        running += 1
+        void analyzeCandidateIssue(issue).finally(() => {
+          running -= 1
+          runNext()
+        })
+      }
+    }
+
+    runNext()
+    return () => {
+      cancelled = true
+    }
+  }, [analysisStatusByIssue, analyzeCandidateIssue, issues, status])
 
   const languageText = useMemo(() => {
     if (meta?.languages.length) return meta.languages.join('、')
@@ -260,6 +299,7 @@ const Issues = () => {
                     key={issue.id}
                     issue={issue}
                     expanded={expandedId === issue.id}
+                    analysisStatus={analysisStatusByIssue[issue.id] || 'idle'}
                     onToggle={() =>
                       setExpandedId((current) =>
                         current === issue.id ? null : issue.id,

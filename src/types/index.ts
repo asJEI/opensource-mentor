@@ -26,6 +26,7 @@ export type {
   IssueFilter,
   IssueRecommendation,
   CandidateIssue,
+  CandidateIssueAnalysisResult,
   CandidateIssuesMeta,
   CandidateIssuesResult,
 } from './issue'
