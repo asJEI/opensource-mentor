@@ -718,6 +718,16 @@
   font-size: 12px;
 }
 
+.issue-row-title-block em {
+  color: var(--muted);
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .issue-row-meta {
   display: flex;
   align-items: center;
@@ -779,6 +789,21 @@
   color: var(--ink);
   line-height: 1.7;
   font-size: 14px;
+}
+
+.issue-fit-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.issue-fit-list li::before {
+  content: '✓';
+  margin-right: 8px;
+  color: var(--green);
 }
 
 .issue-expanded-footer {

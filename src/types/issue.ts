@@ -119,6 +119,13 @@ export interface CandidateIssue extends Issue {
     name: string
     fullName: string
     url: string
+    description?: string | null
+    stars?: number
+    forks?: number
+    openIssues?: number
+    topics?: string[]
+    defaultBranch?: string
+    updatedAt?: string
   }
   language: string | null
   languageSource: 'query' | 'unknown'
@@ -127,6 +134,24 @@ export interface CandidateIssue extends Issue {
     avatarUrl: string
   }
   assignee: { login: string; avatarUrl: string } | null
+  analysis?: {
+    summary: string
+    difficulty: 'Beginner' | 'Beginner+' | 'Intermediate' | 'Advanced'
+    estimatedTime: string
+    whyThisFitsYou: string[]
+    technologies: string[]
+    scopeAssessment: 'small' | 'medium' | 'large'
+    confidence: number
+  }
+  matchScore?: number
+  candidateMatchDetails?: {
+    technologyMatch: number
+    levelMatch: number
+    timeMatch: number
+    clarityScore: number
+    repositoryHealth: number
+  }
+  recommendationFallback?: boolean
 }
 
 export interface CandidateIssuesMeta {
@@ -134,6 +159,7 @@ export interface CandidateIssuesMeta {
   rawCount: number
   deduplicatedCount: number
   filteredCount: number
+  recommendedCount: number
   languages: string[]
   warnings: string[]
   failedQueries: Array<{ query: string; message: string; status?: number }>

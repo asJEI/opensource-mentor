@@ -75,6 +75,7 @@ class GithubService {
         rawCount: data.meta?.rawCount || 0,
         deduplicatedCount: data.meta?.deduplicatedCount || 0,
         filteredCount: data.meta?.filteredCount || 0,
+        recommendedCount: data.meta?.recommendedCount || 0,
         languages: data.meta?.languages || [],
         warnings: data.meta?.warnings || [],
         failedQueries: data.meta?.failedQueries || [],
@@ -206,6 +207,10 @@ class GithubService {
       language: data.language || null,
       languageSource: data.languageSource || 'unknown',
       user: data.user || { login: '', avatarUrl: '' },
+      analysis: data.analysis,
+      matchScore: data.matchScore,
+      candidateMatchDetails: data.matchDetails ?? data.candidateMatchDetails,
+      recommendationFallback: Boolean(data.recommendationFallback),
     }
   }
 }

@@ -55,6 +55,15 @@ const CandidateIssueCard = ({
   onStart: () => void
 }) => {
   const visibleLabels = issue.labels.slice(0, 5)
+  const analysis = issue.analysis
+  const technologies = analysis?.technologies?.length
+    ? analysis.technologies
+    : [issue.language].filter((item): item is string => Boolean(item))
+  const shortReason =
+    analysis?.whyThisFitsYou?.[0] ||
+    (issue.recommendationFallback
+      ? 'AI 分析暂时不可用，已根据 GitHub 基础字段推荐。'
+      : '该 Issue 与你的当前画像存在一定匹配。')
 
   return (
     <article className={clsx('issue-row-card', expanded && 'expanded')}>
@@ -63,14 +72,19 @@ const CandidateIssueCard = ({
           <IssueIcon />
         </span>
         <span className="issue-row-title-block">
+          <span>{issue.repository.fullName}</span>
           <strong>
             {issue.title}{' '}
             <small>#{issue.issueNumber}</small>
           </strong>
-          <span>{issue.repository.fullName}</span>
+          <em>{shortReason}</em>
         </span>
         <span className="issue-row-meta">
-          <span>{issue.language || '语言未知'}</span>
+          {technologies.slice(0, 3).map((technology) => (
+            <span key={technology}>{technology}</span>
+          ))}
+          {analysis?.difficulty && <span>{analysis.difficulty}</span>}
+          {analysis?.estimatedTime && <span>{analysis.estimatedTime}</span>}
         </span>
       </button>
 
@@ -92,18 +106,22 @@ const CandidateIssueCard = ({
           <div className="issue-expanded-grid">
             <section>
               <h3>Issue 简介</h3>
-              <p>{issue.title}</p>
-            </section>
-            <section>
-              <h3>原始描述摘要</h3>
-              <p>{summarizeBody(issue.body)}</p>
+              <p>{analysis?.summary || issue.title}</p>
             </section>
             <section>
               <h3>为什么适合你</h3>
-              <p>
-                当前阶段已基于你的技术栈和公开 Issue 数据拉取候选项；
-                更精确的匹配原因会在后续推荐算法补齐后展示。
-              </p>
+              <ul className="issue-fit-list">
+                {(analysis?.whyThisFitsYou?.length
+                  ? analysis.whyThisFitsYou
+                  : [shortReason]
+                ).map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </section>
+            <section>
+              <h3>你可能会接触的技术</h3>
+              <p>{technologies.length ? technologies.join(' · ') : '暂无明确技术栈'}</p>
             </section>
             <section>
               <h3>仓库基本信息</h3>
@@ -112,12 +130,22 @@ const CandidateIssueCard = ({
                   {issue.repository.fullName}
                 </a>
                 {' · '}
-                更新于 {formatDate(issue.updatedAt)} · 评论 {issue.comments}
+                Star {issue.repository.stars ?? '未知'} · Fork {issue.repository.forks ?? '未知'} ·
+                Open Issues {issue.repository.openIssues ?? '未知'} · 更新于{' '}
+                {formatDate(issue.repository.updatedAt || issue.updatedAt)}
               </p>
             </section>
             <section>
               <h3>匹配信息</h3>
-              <p>难度、预计时间和匹配分暂未生成，等待后续推荐算法补充真实结果。</p>
+              <p>
+                {analysis?.difficulty || '难度未知'} · {analysis?.estimatedTime || '时间未知'} ·
+                范围 {analysis?.scopeAssessment || '未知'} · 置信度{' '}
+                {analysis ? `${Math.round(analysis.confidence * 100)}%` : '未知'}
+              </p>
+            </section>
+            <section>
+              <h3>原始描述摘要</h3>
+              <p>{summarizeBody(issue.body)}</p>
             </section>
           </div>
 
@@ -224,7 +252,7 @@ const Issues = () => {
             <div className="issues-toolbar">
               <div className="issues-tabs">
                 <button className="issues-tab active">
-                  候选 Issues
+                  推荐 Issues
                   <span className="issues-tab-count">{issues.length}</span>
                 </button>
               </div>
@@ -237,7 +265,7 @@ const Issues = () => {
                     去重 {meta.deduplicatedCount}
                   </span>
                   <span className="filter-select">
-                    已筛选 {meta.filteredCount}
+                    推荐 {meta.recommendedCount || issues.length}
                   </span>
                 </div>
               )}
