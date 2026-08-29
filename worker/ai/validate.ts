@@ -171,20 +171,44 @@ export function validateRoadmapPhaseResult(
   phaseNumber: number,
 ): RoadmapPhase {
   const title = GUIDE_PHASE_TITLES[phaseNumber - 1] || `第 ${phaseNumber} 章`
+
+  // 兼容模型把单章包在 phase / phases[0] 里的情况
+  let source = parsed
+  if (isRecord(parsed.phase)) {
+    source = parsed.phase
+  } else if (Array.isArray(parsed.phases)) {
+    const matched = parsed.phases.find(
+      (item) =>
+        isRecord(item) &&
+        (Number(item.phase) === phaseNumber ||
+          String(item.title || '').includes(title)),
+    )
+    if (isRecord(matched)) source = matched
+    else if (isRecord(parsed.phases[0])) source = parsed.phases[0]
+  }
+
+  const learningItems = ensureStringArray(source.learningItems)
+  const goal = String(source.goal || '').trim()
+  if (!goal || learningItems.length === 0) {
+    throw new Error(
+      `第 ${phaseNumber} 章内容不完整（缺少 goal 或 learningItems）`,
+    )
+  }
+
   return {
     phase: phaseNumber,
     title,
-    goal: String(parsed.goal || '本章内容暂未生成，请稍后重试。'),
-    learningItems: ensureStringArray(parsed.learningItems),
-    recommendedIssues: ensureStringArray(parsed.recommendedIssues),
-    estimatedDuration: String(parsed.estimatedDuration || '待确认'),
+    goal,
+    learningItems,
+    recommendedIssues: ensureStringArray(source.recommendedIssues),
+    estimatedDuration: String(source.estimatedDuration || '待确认'),
     difficulty: ensureEnum(
-      parsed.difficulty,
+      source.difficulty,
       ['easy', 'medium', 'hard'] as const,
       'medium',
     ),
-    completionCriteria: ensureStringArray(parsed.completionCriteria),
-    resources: ensureStringArray(parsed.resources),
+    completionCriteria: ensureStringArray(source.completionCriteria),
+    resources: ensureStringArray(source.resources),
   }
 }
 
@@ -205,7 +229,21 @@ export function validateRoadmapResult(
         parsedPhases.find((item) => Number(item.phase) === idx + 1) ||
         parsedPhases.find((item) => String(item.title || '').includes(title)) ||
         {}
-      return validateRoadmapPhaseResult(phase, idx + 1)
+      try {
+        return validateRoadmapPhaseResult(phase, idx + 1)
+      } catch {
+        return {
+          phase: idx + 1,
+          title,
+          goal: '本章内容暂未生成，请稍后重试。',
+          learningItems: [] as string[],
+          recommendedIssues: [] as string[],
+          estimatedDuration: '待确认',
+          difficulty: 'medium' as const,
+          completionCriteria: [] as string[],
+          resources: [] as string[],
+        }
+      }
     }),
     tips: ensureStringArray(parsed.tips),
     confidence: Number(parsed.confidence) || 0.7,

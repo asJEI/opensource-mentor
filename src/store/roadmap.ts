@@ -21,6 +21,8 @@ const DEFAULT_PHASE_TITLES = [
   'PR 提交',
 ]
 
+const STORAGE_PREFIX = 'osm.contribution-guide.v1:'
+
 function calculateProgress(phases: RoadmapPhase[]): RoadmapProgress {
   const readyPhases = phases.filter((s) => s.generationStatus === 'ready')
   const totalSteps = phases.length
@@ -67,17 +69,60 @@ function patchPhase(
   )
 }
 
+function isPhaseContentReady(phase: RoadmapPhase | null | undefined): boolean {
+  if (!phase) return false
+  if (phase.generationStatus !== 'ready') return false
+  if (!phase.goal?.trim()) return false
+  if (/暂未生成|正在生成|正在准备/.test(phase.goal)) return false
+  return Array.isArray(phase.learningItems) && phase.learningItems.length > 0
+}
+
+function cacheKey(owner: string, repo: string, issueNumber: number) {
+  return `${STORAGE_PREFIX}${owner}/${repo}#${issueNumber}`
+}
+
+type PersistedGuide = {
+  key: string
+  owner: string
+  repo: string
+  roadmap: Roadmap
+  steps: RoadmapPhase[]
+  savedAt: number
+}
+
+function readPersistedGuide(key: string): PersistedGuide | null {
+  if (!key || typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as PersistedGuide
+    if (!parsed?.roadmap || !Array.isArray(parsed.steps)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writePersistedGuide(payload: PersistedGuide) {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    sessionStorage.setItem(payload.key, JSON.stringify(payload))
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
 interface RoadmapState {
   roadmap: Roadmap | null
   steps: RoadmapPhase[]
   progress: RoadmapProgress
   isLoading: boolean
-  /** 是否仍在后台生成后续章节 */
   isGeneratingMore: boolean
   error: string | null
   currentOwner: string
   currentRepo: string
-  profileSignature: string
+  /** 稳定缓存键：owner/repo#issueNumber */
+  cacheKey: string
   generationToken: number
 
   loadRoadmap: (owner: string, repo: string, options?: { force?: boolean }) => Promise<void>
@@ -133,6 +178,44 @@ function buildIssueContext() {
   }
 }
 
+function persistCurrent(get: () => RoadmapState) {
+  const state = get()
+  if (!state.cacheKey || !state.roadmap || state.steps.length === 0) return
+  writePersistedGuide({
+    key: state.cacheKey,
+    owner: state.currentOwner,
+    repo: state.currentRepo,
+    roadmap: { ...state.roadmap, phases: state.steps },
+    steps: state.steps,
+    savedAt: Date.now(),
+  })
+}
+
+async function generateOnePhase(params: {
+  owner: string
+  repo: string
+  phaseNumber: number
+  userProfile: ReturnType<typeof getEffectiveUserProfileContext>
+  shared: {
+    repository: Record<string, unknown>
+    readme: string
+    repositoryContext: Record<string, unknown>
+    issueContext?: Record<string, unknown> | null
+  }
+}): Promise<RoadmapPhase> {
+  const phase = await aiService.generateRoadmapPhase(
+    params.owner,
+    params.repo,
+    params.phaseNumber,
+    params.userProfile,
+    params.shared,
+  )
+  if (!isPhaseContentReady({ ...phase, generationStatus: 'ready' })) {
+    throw new Error('本章生成结果为空')
+  }
+  return phase
+}
+
 export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   roadmap: null,
   steps: [],
@@ -142,13 +225,14 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   error: null,
   currentOwner: '',
   currentRepo: '',
-  profileSignature: '',
+  cacheKey: '',
   generationToken: 0,
 
   loadRoadmap: async (owner, repo, options) => {
     const userProfile = getEffectiveUserProfileContext()
     const issueContext = buildIssueContext()
-    if (!issueContext) {
+    const activeIssue = useRepositoryStore.getState().activeContributionIssue
+    if (!issueContext || !activeIssue) {
       set({
         isLoading: false,
         isGeneratingMore: false,
@@ -158,48 +242,130 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         progress: initialProgress,
         currentOwner: owner,
         currentRepo: repo,
-        profileSignature: '',
+        cacheKey: '',
       })
       return
     }
 
-    const profileSignature = JSON.stringify({ userProfile, issueContext })
+    const key = cacheKey(owner, repo, activeIssue.issueNumber)
     const current = get()
+
+    // 内存已有同一 Issue 的指南：不重复生成（除非 force）
     if (
       !options?.force &&
+      current.cacheKey === key &&
       current.roadmap &&
-      !current.error &&
-      current.currentOwner === owner &&
-      current.currentRepo === repo &&
-      current.profileSignature === profileSignature &&
-      current.steps.every((step) => step.generationStatus === 'ready')
+      current.steps.some(isPhaseContentReady) &&
+      !current.isGeneratingMore
     ) {
-      return
+      // 若有空壳“已生成”，纠正状态后按需补生成
+      const broken = current.steps.filter(
+        (step) =>
+          step.generationStatus === 'ready' && !isPhaseContentReady(step),
+      )
+      if (broken.length === 0) {
+        if (current.steps.every((step) => step.generationStatus === 'ready')) {
+          return
+        }
+        // 有未完成章节则继续后台补齐，但不清空已有内容
+      } else {
+        const fixed = current.steps.map((step) =>
+          broken.some((item) => item.phase === step.phase)
+            ? {
+                ...step,
+                generationStatus: 'failed' as RoadmapGenerationStatus,
+                generationError: '本章内容不完整，请重新生成',
+                goal: '本章内容不完整，请点击重新生成。',
+              }
+            : step,
+        )
+        set({ steps: fixed, progress: calculateProgress(fixed) })
+      }
+      if (current.steps.every((step) => isPhaseContentReady(step))) return
+    }
+
+    // sessionStorage 恢复
+    if (!options?.force) {
+      const persisted = readPersistedGuide(key)
+      if (persisted && persisted.steps.some(isPhaseContentReady)) {
+        const restoredSteps = persisted.steps.map((step) =>
+          step.generationStatus === 'ready' && !isPhaseContentReady(step)
+            ? {
+                ...step,
+                generationStatus: 'failed' as RoadmapGenerationStatus,
+                generationError: '本章内容不完整',
+              }
+            : step,
+        )
+        set({
+          roadmap: persisted.roadmap,
+          steps: restoredSteps,
+          progress: calculateProgress(restoredSteps),
+          isLoading: false,
+          isGeneratingMore: false,
+          error: null,
+          currentOwner: owner,
+          currentRepo: repo,
+          cacheKey: key,
+        })
+        if (restoredSteps.every(isPhaseContentReady)) return
+        // 未完成的章节继续补生成；不打断已恢复内容
+      }
     }
 
     const token = current.generationToken + 1
+    const existingReady =
+      !options?.force && current.cacheKey === key
+        ? current.steps.filter(isPhaseContentReady)
+        : !options?.force
+          ? readPersistedGuide(key)?.steps.filter(isPhaseContentReady) || []
+          : []
+
+    const titles = DEFAULT_PHASE_TITLES
+    let steps = createPlaceholderPhases(titles).map((placeholder) => {
+      const ready = existingReady.find((item) => item.phase === placeholder.phase)
+      if (!ready) return placeholder
+      return {
+        ...ready,
+        generationStatus: 'ready' as RoadmapGenerationStatus,
+        generationError: null,
+      }
+    })
+
+    const firstMissing = steps.find((step) => !isPhaseContentReady(step))
+    steps = steps.map((step) => {
+      if (isPhaseContentReady(step)) return step
+      if (firstMissing && step.phase === firstMissing.phase) {
+        return { ...step, generationStatus: 'generating', goal: '正在生成本章内容…' }
+      }
+      return {
+        ...step,
+        generationStatus: 'queued',
+        goal: step.goal?.includes('不完整') ? step.goal : '排队等待生成…',
+      }
+    })
+
     set({
-      isLoading: true,
-      isGeneratingMore: false,
+      isLoading: existingReady.length === 0,
+      isGeneratingMore: true,
       error: null,
       currentOwner: owner,
       currentRepo: repo,
-      profileSignature,
+      cacheKey: key,
       generationToken: token,
-      steps: createPlaceholderPhases(DEFAULT_PHASE_TITLES),
-      progress: {
-        currentStep: 0,
-        totalSteps: DEFAULT_PHASE_TITLES.length,
-        completedSteps: 0,
-        percentage: 0,
-      },
+      steps,
+      progress: calculateProgress(steps),
       roadmap: {
-        title: '正在生成贡献指南…',
-        description: '先读取仓库上下文，再按章节逐步生成。',
+        title:
+          current.cacheKey === key && current.roadmap?.title
+            ? current.roadmap.title
+            : `贡献指南：#${activeIssue.issueNumber} ${activeIssue.title}`,
+        description:
+          '围绕当前 Issue 分步理解问题、准备环境、复现并提交 PR。第一章就绪即可阅读，其余章节后台继续生成。',
         totalEstimatedTime: '待确认',
-        phases: [],
-        tips: [],
-        confidence: 0,
+        phases: steps,
+        tips: current.roadmap?.tips || [],
+        confidence: 0.7,
       },
     })
 
@@ -210,29 +376,18 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         userProfile,
         issueContext,
       )
-
       if (get().generationToken !== token) return
 
-      const titles =
-        prepared.phaseTitles?.length === DEFAULT_PHASE_TITLES.length
-          ? prepared.phaseTitles
-          : DEFAULT_PHASE_TITLES
-      const placeholders = createPlaceholderPhases(titles)
-      placeholders[0].generationStatus = 'generating'
-
       set({
+        isLoading: false,
         roadmap: {
           title: prepared.title,
           description: prepared.description,
           totalEstimatedTime: prepared.totalEstimatedTime || '待确认',
-          phases: placeholders,
+          phases: get().steps,
           tips: [],
           confidence: 0.7,
         },
-        steps: placeholders,
-        progress: calculateProgress(placeholders),
-        isLoading: false,
-        isGeneratingMore: true,
       })
 
       const shared = {
@@ -242,34 +397,11 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         issueContext: prepared.issueContext,
       }
 
-      // 先生成第一章，立刻可阅读
-      const firstPhase = await aiService.generateRoadmapPhase(
-        owner,
-        repo,
-        1,
-        userProfile,
-        shared,
-      )
-      if (get().generationToken !== token) return
-
-      let steps = patchPhase(get().steps, 1, {
-        ...firstPhase,
-        id: 'phase-0',
-        status: 'current',
-        generationStatus: 'ready' as RoadmapGenerationStatus,
-        generationError: null,
-      })
-      set({
-        steps,
-        progress: calculateProgress(steps),
-        roadmap: get().roadmap
-          ? { ...get().roadmap!, phases: steps, title: prepared.title }
-          : get().roadmap,
-      })
-
-      // 后台继续生成第 2-7 章
-      for (let phaseNumber = 2; phaseNumber <= titles.length; phaseNumber += 1) {
+      for (let phaseNumber = 1; phaseNumber <= titles.length; phaseNumber += 1) {
         if (get().generationToken !== token) return
+        if (isPhaseContentReady(get().steps.find((s) => s.phase === phaseNumber))) {
+          continue
+        }
 
         steps = patchPhase(get().steps, phaseNumber, {
           generationStatus: 'generating',
@@ -279,13 +411,13 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         set({ steps, progress: calculateProgress(steps), isGeneratingMore: true })
 
         try {
-          const phase = await aiService.generateRoadmapPhase(
+          const phase = await generateOnePhase({
             owner,
             repo,
             phaseNumber,
             userProfile,
             shared,
-          )
+          })
           if (get().generationToken !== token) return
 
           steps = patchPhase(get().steps, phaseNumber, {
@@ -293,7 +425,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
             id: `phase-${phaseNumber - 1}`,
             status:
               get().steps.find((item) => item.phase === phaseNumber)?.status ||
-              'pending',
+              (phaseNumber === 1 ? 'current' : 'pending'),
             generationStatus: 'ready',
             generationError: null,
           })
@@ -304,23 +436,33 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
               ? { ...get().roadmap!, phases: steps }
               : get().roadmap,
           })
+          persistCurrent(get)
         } catch (phaseError) {
           if (get().generationToken !== token) return
           const message = getErrorMessage(phaseError, '本章生成失败')
           steps = patchPhase(get().steps, phaseNumber, {
             generationStatus: 'failed',
             generationError: message,
-            goal: '本章生成失败，可稍后重试整份指南。',
+            goal: '本章生成失败，可点击重新生成。',
+            learningItems: [],
           })
           set({ steps, progress: calculateProgress(steps) })
+          persistCurrent(get)
         }
       }
 
       if (get().generationToken !== token) return
-      set({ isGeneratingMore: false })
+      set({ isGeneratingMore: false, isLoading: false })
+      persistCurrent(get)
     } catch (err) {
       if (get().generationToken !== token) return
       const message = getErrorMessage(err, '贡献指南生成失败，请稍后重试')
+      // 若已有可读章节，保留它们，只提示错误
+      if (get().steps.some(isPhaseContentReady)) {
+        set({ isLoading: false, isGeneratingMore: false })
+        persistCurrent(get)
+        return
+      }
       set({
         isLoading: false,
         isGeneratingMore: false,
@@ -344,6 +486,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       return step
     })
     set({ steps: newSteps, progress: calculateProgress(newSteps) })
+    persistCurrent(get)
   },
 
   resetProgress: () => {
@@ -355,6 +498,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       tasks: step.tasks.map((task) => ({ ...task, completed: false })),
     }))
     set({ steps: newSteps, progress: calculateProgress(newSteps) })
+    persistCurrent(get)
   },
 
   updateStepStatus: (stepId, status) => {
@@ -374,6 +518,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       return step
     })
     set({ steps: newSteps, progress: calculateProgress(newSteps) })
+    persistCurrent(get)
   },
 }))
 

@@ -110,14 +110,23 @@ function EvidenceList({ title, items }: { title: string; items: string[] }) {
   )
 }
 
-function generationLabel(status?: RoadmapPhase['generationStatus']) {
-  switch (status) {
-    case 'ready':
-      return '已生成'
+function generationLabel(phase: RoadmapPhase | null) {
+  if (!phase) return '排队中'
+  if (
+    phase.generationStatus === 'ready' &&
+    phase.learningItems?.length > 0 &&
+    phase.goal &&
+    !/暂未生成|正在生成|正在准备|不完整/.test(phase.goal)
+  ) {
+    return '已生成'
+  }
+  switch (phase.generationStatus) {
     case 'generating':
       return '生成中'
     case 'failed':
       return '失败'
+    case 'ready':
+      return '内容不完整'
     default:
       return '排队中'
   }
@@ -151,6 +160,14 @@ function GuideArticle({
   const phase = section.phase
   const generationStatus = phase?.generationStatus
   const title = phase?.title || section.title
+  const learningItems = phase?.learningItems || []
+  const completionCriteria = phase?.completionCriteria || []
+  const resources = phase?.resources || []
+  const goal = phase?.goal || '这一章还没有生成内容。'
+  const hasContent =
+    learningItems.length > 0 &&
+    Boolean(goal.trim()) &&
+    !/暂未生成|正在生成|正在准备|不完整/.test(goal)
 
   if (generationStatus === 'generating' || generationStatus === 'queued') {
     return (
@@ -169,22 +186,18 @@ function GuideArticle({
     )
   }
 
-  if (generationStatus === 'failed') {
+  if (generationStatus === 'failed' || !hasContent) {
     return (
       <article className="guide-reader">
         <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
         <h2>{title}</h2>
         <p className="guide-reader-goal">
-          {phase?.generationError || '本章生成失败，请点击上方「重新生成」。'}
+          {phase?.generationError ||
+            '本章内容不完整或生成失败，请点击上方「重新生成」。'}
         </p>
       </article>
     )
   }
-
-  const goal = phase?.goal || '这一章还没有生成内容。'
-  const learningItems = phase?.learningItems || []
-  const completionCriteria = phase?.completionCriteria || []
-  const resources = phase?.resources || []
 
   return (
     <article className="guide-reader">
@@ -204,7 +217,7 @@ function GuideArticle({
       <EvidenceList title={section.criteriaTitle} items={completionCriteria} />
       <EvidenceList title={section.resourcesTitle} items={resources} />
 
-      {isLast && generationStatus === 'ready' && (
+      {isLast && (
         <section className="guide-content-block guide-action-block">
           <h3>提交前的最后两步</h3>
           <p>
@@ -218,7 +231,7 @@ function GuideArticle({
         </section>
       )}
 
-      {!isLast && generationStatus === 'ready' && (
+      {!isLast && (
         <section className="guide-content-block guide-action-block">
           <h3>卡住了？</h3>
           <p>可以带着当前章节问题去问 AI 导师。</p>
@@ -236,7 +249,6 @@ function GuideArticle({
           variant={isCompleted ? 'secondary' : 'primary'}
           onClick={onComplete}
           icon={<CheckIcon />}
-          disabled={generationStatus !== 'ready'}
         >
           {isCompleted ? '已标记完成' : '标记本章完成'}
         </Button>
@@ -276,10 +288,16 @@ const Roadmap = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOwner, currentRepoName, profileSignature, activeContributionIssue?.id])
 
-  // 第一章就绪后自动聚焦阅读
+  // 第一章真正有内容后再自动聚焦
   useEffect(() => {
     if (hasAutoFocused) return
-    const firstReady = steps.findIndex((step) => step.generationStatus === 'ready')
+    const firstReady = steps.findIndex(
+      (step) =>
+        step.generationStatus === 'ready' &&
+        (step.learningItems?.length || 0) > 0 &&
+        step.goal &&
+        !/暂未生成|正在生成|正在准备|不完整/.test(step.goal),
+    )
     if (firstReady >= 0) {
       setActiveIndex(firstReady)
       setHasAutoFocused(true)
@@ -289,7 +307,15 @@ const Roadmap = () => {
   const sections = useMemo(() => normalizeSections(steps), [steps])
   const activeSection = sections[activeIndex] || sections[0]
   const completedCount = sections.filter((section) => section.phase?.status === 'completed').length
-  const readyCount = sections.filter((section) => section.phase?.generationStatus === 'ready').length
+  const readyCount = sections.filter((section) => {
+    const phase = section.phase
+    return (
+      phase?.generationStatus === 'ready' &&
+      (phase.learningItems?.length || 0) > 0 &&
+      phase.goal &&
+      !/暂未生成|正在生成|正在准备|不完整/.test(phase.goal)
+    )
+  }).length
   const hasShell = steps.length > 0
   const issueTitle = activeContributionIssue
     ? `#${activeContributionIssue.issueNumber} ${activeContributionIssue.title}`
@@ -388,9 +414,14 @@ const Roadmap = () => {
                 className={clsx(
                   'guide-step-card',
                   index === activeIndex && 'active',
-                  status === 'ready' && 'ready',
+                  status === 'ready' &&
+                    (section.phase?.learningItems?.length || 0) > 0 &&
+                    'ready',
                   status === 'generating' && 'generating',
-                  status === 'failed' && 'failed',
+                  (status === 'failed' ||
+                    (status === 'ready' &&
+                      (section.phase?.learningItems?.length || 0) === 0)) &&
+                    'failed',
                   section.phase?.status === 'completed' && 'completed',
                 )}
                 onClick={() => setActiveIndex(index)}
@@ -398,7 +429,7 @@ const Roadmap = () => {
                 <span className="guide-step-card-number">{section.number}</span>
                 <span className="guide-step-card-body">
                   <strong>{section.title}</strong>
-                  <em>{generationLabel(status)}</em>
+                  <em>{generationLabel(section.phase)}</em>
                 </span>
                 {status === 'generating' && <span className="guide-step-card-spinner" />}
                 {status === 'ready' && section.phase?.status === 'completed' && <CheckIcon />}

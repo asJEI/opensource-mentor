@@ -56,10 +56,13 @@ export async function generateRoadmapPhase(
     )
   } catch (error) {
     if (error instanceof ApiError) throw error
-    console.error(
-      '[AI] generateRoadmapPhase failed:',
-      error instanceof Error ? error.message : 'unknown error',
-    )
+    const message = error instanceof Error ? error.message : 'unknown error'
+    console.error('[AI] generateRoadmapPhase failed:', message)
+    if (message.includes('内容不完整')) {
+      throw new ApiError(`第 ${params.phaseNumber} 章生成内容不完整，请重试`, 502, {
+        errorCode: 'AI_PROVIDER_ERROR',
+      })
+    }
     throw new ApiError('AI 服务暂时不可用，请稍后重试', 503, {
       errorCode: 'AI_PROVIDER_ERROR',
     })
