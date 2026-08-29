@@ -39,7 +39,9 @@ export class SupabaseRestClient {
   private readonly secretKey: string
 
   constructor(env: PlatformEnv) {
-    const supabaseUrl = env.SUPABASE_URL?.trim().replace(/\/+$/u, '')
+    const supabaseUrl = env.SUPABASE_URL?.trim()
+      .replace(/\/+$/u, '')
+      .replace(/\/rest\/v1$/u, '')
     const secretKey = env.SUPABASE_SECRET_KEY?.trim()
     if (!supabaseUrl || !secretKey) {
       throw new ApiError('Supabase 尚未配置', 503)
