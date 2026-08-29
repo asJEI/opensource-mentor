@@ -103,8 +103,15 @@ export type {
   RiskReviewReport,
   PraiseItem,
   ReviewResult,
+  ReviewChangedFile,
+  ReviewJobArtifacts,
+  ReviewInputMode,
+  ReviewCompareInput,
+  CreateReviewRequest,
   ReviewJobRecord,
   ReviewTab,
+  DiffLine,
+  DiffHunk,
 } from './codeReview'
 
 // API 设置

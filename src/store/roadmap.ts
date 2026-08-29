@@ -72,13 +72,21 @@ function patchPhase(
 function isPhaseContentReady(phase: RoadmapPhase | null | undefined): boolean {
   if (!phase) return false
   if (phase.generationStatus !== 'ready') return false
-  const hasActions = (phase.actionSteps?.length || 0) > 0
-  const hasFiles = (phase.fileRefs?.length || 0) > 0
-  const hasReproduce = (phase.reproduce?.steps?.length || 0) > 0
-  const hasLearning = (phase.learningItems?.length || 0) > 0
-  if (!phase.goal?.trim() && !phase.actionIntro?.trim()) return false
-  if (/暂未生成|正在生成|正在准备/.test(phase.goal || '')) return false
-  return hasActions || hasFiles || hasReproduce || hasLearning
+  if (/暂未生成|正在生成|正在准备|按步骤操作|参考后续章节/.test(phase.goal || '')) {
+    return false
+  }
+  const substantiveSteps = (phase.actionSteps || []).filter((step) => {
+    const hasCommands = (step.commands || []).some((item) => item.trim())
+    const hasDescription = Boolean(step.description?.trim())
+    const hasExpected = Boolean(step.expectedResult?.trim())
+    return hasCommands || hasDescription || hasExpected
+  })
+  const hasFiles = (phase.fileRefs?.length || 0) >= 2
+  const hasReproduce = (phase.reproduce?.steps?.length || 0) >= 2
+  if (substantiveSteps.length >= 2) return true
+  if (phase.phase === 3 && hasFiles) return true
+  if (phase.phase === 4 && hasReproduce) return true
+  return false
 }
 
 function cacheKey(owner: string, repo: string, issueNumber: number) {

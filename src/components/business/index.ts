@@ -57,6 +57,10 @@ export type { ReviewProgressProps } from './ReviewProgress'
 export { default as ReviewResultPanel } from './ReviewResultPanel'
 export type { ReviewResultPanelProps } from './ReviewResultPanel'
 
+// 三列审查工作区（文件 | Diff | AI）
+export { default as ReviewWorkspace } from './ReviewWorkspace'
+export type { ReviewWorkspaceProps } from './ReviewWorkspace'
+
 // 审查问题卡片
 export { default as ReviewIssueCard } from './ReviewIssueCard'
 export type { ReviewIssueCardProps } from './ReviewIssueCard'

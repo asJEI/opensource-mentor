@@ -4,15 +4,61 @@ import { AppLayout } from '@/components/layout'
 import {
   IssueContextCard,
   ReviewProgress,
-  ReviewResultPanel,
+  ReviewWorkspace,
   ReviewActionBar,
   NextStepCard,
   AiPageError,
 } from '@/components/business'
-import { useCodeReviewStore, useRepositoryStore, useToastStore } from '@/store'
+import {
+  useCodeReviewStore,
+  useRepositoryStore,
+  useToastStore,
+  useUserStore,
+} from '@/store'
 import type { CandidateIssue, RecommendedIssue } from '@/types'
 
-// ==================== 图标组件 ====================
+function parseGitHubRepoUrl(raw: string): {
+  owner: string
+  repo: string
+  branch: string
+} | null {
+  const value = raw.trim()
+  if (!value) return null
+
+  const compareMatch = value.match(
+    /github\.com\/([^/]+)\/([^/#?\s]+)\/compare\/([^/\s]+?)\.\.\.([^:/\s]+):([^/\s?#]+)/i,
+  )
+  if (compareMatch) {
+    return {
+      owner: compareMatch[4],
+      repo: compareMatch[2].replace(/\.git$/i, ''),
+      branch: decodeURIComponent(compareMatch[5]),
+    }
+  }
+
+  const treeMatch = value.match(
+    /github\.com\/([^/]+)\/([^/#?\s]+)(?:\/tree\/([^?#\s]+))?/i,
+  )
+  if (treeMatch) {
+    return {
+      owner: treeMatch[1],
+      repo: treeMatch[2].replace(/\.git$/i, ''),
+      branch: treeMatch[3] ? decodeURIComponent(treeMatch[3]) : '',
+    }
+  }
+
+  const shortMatch = value.match(/^([^/\s]+)\/([^/\s#?]+)$/)
+  if (shortMatch) {
+    return {
+      owner: shortMatch[1],
+      repo: shortMatch[2].replace(/\.git$/i, ''),
+      branch: '',
+    }
+  }
+
+  return null
+}
+
 const CodeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="16 18 22 12 16 6" />
@@ -35,12 +81,12 @@ const LinkIcon = () => (
   </svg>
 )
 
-const FileCodeIcon = () => (
+const GitBranchIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <polyline points="16 18 22 12 16 6" />
-    <polyline points="8 6 2 12 8 18" />
+    <line x1="6" y1="3" x2="6" y2="15" />
+    <circle cx="18" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <path d="M18 9a9 9 0 0 1-9 9" />
   </svg>
 )
 
@@ -73,7 +119,6 @@ function estimateHoursFromText(raw?: string | null): number | undefined {
   return undefined
 }
 
-/** 将当前贡献 Issue / 推荐 Issue 统一成审查页可用结构 */
 function toReviewIssue(
   issue: CandidateIssue | RecommendedIssue,
 ): RecommendedIssue {
@@ -97,7 +142,6 @@ function toReviewIssue(
   }
 }
 
-// ==================== CodeReview 页面 ====================
 const CodeReview = () => {
   const navigate = useNavigate()
   const status = useCodeReviewStore((s) => s.status)
@@ -105,12 +149,17 @@ const CodeReview = () => {
   const result = useCodeReviewStore((s) => s.result)
   const error = useCodeReviewStore((s) => s.error)
   const selectedIssue = useCodeReviewStore((s) => s.selectedIssue)
-  const activeTab = useCodeReviewStore((s) => s.activeTab)
-  const expandedIssueId = useCodeReviewStore((s) => s.expandedIssueId)
+  const mode = useCodeReviewStore((s) => s.mode)
+  const compareInput = useCodeReviewStore((s) => s.compareInput)
+  const artifacts = useCodeReviewStore((s) => s.artifacts)
+  const selectedFile = useCodeReviewStore((s) => s.selectedFile)
+  const sourceLabel = useCodeReviewStore((s) => s.sourceLabel)
+  const createPrUrl = useCodeReviewStore((s) => s.createPrUrl)
   const setPrUrl = useCodeReviewStore((s) => s.setPrUrl)
+  const setMode = useCodeReviewStore((s) => s.setMode)
+  const setCompareInput = useCodeReviewStore((s) => s.setCompareInput)
+  const setSelectedFile = useCodeReviewStore((s) => s.setSelectedFile)
   const startReview = useCodeReviewStore((s) => s.startReview)
-  const setActiveTab = useCodeReviewStore((s) => s.setActiveTab)
-  const toggleIssue = useCodeReviewStore((s) => s.toggleIssue)
   const reset = useCodeReviewStore((s) => s.reset)
 
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
@@ -123,13 +172,15 @@ const CodeReview = () => {
   )
   const setSelectedIssue = useCodeReviewStore((s) => s.setSelectedIssue)
   const showToast = useToastStore((s) => s.showToast)
+  const githubUsername = useUserStore(
+    (s) => s.githubProfile?.profile.username || s.profile.username || '',
+  )
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated)
 
-  const DEMO_PR_URL = 'https://github.com/microsoft/vscode/pull/325329'
+  const [prUrlInput, setPrUrlInput] = useState('')
+  const [forkRepoUrl, setForkRepoUrl] = useState('')
+  const [forkBranch, setForkBranch] = useState('')
 
-  const [submitMode, setSubmitMode] = useState<'pr' | 'diff' | 'file'>('pr')
-  const [prUrlInput, setPrUrlInput] = useState(DEMO_PR_URL)
-
-  // 优先绑定用户已选的贡献 Issue，再回退到审查页本地选择
   const boundIssue = useMemo(() => {
     if (activeContributionIssue) return toReviewIssue(activeContributionIssue)
     if (selectedIssue) return toReviewIssue(selectedIssue)
@@ -140,7 +191,11 @@ const CodeReview = () => {
     ? activeContributionIssue.repository.fullName
     : `${currentOwner || 'microsoft'}/${currentRepoName || 'vscode'}`
 
-  // 进入页面时同步当前贡献 Issue，直接进入提交界面
+  const [upstreamOwner, upstreamRepo] = useMemo(() => {
+    const parts = repoName.split('/')
+    return [parts[0] || currentOwner || '', parts[1] || currentRepoName || '']
+  }, [repoName, currentOwner, currentRepoName])
+
   useEffect(() => {
     if (!activeContributionIssue) return
     const next = toReviewIssue(activeContributionIssue)
@@ -151,10 +206,8 @@ const CodeReview = () => {
       return
     }
     setSelectedIssue(next)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeContributionIssue?.id, activeContributionIssue?.issueNumber])
+  }, [activeContributionIssue, selectedIssue, setSelectedIssue])
 
-  // 仅在没有当前 Issue 时，才加载推荐列表供手动选择
   useEffect(() => {
     if (
       !boundIssue &&
@@ -166,6 +219,40 @@ const CodeReview = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boundIssue])
 
+  useEffect(() => {
+    if (!upstreamOwner || !upstreamRepo) return
+    setCompareInput({
+      baseOwner: upstreamOwner,
+      baseRepo: upstreamRepo,
+      headRepo: compareInput.headRepo || upstreamRepo,
+      baseRef: compareInput.baseRef || 'main',
+      ...(githubUsername && !compareInput.headOwner
+        ? { headOwner: githubUsername }
+        : {}),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upstreamOwner, upstreamRepo, githubUsername])
+
+  useEffect(() => {
+    if (!githubUsername) return
+    if (compareInput.headOwner) return
+    setCompareInput({ headOwner: githubUsername })
+  }, [githubUsername, compareInput.headOwner, setCompareInput])
+
+  const applyForkRepoUrl = (raw: string) => {
+    setForkRepoUrl(raw)
+    const parsed = parseGitHubRepoUrl(raw)
+    if (!parsed) return
+    setCompareInput({
+      headOwner: parsed.owner,
+      headRepo: parsed.repo,
+      ...(parsed.branch ? { headRef: parsed.branch } : {}),
+    })
+    if (parsed.branch) {
+      setForkBranch(parsed.branch)
+    }
+  }
+
   const handleSelectIssue = (issue: RecommendedIssue) => {
     setSelectedIssue(toReviewIssue(issue))
     showToast(
@@ -176,20 +263,59 @@ const CodeReview = () => {
   }
 
   const handleStartReview = () => {
-    if (submitMode === 'pr') {
+    if (mode === 'pr') {
       if (!prUrlInput.trim()) {
         showToast('error', '请输入 PR 链接', '需要知道你提交的 PR 才能审查哦')
         return
       }
       setPrUrl(prUrlInput.trim())
-    } else if (submitMode === 'diff') {
-      showToast('info', '功能开发中', '粘贴 Diff 功能即将上线，敬请期待～')
-      return
     } else {
-      showToast('info', '功能开发中', '文件上传功能即将上线，敬请期待～')
-      return
+      const parsed = parseGitHubRepoUrl(forkRepoUrl)
+      const headOwner =
+        parsed?.owner || compareInput.headOwner || githubUsername
+      const headRepo =
+        parsed?.repo || compareInput.headRepo || upstreamRepo
+      const headRef = (
+        forkBranch ||
+        parsed?.branch ||
+        compareInput.headRef
+      ).trim()
+
+      if (!forkRepoUrl.trim() && !headOwner) {
+        showToast(
+          'error',
+          '请粘贴你的 Fork 仓库链接',
+          '例如 https://github.com/你的用户名/仓库名',
+        )
+        return
+      }
+      if (!headOwner) {
+        showToast(
+          'error',
+          '无法识别 GitHub 用户名',
+          '请粘贴完整仓库链接，或先登录 GitHub',
+        )
+        return
+      }
+      if (!headRef) {
+        showToast(
+          'error',
+          '请填写分支名',
+          '填写你已 push 的分支，例如 fix/issue-15',
+        )
+        return
+      }
+
+      setCompareInput({
+        baseOwner: upstreamOwner || compareInput.baseOwner,
+        baseRepo: upstreamRepo || compareInput.baseRepo,
+        baseRef: compareInput.baseRef || 'main',
+        headOwner,
+        headRepo,
+        headRef,
+      })
     }
-    startReview()
+    void startReview()
   }
 
   const handleFixCode = () => {
@@ -203,7 +329,16 @@ const CodeReview = () => {
     }, 800)
   }
 
-  // 未选择 Issue 的空状态（仅当全局也没有当前贡献 Issue）
+  const handleOpenCreatePr = () => {
+    if (!createPrUrl) return
+    window.open(createPrUrl, '_blank', 'noopener,noreferrer')
+    showToast(
+      'success',
+      '已打开 GitHub Compare',
+      '确认无误后可直接创建 Pull Request 合并申请',
+    )
+  }
+
   if (!boundIssue && status === 'idle') {
     return (
       <AppLayout breadcrumbs={[{ label: '代码审查' }]}>
@@ -238,87 +373,32 @@ const CodeReview = () => {
               <p className="empty-desc">
                 代码审查需要针对具体的 Issue 和你提交的代码进行。
               </p>
-              <p className="empty-desc">
-                从下方推荐中选一个，或去 Issue 推荐页查看更多。
-              </p>
+            </div>
 
-              {issuesStatus === 'loading' && (
-                <div className="quick-issues-loading">
-                  <div className="loading-spinner" />
-                  <span>正在加载推荐 Issue...</span>
-                </div>
-              )}
-
-              {issuesStatus === 'success' && recommendedIssues.length > 0 && (
-                <div className="quick-issues">
-                  <div className="quick-issues-title">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+            <div className="quick-issue-list">
+              {recommendedIssues.slice(0, 5).map((issue) => (
+                <button
+                  key={issue.number}
+                  className="quick-issue-card"
+                  onClick={() => handleSelectIssue(issue)}
+                >
+                  <div className="quick-issue-card__main">
+                    <span className="quick-issue-number">#{issue.number}</span>
+                    <span className="quick-issue-title">{issue.title}</span>
+                  </div>
+                  <div className="quick-issue-card__meta">
+                    <span
+                      className={`quick-issue-difficulty difficulty-${issue.difficulty || 'medium'}`}
                     >
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                      <polyline points="22 4 12 14.01 9 11.01" />
-                    </svg>
-                    AI 为你推荐（Top {Math.min(5, recommendedIssues.length)}）
+                      {issue.difficulty === 'easy'
+                        ? '入门'
+                        : issue.difficulty === 'hard'
+                          ? '进阶'
+                          : '中等'}
+                    </span>
                   </div>
-                  <div className="quick-issues-list">
-                    {recommendedIssues.slice(0, 5).map((issue) => (
-                      <div
-                        key={issue.id}
-                        className="quick-issue-card"
-                        onClick={() => handleSelectIssue(issue)}
-                      >
-                        <div className="quick-issue-header">
-                          <span className="quick-issue-number">
-                            #{issue.number}
-                          </span>
-                          <span
-                            className={`quick-issue-difficulty difficulty-${issue.difficulty || 'medium'}`}
-                          >
-                            {issue.difficulty === 'easy'
-                              ? '新手友好'
-                              : issue.difficulty === 'hard'
-                                ? '较有挑战'
-                                : '中等难度'}
-                          </span>
-                        </div>
-                        <div className="quick-issue-title">{issue.title}</div>
-                        <div className="quick-issue-meta">
-                          <span>
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <circle cx="12" cy="12" r="10" />
-                              <polyline points="12 6 12 12 16 14" />
-                            </svg>
-                            约 {issue.estimatedTime || 2} 小时
-                          </span>
-                          <span className="quick-issue-score">
-                            匹配度{' '}
-                            {issue.recommendationScore ?? issue.matchScore ?? 0}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button
-                className="btn btn-primary"
-                onClick={() => navigate('/issues')}
-              >
-                查看更多 Issue
-              </button>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -336,7 +416,7 @@ const CodeReview = () => {
             <div>
               <h1 className="page-title">代码审查</h1>
               <p className="page-subtitle">
-                AI 导师帮你检查代码，确保第一次贡献就高质量通过
+                支持 PR 链接，或审查你个人 Fork 分支相对上游的改动
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -386,72 +466,46 @@ const CodeReview = () => {
                 <div className="submit-card__title">
                   <UploadIcon />
                   提交你的代码
-                  <span className="demo-badge">Demo</span>
                 </div>
                 <div className="submit-card__subtitle">
-                  把你为这个 Issue 写的代码交给 AI 导师检查一下吧
+                  推荐：先把修改 push 到个人 Fork，再审查相对上游的 diff，通过后去开合并申请
                 </div>
               </div>
 
               <div className="demo-notice">
                 <div className="demo-notice__icon">💡</div>
                 <div className="demo-notice__content">
-                  <strong>Demo 版本说明</strong>
+                  <strong>推荐流程</strong>
                   <p>
-                    当前为演示版本，仅支持 PR 链接方式提交。已为你预设了示例
-                    PR，点击「开始 AI 审查」即可体验完整流程。
+                    Fork 上游仓库 → 本地修改并 push 到个人分支 → 用「Fork
+                    分支」审查 → 通过后一键打开 GitHub Compare 发起 PR。
                   </p>
                 </div>
               </div>
 
               <div className="submit-modes">
                 <button
-                  className={submitMode === 'pr' ? 'active' : ''}
-                  onClick={() => setSubmitMode('pr')}
+                  className={mode === 'pr' ? 'active' : ''}
+                  onClick={() => setMode('pr')}
                 >
                   <LinkIcon />
                   PR 链接
                 </button>
                 <button
-                  className={`mode-disabled ${submitMode === 'diff' ? 'active' : ''}`}
-                  onClick={() => {
-                    setSubmitMode('diff')
-                    showToast(
-                      'info',
-                      '功能开发中',
-                      '粘贴 Diff 功能即将上线，敬请期待～',
-                    )
-                  }}
-                  title="功能开发中，敬请期待"
+                  className={mode === 'compare' ? 'active' : ''}
+                  onClick={() => setMode('compare')}
                 >
-                  <FileCodeIcon />
-                  粘贴 Diff
-                  <span className="mode-tag">未完成</span>
-                </button>
-                <button
-                  className={`mode-disabled ${submitMode === 'file' ? 'active' : ''}`}
-                  onClick={() => {
-                    setSubmitMode('file')
-                    showToast(
-                      'info',
-                      '功能开发中',
-                      '文件上传功能即将上线，敬请期待～',
-                    )
-                  }}
-                  title="功能开发中，敬请期待"
-                >
-                  <UploadIcon />
-                  上传文件
-                  <span className="mode-tag">未完成</span>
+                  <GitBranchIcon />
+                  Fork 分支
                 </button>
               </div>
 
-              {submitMode === 'pr' && (
+              {mode === 'pr' && (
                 <div className="submit-form">
                   <label className="form-label">
                     GitHub PR 链接
                     <span className="form-hint">
-                      输入 GitHub Pull Request 链接进行审查
+                      若你已开好 PR，可直接粘贴链接审查
                     </span>
                   </label>
                   <input
@@ -462,32 +516,79 @@ const CodeReview = () => {
                     onChange={(e) => setPrUrlInput(e.target.value)}
                   />
                   <div className="form-tip">
-                    💡 已为你预设了示例 PR，可直接点击下方按钮体验审查流程
+                    💡 尚未开 PR 时，可切换到「Fork 分支」粘贴你的仓库链接
                   </div>
                 </div>
               )}
 
-              {submitMode === 'diff' && (
-                <div className="submit-form mode-disabled-content">
-                  <div className="mode-disabled-icon">🚧</div>
-                  <h4>粘贴 Diff 功能开发中</h4>
-                  <p>
-                    该功能即将上线，敬请期待～
-                    <br />
-                    目前请使用 PR 链接方式提交代码审查。
-                  </p>
-                </div>
-              )}
+              {mode === 'compare' && (
+                <div className="submit-form compare-form">
+                  <label className="form-label">
+                    你的 Fork 仓库链接
+                    <span className="form-hint">
+                      粘贴个人仓库地址即可，用户名会自动识别
+                      {githubUsername
+                        ? `（当前登录：${githubUsername}）`
+                        : isAuthenticated
+                          ? ''
+                          : '；未登录也可从链接识别'}
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder={`https://github.com/${githubUsername || 'your-username'}/${upstreamRepo || 'repo'}`}
+                    value={forkRepoUrl}
+                    onChange={(e) => applyForkRepoUrl(e.target.value)}
+                  />
 
-              {submitMode === 'file' && (
-                <div className="submit-form mode-disabled-content">
-                  <div className="mode-disabled-icon">🚧</div>
-                  <h4>文件上传功能开发中</h4>
-                  <p>
-                    该功能即将上线，敬请期待～
-                    <br />
-                    目前请使用 PR 链接方式提交代码审查。
-                  </p>
+                  <label className="form-label" style={{ marginTop: 14 }}>
+                    你的分支名
+                    <span className="form-hint">
+                      已 push 的分支；若链接含 /tree/分支 会自动填入
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="fix/issue-15"
+                    value={forkBranch || compareInput.headRef}
+                    onChange={(e) => {
+                      setForkBranch(e.target.value)
+                      setCompareInput({ headRef: e.target.value })
+                    }}
+                  />
+
+                  <label className="form-label" style={{ marginTop: 14 }}>
+                    对比上游分支
+                    <span className="form-hint">
+                      默认对比 {upstreamOwner}/{upstreamRepo}
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={compareInput.baseRef || 'main'}
+                    onChange={(e) =>
+                      setCompareInput({ baseRef: e.target.value })
+                    }
+                    placeholder="main"
+                  />
+
+                  <div className="form-tip">
+                    系统会拉取{' '}
+                    <code>
+                      {upstreamOwner || 'upstream'}/{upstreamRepo || 'repo'}:
+                      {compareInput.baseRef || 'main'}
+                      ...
+                      {compareInput.headOwner ||
+                        githubUsername ||
+                        'you'}
+                      :
+                      {forkBranch || compareInput.headRef || 'branch'}
+                    </code>{' '}
+                    的变更进行审查
+                  </div>
                 </div>
               )}
 
@@ -499,7 +600,7 @@ const CodeReview = () => {
                   🚀 开始 AI 审查
                 </button>
                 <p className="submit-disclaimer">
-                  审查约需 30 秒，AI 导师会从功能性、规范性、安全性等多维度帮你检查
+                  审查约需 30 秒，结果会以「文件列表 | Diff | AI 审查」三列展示
                 </p>
               </div>
             </div>
@@ -513,13 +614,16 @@ const CodeReview = () => {
         )}
 
         {status === 'completed' && result && (
-          <div className="code-review__result">
-            <ReviewResultPanel
+          <div className="code-review__workspace">
+            <ReviewWorkspace
               result={result}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              expandedIssueId={expandedIssueId}
-              onToggleIssue={toggleIssue}
+              artifacts={artifacts}
+              selectedFile={selectedFile}
+              onSelectFile={setSelectedFile}
+              sourceLabel={sourceLabel}
+              createPrUrl={createPrUrl}
+              onOpenCreatePr={handleOpenCreatePr}
+              onGeneratePrDesc={handleGeneratePr}
             />
           </div>
         )}
@@ -549,10 +653,14 @@ const CodeReview = () => {
             currentStep={5}
             totalSteps={6}
             title="AI 审查完成！"
-            description="下一步生成专业的 PR 描述，让你的贡献更易被合并"
-            buttonText="生成 PR 描述"
+            description={
+              createPrUrl
+                ? '改动看起来不错。可先打开 GitHub 发起合并申请，随后再到 PR 生成器完善描述。'
+                : '下一步生成专业的 PR 描述，让你的贡献更易被合并'
+            }
+            buttonText={createPrUrl ? '去开合并申请' : '生成 PR 描述'}
             nextPath="/pr-generator"
-            onClick={handleGeneratePr}
+            onClick={createPrUrl ? handleOpenCreatePr : handleGeneratePr}
           />
         )}
       </div>

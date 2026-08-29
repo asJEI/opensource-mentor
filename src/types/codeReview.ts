@@ -97,6 +97,37 @@ export interface ReviewResult {
   }
 }
 
+/** 变更文件（用于三列 Diff 视图） */
+export interface ReviewChangedFile {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  changes: number
+  patch: string | null
+}
+
+export interface ReviewJobArtifacts {
+  changedFiles: ReviewChangedFile[]
+}
+
+export type ReviewInputMode = 'pr' | 'compare'
+
+/** Fork Compare 审查入参 */
+export interface ReviewCompareInput {
+  baseOwner: string
+  baseRepo: string
+  baseRef: string
+  headOwner: string
+  headRepo: string
+  headRef: string
+}
+
+/** 创建审查请求 */
+export type CreateReviewRequest =
+  | { mode?: 'pr'; prUrl: string }
+  | ({ mode: 'compare' } & ReviewCompareInput)
+
 /** 审查任务记录 */
 export interface ReviewJobRecord {
   reviewId: string
@@ -105,9 +136,31 @@ export interface ReviewJobRecord {
   result: ReviewResult | null
   error: string | null
   prUrl: string
+  mode?: ReviewInputMode
+  sourceLabel?: string
+  createPrUrl?: string | null
+  artifacts?: ReviewJobArtifacts
   createdAt: string
   completedAt: string | null
 }
 
 /** 审查分类 Tab */
 export type ReviewTab = 'critical' | 'improvement' | 'praise' | 'tips'
+
+/** Diff 行 */
+export interface DiffLine {
+  type: 'added' | 'removed' | 'context'
+  content: string
+  oldLineNumber?: number
+  newLineNumber?: number
+}
+
+/** Diff hunk */
+export interface DiffHunk {
+  header: string
+  oldStart: number
+  oldLines: number
+  newStart: number
+  newLines: number
+  lines: DiffLine[]
+}

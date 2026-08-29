@@ -18,6 +18,19 @@ export interface ReviewProgress {
   lastEventAt: string | null
 }
 
+export interface ReviewChangedFile {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  changes: number
+  patch: string | null
+}
+
+export interface ReviewJobArtifacts {
+  changedFiles: ReviewChangedFile[]
+}
+
 export interface ReviewJobRecord {
   reviewId: string
   status: ReviewStatus
@@ -25,6 +38,10 @@ export interface ReviewJobRecord {
   result: unknown
   error: string | null
   prUrl: string
+  mode?: 'pr' | 'compare'
+  sourceLabel?: string
+  createPrUrl?: string | null
+  artifacts?: ReviewJobArtifacts
   createdAt: string
   completedAt: string | null
 }

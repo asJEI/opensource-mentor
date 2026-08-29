@@ -10,6 +10,32 @@ import type {
 } from './types'
 import { GUIDE_PHASE_TITLES } from './prompts/roadmap'
 
+const GENERIC_GUIDE_TEXT =
+  /按步骤操作|参考后续章节|完成从了解到合并|暂未生成|正在生成|待确认后补充/
+
+function isSubstantiveActionStep(step: {
+  title: string
+  description?: string
+  commands?: string[]
+  expectedResult?: string
+}): boolean {
+  const description = step.description?.trim() || ''
+  const expected = step.expectedResult?.trim() || ''
+  const commands = (step.commands || []).filter((item) => item.trim().length > 0)
+  // 至少有一句说明，或预期结果，或真实命令
+  if (commands.length > 0) return true
+  if (description.length >= 8 && !GENERIC_GUIDE_TEXT.test(description)) return true
+  if (expected.length >= 6 && !GENERIC_GUIDE_TEXT.test(expected)) return true
+  return false
+}
+
+function isThinGuideText(value: string): boolean {
+  const text = value.trim()
+  if (!text) return true
+  if (GENERIC_GUIDE_TEXT.test(text)) return true
+  return text.length < 6
+}
+
 export function validateRepoAnalysisResult(
   parsed: Record<string, unknown>,
 ): RepoAnalysis {
@@ -202,9 +228,9 @@ export function validateRoadmapPhaseResult(
           title: item.trim().startsWith('Step')
             ? item.trim()
             : `Step ${index + 1} · ${item.trim()}`,
-          description: undefined,
+          description: undefined as string | undefined,
           commands: [] as string[],
-          expectedResult: undefined,
+          expectedResult: undefined as string | undefined,
           checkboxLabel: '我已经完成',
         }
       }
@@ -236,6 +262,7 @@ export function validateRoadmapPhaseResult(
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
 
+  const substantiveSteps = actionSteps.filter(isSubstantiveActionStep)
   const fileRefsRaw = Array.isArray(source.fileRefs) ? source.fileRefs : []
   const fileRefs = fileRefsRaw
     .filter(isRecord)
@@ -286,7 +313,7 @@ export function validateRoadmapPhaseResult(
   const derivedLearningItems =
     learningItems.length > 0
       ? learningItems
-      : actionSteps.map((step) => step.title).filter(Boolean)
+      : substantiveSteps.map((step) => step.title).filter(Boolean)
 
   const goal = String(
     source.goal || source.summary || source.overview || source.description || '',
@@ -294,27 +321,38 @@ export function validateRoadmapPhaseResult(
   const actionIntro =
     typeof source.actionIntro === 'string' ? source.actionIntro.trim() : ''
 
-  const hasStructuredContent =
-    actionSteps.length > 0 ||
-    fileRefs.length > 0 ||
-    (reproduce && reproduce.steps.length > 0)
+  const hasReproduce =
+    Boolean(reproduce && reproduce.steps.length >= 2) && phaseNumber === 4
+  const hasFiles = fileRefs.length >= 2 && phaseNumber === 3
+  const hasEnoughSteps = substantiveSteps.length >= 2
 
-  // 有结构化步骤就放行；缺 goal 后面自动补
-  if (!hasStructuredContent && derivedLearningItems.length === 0) {
+  // 拒绝「只有标题没有操作细节」的空壳章节
+  if (!hasEnoughSteps && !hasReproduce && !hasFiles) {
     throw new Error(
-      `第 ${phaseNumber} 章内容不完整（缺少 goal/actionSteps）`,
+      `第 ${phaseNumber} 章内容不完整（步骤缺少 description/expectedResult/commands）`,
     )
   }
 
-  // 若缺 goal 但有步骤，自动补 goal，降低空壳失败
-  const resolvedGoal = goal || actionIntro || `${title}：按步骤完成本章任务`
+  if (phaseNumber === 4 && !(reproduce && reproduce.steps.length >= 2)) {
+    throw new Error(`第 ${phaseNumber} 章内容不完整（缺少 reproduce.steps）`)
+  }
+
+  const resolvedGoal =
+    !isThinGuideText(goal)
+      ? goal
+      : !isThinGuideText(actionIntro)
+        ? actionIntro
+        : `${title}：按本章步骤完成可验证的操作`
+
+  const resolvedIntro =
+    !isThinGuideText(actionIntro) ? actionIntro : resolvedGoal
 
   return {
     phase: phaseNumber,
     title,
     goal: resolvedGoal,
-    actionIntro: actionIntro || resolvedGoal,
-    actionSteps,
+    actionIntro: resolvedIntro,
+    actionSteps: substantiveSteps.length > 0 ? substantiveSteps : actionSteps,
     fileRefs,
     reproduce,
     learningItems: derivedLearningItems,

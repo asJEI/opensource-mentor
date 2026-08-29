@@ -18,9 +18,10 @@ export const roadmapPhaseSystemPrompt = `你是 OpenSource Mentor 的贡献指�
 默认使用简体中文。
 硬性规则：
 1. 必须包含非空 goal、非空 actionIntro、至少 2 个 actionSteps。
-2. actionSteps 必须是对象数组，每项至少有 title 字符串。
-3. 没有证据时不要编造文件路径/命令；可写“未在已读取文档中确认”，但仍要给出可执行检查思路。
-4. 字段值保持短句，优先保证结构完整，不要写成长文导致 JSON 被截断。`
+2. actionSteps 必须是对象数组；每项除 title 外，还必须有 description，以及 expectedResult 或 commands 之一。
+3. 禁止只给标题的空壳步骤（例如只有「阅读 README」却没有任何说明）。
+4. 没有证据时不要编造文件路径/命令；可写“未在已读取文档中确认”，但仍要给出可执行检查思路。
+5. 字段值保持短句，但必须可操作；优先保证结构完整，不要写成长文导致 JSON 被截断。`
 
 const PHASE_INSTRUCTIONS: Record<number, string> = {
   1: `### 大致了解（阅读型）
@@ -249,9 +250,10 @@ ${schemaExample}
 
 ## 绝对禁止
 - 返回空对象、缺少 actionSteps、actionSteps 为字符串数组
-- 第 4 章把 reproduce 设为 null
+- 步骤只有 title，没有 description / expectedResult / commands
+- 使用空泛句子如「按步骤操作」「参考后续章节」充当 goal/actionIntro
+- 第 4 章把 reproduce 设为 null，或把环境准备内容写进复现章
 - 输出 JSON 以外的任何文字
-- 为了“写好看”而省略必填字段
 
 请直接输出完整 JSON。`
 }
@@ -262,12 +264,12 @@ export function roadmapPhaseRepairPrompt(params: {
   previousOutput: string
 }): string {
   const title = GUIDE_PHASE_TITLES[params.phaseNumber - 1] || `第 ${params.phaseNumber} 章`
-  return `上一版第 ${params.phaseNumber} 章「${title}」JSON 不完整或无法通过校验。
+  return `上一版第 ${params.phaseNumber} 章「${title}」JSON 不完整或步骤过于空泛。
 请基于下面内容重写一个完整 JSON（只输出 JSON）：
-- 必须有非空 goal、actionIntro
-- actionSteps 至少 2 个对象，每项含 title
-- 第 4 章必须有 reproduce.steps
-- 保持简体中文，字段尽量短
+- 必须有具体 goal、actionIntro（不要空泛套话）
+- actionSteps 至少 2 个对象；每项必须含 title、description，以及 expectedResult 或 commands
+- 第 4 章必须有 reproduce.steps（至少 2 条）
+- 保持简体中文，字段尽量短但可执行
 
 上一版输出：
 ${params.previousOutput.slice(0, 3500)}`

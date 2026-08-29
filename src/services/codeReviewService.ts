@@ -9,49 +9,34 @@ import type {
   RiskReviewReport,
   RiskItem,
   PraiseItem,
+  CreateReviewRequest,
+  ReviewJobArtifacts,
+  ReviewChangedFile,
 } from '@/types'
-
-// ============================================================
-// 代码审查服务（通过 BFF 调用）
-// ============================================================
 
 class CodeReviewService {
   /**
    * 创建审查任务
    * POST /api/code-review/reviews
    */
-  async createReview(prUrl: string): Promise<ReviewJobRecord> {
-    const data = await bffPost<any>(
-      '/code-review/reviews',
-      { prUrl },
-      { timeout: 130_000 },
-    )
+  async createReview(payload: CreateReviewRequest): Promise<ReviewJobRecord> {
+    const data = await bffPost<any>('/code-review/reviews', payload, {
+      timeout: 130_000,
+    })
     return this.mapReviewJobRecord(data)
   }
 
-  /**
-   * 获取审查状态和结果
-   * GET /api/code-review/reviews/:id
-   */
   async getReview(reviewId: string): Promise<ReviewJobRecord> {
     const data = await bffGet<any>(`/code-review/reviews/${reviewId}`)
     return this.mapReviewJobRecord(data)
   }
 
-  /**
-   * 健康检查
-   * GET /api/code-review/health
-   */
   async healthCheck(): Promise<{ ok: boolean }> {
     const data = await bffGet<any>('/code-review/health')
     return {
       ok: data.ok ?? false,
     }
   }
-
-  // ============================================================
-  // DTO 映射（后端数据 -> 前端类型）
-  // ============================================================
 
   private mapReviewProgress(data: any): ReviewProgress {
     return {
@@ -148,6 +133,26 @@ class CodeReviewService {
     }
   }
 
+  private mapChangedFile(data: any): ReviewChangedFile {
+    return {
+      filename: data.filename || '',
+      status: data.status || 'modified',
+      additions: Number(data.additions) || 0,
+      deletions: Number(data.deletions) || 0,
+      changes: Number(data.changes) || 0,
+      patch: typeof data.patch === 'string' ? data.patch : null,
+    }
+  }
+
+  private mapArtifacts(data: any): ReviewJobArtifacts | undefined {
+    if (!data?.changedFiles || !Array.isArray(data.changedFiles)) return undefined
+    return {
+      changedFiles: data.changedFiles.map((file: any) =>
+        this.mapChangedFile(file),
+      ),
+    }
+  }
+
   private mapReviewJobRecord(data: any): ReviewJobRecord {
     return {
       reviewId: data.reviewId,
@@ -156,6 +161,10 @@ class CodeReviewService {
       result: data.result ? this.mapReviewResult(data.result) : null,
       error: data.error || null,
       prUrl: data.prUrl || '',
+      mode: data.mode === 'compare' ? 'compare' : 'pr',
+      sourceLabel: data.sourceLabel || '',
+      createPrUrl: data.createPrUrl || null,
+      artifacts: this.mapArtifacts(data.artifacts),
       createdAt: data.createdAt || '',
       completedAt: data.completedAt || null,
     }

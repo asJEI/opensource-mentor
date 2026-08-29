@@ -183,15 +183,86 @@ export class GitHubService {
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${pullNumber}/files`,
     )
     return {
-      files: data.map((file) => ({
-        filename: String(file.filename || ''),
-        status: String(file.status || ''),
-        additions: Number(file.additions) || 0,
-        deletions: Number(file.deletions) || 0,
-        changes: Number(file.changes) || 0,
-        patch: typeof file.patch === 'string' ? file.patch : '',
-        raw_url: typeof file.raw_url === 'string' ? file.raw_url : '',
-      })),
+      files: data.map((file) => this.mapPullRequestFile(file)),
+    }
+  }
+
+  /**
+   * Compare base...head on the upstream repo.
+   * For fork branches, head should be `forkOwner:branch`.
+   * @see https://docs.github.com/en/rest/commits/commits#compare-two-commits
+   */
+  async compareCommits(
+    owner: string,
+    repo: string,
+    base: string,
+    head: string,
+  ): Promise<{
+    status: string
+    aheadBy: number
+    behindBy: number
+    totalCommits: number
+    htmlUrl: string
+    files: PullRequestFile[]
+    commits: Array<{ sha: string; message: string; author: string }>
+  }> {
+    const baseEncoded = encodeURIComponent(base)
+    const headEncoded = encodeURIComponent(head)
+    const { data } = await this.client.getJson<Record<string, unknown>>(
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${baseEncoded}...${headEncoded}`,
+    )
+    const files = Array.isArray(data.files)
+      ? data.files.map((file) =>
+          this.mapPullRequestFile(file as Record<string, unknown>),
+        )
+      : []
+    const commits = Array.isArray(data.commits)
+      ? data.commits.map((item) => {
+          const commit = item as Record<string, unknown>
+          const meta = (commit.commit as Record<string, unknown>) || {}
+          const author = (meta.author as Record<string, unknown>) || {}
+          return {
+            sha: String(commit.sha || '').slice(0, 7),
+            message: String(meta.message || '').split('\n')[0] || '',
+            author: String(author.name || ''),
+          }
+        })
+      : []
+    return {
+      status: String(data.status || ''),
+      aheadBy: Number(data.ahead_by) || 0,
+      behindBy: Number(data.behind_by) || 0,
+      totalCommits: Number(data.total_commits) || commits.length,
+      htmlUrl: String(data.html_url || ''),
+      files,
+      commits,
+    }
+  }
+
+  async compareCommitsDiff(
+    owner: string,
+    repo: string,
+    base: string,
+    head: string,
+  ): Promise<string> {
+    const baseEncoded = encodeURIComponent(base)
+    const headEncoded = encodeURIComponent(head)
+    const { data } = await this.client.getJson<string>(
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${baseEncoded}...${headEncoded}`,
+      { accept: 'application/vnd.github.v3.diff' },
+    )
+    return typeof data === 'string' ? data : JSON.stringify(data)
+  }
+
+  private mapPullRequestFile(file: Record<string, unknown>): PullRequestFile {
+    return {
+      filename: String(file.filename || ''),
+      status: String(file.status || ''),
+      additions: Number(file.additions) || 0,
+      deletions: Number(file.deletions) || 0,
+      changes: Number(file.changes) || 0,
+      patch: typeof file.patch === 'string' ? file.patch : '',
+      raw_url: typeof file.raw_url === 'string' ? file.raw_url : '',
     }
   }
 

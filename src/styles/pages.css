@@ -1899,6 +1899,34 @@
   margin-top: 4px;
 }
 
+.code-review-page .code-review__workspace {
+  margin-top: 12px;
+}
+
+.code-review-page .compare-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 12px;
+}
+
+.code-review-page .compare-form .form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.code-review-page .compare-form code {
+  font-size: 12px;
+  color: var(--accent);
+  word-break: break-all;
+}
+
+@media (max-width: 760px) {
+  .code-review-page .compare-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .code-review-page .code-review__error {
   display: flex;
   justify-content: center;

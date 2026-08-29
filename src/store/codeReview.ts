@@ -5,50 +5,41 @@ import type {
   ReviewResult,
   ReviewTab,
   RecommendedIssue,
+  ReviewJobArtifacts,
+  ReviewInputMode,
+  ReviewCompareInput,
+  CreateReviewRequest,
 } from '@/types'
 import { codeReviewService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
 
-/**
- * 代码审查状态 Store
- * 管理代码审查任务的创建、轮询、结果展示等状态
- */
 interface CodeReviewState {
-  /** 审查任务 ID */
   reviewId: string | null
-  /** 审查任务状态 */
   status: ReviewStatus
-  /** 审查进度 */
   progress: ReviewProgress
-  /** 审查结果 */
   result: ReviewResult | null
-  /** 错误信息 */
   error: string | null
-  /** PR 链接 */
   prUrl: string
-  /** 当前选中的 Issue（从 Issue 列表页跳转时带入） */
+  mode: ReviewInputMode
+  sourceLabel: string
+  createPrUrl: string | null
+  artifacts: ReviewJobArtifacts | null
+  selectedFile: string | null
+  compareInput: ReviewCompareInput
   selectedIssue: RecommendedIssue | null
-  /** 当前激活的 Tab */
   activeTab: ReviewTab
-  /** 当前展开的问题项 ID */
   expandedIssueId: string | null
-  /** 轮询定时器 ID（内部使用） */
   _pollTimer: ReturnType<typeof setInterval> | null
 
-  // ---- Actions ----
-  /** 设置 PR 链接 */
   setPrUrl: (url: string) => void
-  /** 设置选中的 Issue（跨页面传递） */
+  setMode: (mode: ReviewInputMode) => void
+  setCompareInput: (input: Partial<ReviewCompareInput>) => void
+  setSelectedFile: (filename: string | null) => void
   setSelectedIssue: (issue: RecommendedIssue | null) => void
-  /** 开始审查：创建任务 + 启动轮询 */
   startReview: () => Promise<void>
-  /** 轮询审查状态 */
   pollReview: () => Promise<void>
-  /** 设置当前激活的 Tab */
   setActiveTab: (tab: ReviewTab) => void
-  /** 切换问题项展开/收起 */
   toggleIssue: (id: string) => void
-  /** 重置所有状态 */
   reset: () => void
 }
 
@@ -62,6 +53,15 @@ const initialProgress: ReviewProgress = {
   lastEventAt: null,
 }
 
+const emptyCompare: ReviewCompareInput = {
+  baseOwner: '',
+  baseRepo: '',
+  baseRef: 'main',
+  headOwner: '',
+  headRepo: '',
+  headRef: '',
+}
+
 export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
   reviewId: null,
   status: 'idle',
@@ -69,6 +69,12 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
   result: null,
   error: null,
   prUrl: '',
+  mode: 'pr',
+  sourceLabel: '',
+  createPrUrl: null,
+  artifacts: null,
+  selectedFile: null,
+  compareInput: emptyCompare,
   selectedIssue: null,
   activeTab: 'critical',
   expandedIssueId: null,
@@ -76,17 +82,49 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
 
   setPrUrl: (url: string) => set({ prUrl: url }),
 
+  setMode: (mode) => set({ mode }),
+
+  setCompareInput: (input) =>
+    set((state) => ({
+      compareInput: { ...state.compareInput, ...input },
+    })),
+
+  setSelectedFile: (filename) => set({ selectedFile: filename }),
+
   setSelectedIssue: (issue) => set({ selectedIssue: issue }),
 
   startReview: async () => {
-    const { prUrl, _pollTimer } = get()
+    const { prUrl, mode, compareInput, _pollTimer } = get()
 
-    if (!prUrl.trim()) {
-      set({ error: '请输入 PR 链接' })
-      return
+    let payload: CreateReviewRequest
+    if (mode === 'compare') {
+      const { baseOwner, baseRepo, baseRef, headOwner, headRepo, headRef } =
+        compareInput
+      if (!baseOwner.trim() || !baseRepo.trim()) {
+        set({ error: '请填写上游仓库 owner/repo' })
+        return
+      }
+      if (!headOwner.trim() || !headRef.trim()) {
+        set({ error: '请填写你的 GitHub 用户名与分支名' })
+        return
+      }
+      payload = {
+        mode: 'compare',
+        baseOwner: baseOwner.trim(),
+        baseRepo: baseRepo.trim(),
+        baseRef: (baseRef || 'main').trim(),
+        headOwner: headOwner.trim(),
+        headRepo: (headRepo || baseRepo).trim(),
+        headRef: headRef.trim(),
+      }
+    } else {
+      if (!prUrl.trim()) {
+        set({ error: '请输入 PR 链接' })
+        return
+      }
+      payload = { mode: 'pr', prUrl: prUrl.trim() }
     }
 
-    // 清除已有定时器
     if (_pollTimer) {
       clearInterval(_pollTimer)
     }
@@ -95,24 +133,34 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       status: 'queued',
       error: null,
       result: null,
+      artifacts: null,
+      selectedFile: null,
+      createPrUrl: null,
+      sourceLabel: '',
       progress: initialProgress,
     })
 
     try {
-      const record = await codeReviewService.createReview(prUrl.trim())
+      const record = await codeReviewService.createReview(payload)
+      const firstFile = record.artifacts?.changedFiles[0]?.filename || null
       set({
         reviewId: record.reviewId,
         status: record.status,
         progress: record.progress,
         result: record.result,
         error: record.error,
+        prUrl: record.prUrl || get().prUrl,
+        mode: record.mode || mode,
+        sourceLabel: record.sourceLabel || '',
+        createPrUrl: record.createPrUrl || null,
+        artifacts: record.artifacts || null,
+        selectedFile: firstFile,
       })
 
       if (record.status === 'completed' || record.status === 'failed') {
         return
       }
 
-      // 启动轮询：每 2 秒拉取一次状态
       const timer = setInterval(() => {
         void get().pollReview()
       }, 2000)
@@ -128,7 +176,6 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
 
     if (!reviewId) return
 
-    // 已结束状态不再轮询
     if (status === 'completed' || status === 'failed') {
       if (_pollTimer) {
         clearInterval(_pollTimer)
@@ -139,14 +186,20 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
 
     try {
       const record = await codeReviewService.getReview(reviewId)
-      set({
+      set((state) => ({
         status: record.status,
         progress: record.progress,
         result: record.result,
         error: record.error,
-      })
+        sourceLabel: record.sourceLabel || state.sourceLabel,
+        createPrUrl: record.createPrUrl ?? state.createPrUrl,
+        artifacts: record.artifacts || state.artifacts,
+        selectedFile:
+          state.selectedFile ||
+          record.artifacts?.changedFiles[0]?.filename ||
+          null,
+      }))
 
-      // 任务结束，清除定时器
       if (record.status === 'completed' || record.status === 'failed') {
         if (_pollTimer) {
           clearInterval(_pollTimer)
@@ -167,7 +220,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
   },
 
   reset: () => {
-    const { _pollTimer } = get()
+    const { _pollTimer, compareInput } = get()
     if (_pollTimer) {
       clearInterval(_pollTimer)
     }
@@ -178,6 +231,12 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       result: null,
       error: null,
       prUrl: '',
+      mode: 'pr',
+      sourceLabel: '',
+      createPrUrl: null,
+      artifacts: null,
+      selectedFile: null,
+      compareInput,
       selectedIssue: null,
       activeTab: 'critical',
       expandedIssueId: null,

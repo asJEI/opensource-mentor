@@ -35,6 +35,7 @@ export function NextStepCard({
   const handleClick = () => {
     if (onClick) {
       onClick()
+      return
     }
     navigate(nextPath)
   }
