@@ -33,9 +33,15 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install Express fallback dependencies
+        run: npm --prefix server ci
 
       - name: Typecheck
         run: npm run typecheck
