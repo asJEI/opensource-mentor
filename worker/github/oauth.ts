@@ -830,16 +830,25 @@ export async function handleGitHubOAuthCallback(
     } catch {
       profile.developerProfile = await generateStructuredDeveloperProfile(profile)
     }
-    const persisted = await persistOAuthUser(
-      env,
-      {
-        id: profile.profile.githubId,
-        login: profile.profile.username,
-        avatar_url: profile.profile.avatar,
-      },
-      profile,
-      profile.developerProfile,
-    )
+    let persisted: Awaited<ReturnType<typeof persistOAuthUser>>
+    try {
+      persisted = await persistOAuthUser(
+        env,
+        {
+          id: profile.profile.githubId,
+          login: profile.profile.username,
+          avatar_url: profile.profile.avatar,
+        },
+        profile,
+        profile.developerProfile,
+      )
+    } catch (error) {
+      console.error(
+        '[github-oauth] supabase persistence failed:',
+        redactSecrets(error instanceof Error ? error.message : 'unknown error'),
+      )
+      return redirectWithError(request, 'supabase_persistence_failed')
+    }
     profile.appUserId = persisted.appUser.id
     profile.profileSetupStatus =
       persisted.developerProfile.profile_setup_status
