@@ -677,10 +677,10 @@
 .issue-row-main {
   width: 100%;
   display: grid;
-  grid-template-columns: 28px minmax(220px, 1fr) minmax(220px, auto);
-  align-items: center;
+  grid-template-columns: 28px minmax(260px, 1fr) minmax(220px, auto);
+  align-items: start;
   gap: 14px;
-  padding: 16px 18px 10px;
+  padding: 18px 18px 10px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -697,6 +697,7 @@
   width: 24px;
   height: 24px;
   color: var(--green);
+  margin-top: 3px;
 }
 
 .issue-row-title-block {
@@ -708,7 +709,7 @@
 
 .issue-row-title-block strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.35;
 }
 
@@ -719,8 +720,8 @@
 }
 
 .issue-row-title-block em {
-  color: var(--muted);
-  font-size: 13px;
+  color: var(--ink-soft);
+  font-size: 14px;
   font-style: normal;
   line-height: 1.45;
   overflow: hidden;
@@ -750,12 +751,13 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 0 18px 14px 60px;
+  padding: 0 18px 16px 60px;
 }
 
 .issue-label-chip {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  opacity: 0.86;
 }
 
 .issue-label-chip.muted {
@@ -808,15 +810,50 @@
 
 .issue-expanded-footer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-top: 18px;
 }
 
+.issue-source-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.issue-source-summary {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.issue-source-summary summary {
+  cursor: pointer;
+}
+
+.issue-source-summary p {
+  max-width: 860px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
 .issue-expanded-footer a,
 .issue-expanded-grid a {
   color: var(--accent);
+}
+
+.issue-subtle-notice {
+  display: inline-flex;
+  max-width: 680px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.34);
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .selected-issue-panel {

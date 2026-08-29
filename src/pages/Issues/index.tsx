@@ -139,20 +139,21 @@ const CandidateIssueCard = ({
               <h3>匹配信息</h3>
               <p>
                 {analysis?.difficulty || '难度未知'} · {analysis?.estimatedTime || '时间未知'} ·
-                范围 {analysis?.scopeAssessment || '未知'} · 置信度{' '}
-                {analysis ? `${Math.round(analysis.confidence * 100)}%` : '未知'}
+                范围 {analysis?.scopeAssessment || '未知'}
               </p>
-            </section>
-            <section>
-              <h3>原始描述摘要</h3>
-              <p>{summarizeBody(issue.body)}</p>
             </section>
           </div>
 
           <div className="issue-expanded-footer">
-            <a href={issue.issueUrl} target="_blank" rel="noreferrer">
-              在 GitHub 查看
-            </a>
+            <div className="issue-source-actions">
+              <a href={issue.issueUrl} target="_blank" rel="noreferrer">
+                在 GitHub 查看 ↗
+              </a>
+              <details className="issue-source-summary">
+                <summary>查看原始描述摘要</summary>
+                <p>{summarizeBody(issue.body)}</p>
+              </details>
+            </div>
             <Button variant="primary" onClick={onStart}>
               开始贡献
             </Button>
@@ -207,6 +208,8 @@ const Issues = () => {
   }
 
   const isLoading = status === 'idle' || status === 'loading'
+  const aiFallbackWarnings =
+    meta?.warnings.filter((warning) => warning.includes('AI')) ?? []
 
   return (
     <AppLayout breadcrumbs={[{ label: 'Issue 推荐' }]}>
@@ -252,28 +255,15 @@ const Issues = () => {
             <div className="issues-toolbar">
               <div className="issues-tabs">
                 <button className="issues-tab active">
-                  推荐 Issues
+                  为你推荐
                   <span className="issues-tab-count">{issues.length}</span>
                 </button>
               </div>
-              {meta && (
-                <div className="issues-filters">
-                  <span className="filter-select">
-                    原始 {meta.rawCount}
-                  </span>
-                  <span className="filter-select">
-                    去重 {meta.deduplicatedCount}
-                  </span>
-                  <span className="filter-select">
-                    推荐 {meta.recommendedCount || issues.length}
-                  </span>
-                </div>
-              )}
             </div>
 
-            {meta?.warnings.length ? (
-              <div className="profile-default-notice">
-                {meta.warnings.join(' ')}
+            {aiFallbackWarnings.length ? (
+              <div className="issue-subtle-notice">
+                部分推荐暂时使用基础信息生成，稍后刷新可能会更完整。
               </div>
             ) : null}
 
