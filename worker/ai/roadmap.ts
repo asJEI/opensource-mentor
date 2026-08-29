@@ -39,13 +39,13 @@ export async function generateRoadmapPhase(
     phaseNumber: params.phaseNumber,
   })
 
-  try {
+  const attempt = async (temperature: number) => {
     const content = await client.chatCompletions({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.7,
+      temperature,
       topP: 0.9,
       timeoutMs: 55_000,
       responseFormat: { type: 'json_object' },
@@ -54,6 +54,18 @@ export async function generateRoadmapPhase(
       parseJsonSafely(content),
       params.phaseNumber,
     )
+  }
+
+  try {
+    try {
+      return await attempt(0.6)
+    } catch (firstError) {
+      // 内容不完整时自动重试一次，降低偶发空壳概率
+      const message =
+        firstError instanceof Error ? firstError.message : String(firstError)
+      if (!message.includes('内容不完整')) throw firstError
+      return await attempt(0.4)
+    }
   } catch (error) {
     if (error instanceof ApiError) throw error
     const message = error instanceof Error ? error.message : 'unknown error'

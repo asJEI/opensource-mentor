@@ -187,8 +187,17 @@ export function validateRoadmapPhaseResult(
     else if (isRecord(parsed.phases[0])) source = parsed.phases[0]
   }
 
-  const learningItems = ensureStringArray(source.learningItems)
-  const goal = String(source.goal || '').trim()
+  const learningItems = ensureStringArray(
+    source.learningItems ??
+      source.items ??
+      source.points ??
+      source.steps ??
+      source.content ??
+      source.bulletPoints,
+  )
+  const goal = String(
+    source.goal || source.summary || source.overview || source.description || '',
+  ).trim()
   if (!goal || learningItems.length === 0) {
     throw new Error(
       `第 ${phaseNumber} 章内容不完整（缺少 goal 或 learningItems）`,
@@ -207,8 +216,10 @@ export function validateRoadmapPhaseResult(
       ['easy', 'medium', 'hard'] as const,
       'medium',
     ),
-    completionCriteria: ensureStringArray(source.completionCriteria),
-    resources: ensureStringArray(source.resources),
+    completionCriteria: ensureStringArray(
+      source.completionCriteria ?? source.checklist,
+    ),
+    resources: ensureStringArray(source.resources ?? source.references),
   }
 }
 

@@ -142,6 +142,8 @@ function GuideArticle({
   onCodeReview,
   onPrGenerator,
   onMentor,
+  onRetryPhase,
+  isRetrying,
   isFirst,
   isLast,
 }: {
@@ -154,6 +156,8 @@ function GuideArticle({
   onCodeReview: () => void
   onPrGenerator: () => void
   onMentor: () => void
+  onRetryPhase: () => void
+  isRetrying: boolean
   isFirst: boolean
   isLast: boolean
 }) {
@@ -167,7 +171,7 @@ function GuideArticle({
   const hasContent =
     learningItems.length > 0 &&
     Boolean(goal.trim()) &&
-    !/暂未生成|正在生成|正在准备|不完整/.test(goal)
+    !/暂未生成|正在生成|正在准备|不完整|失败/.test(goal)
 
   if (generationStatus === 'generating' || generationStatus === 'queued') {
     return (
@@ -193,8 +197,13 @@ function GuideArticle({
         <h2>{title}</h2>
         <p className="guide-reader-goal">
           {phase?.generationError ||
-            '本章内容不完整或生成失败，请点击上方「重新生成」。'}
+            '本章内容不完整。这通常是模型偶发返回空壳 JSON，不是接口挂了。'}
         </p>
+        <div className="guide-action-row">
+          <Button variant="primary" onClick={onRetryPhase} loading={isRetrying}>
+            重试本章
+          </Button>
+        </div>
       </article>
     )
   }
@@ -268,6 +277,8 @@ const Roadmap = () => {
   const isGeneratingMore = useRoadmapStore((s) => s.isGeneratingMore)
   const error = useRoadmapStore((s) => s.error)
   const loadRoadmap = useRoadmapStore((s) => s.loadRoadmap)
+  const retryPhase = useRoadmapStore((s) => s.retryPhase)
+  const retryFailedPhases = useRoadmapStore((s) => s.retryFailedPhases)
   const updateStepStatus = useRoadmapStore((s) => s.updateStepStatus)
   const showToast = useToastStore((s) => s.showToast)
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
@@ -316,12 +327,23 @@ const Roadmap = () => {
       !/暂未生成|正在生成|正在准备|不完整/.test(phase.goal)
     )
   }).length
+  const failedCount = sections.filter((section) => {
+    const phase = section.phase
+    if (!phase) return false
+    if (phase.generationStatus === 'failed') return true
+    return (
+      phase.generationStatus === 'ready' &&
+      ((phase.learningItems?.length || 0) === 0 ||
+        /暂未生成|不完整|失败/.test(phase.goal || ''))
+    )
+  }).length
+
   const hasShell = steps.length > 0
   const issueTitle = activeContributionIssue
     ? `#${activeContributionIssue.issueNumber} ${activeContributionIssue.title}`
     : ''
 
-  const handleRetry = () => {
+  const handleRetryAll = () => {
     if (!activeContributionIssue) {
       navigate('/issues')
       return
@@ -330,8 +352,19 @@ const Roadmap = () => {
     loadRoadmap(currentOwner, currentRepoName, { force: true })
   }
 
+  const handleRetryFailed = () => {
+    retryFailedPhases()
+  }
+
+  const handleRetryActivePhase = () => {
+    const phaseNumber = activeSection?.phase?.phase
+    if (!phaseNumber) return
+    retryPhase(phaseNumber)
+  }
+
   const handleComplete = () => {
     if (!activeSection?.phase?.id || activeSection.phase.generationStatus !== 'ready') return
+    if ((activeSection.phase.learningItems?.length || 0) === 0) return
     updateStepStatus(activeSection.phase.id, 'completed')
     showToast('success', '已记录进度', `「${activeSection.title}」已完成`)
     if (activeIndex < sections.length - 1) {
@@ -366,7 +399,7 @@ const Roadmap = () => {
             className="roadmap-error"
             title="贡献指南加载失败"
             message={error}
-            onRetry={handleRetry}
+            onRetry={handleRetryAll}
             retryLabel="重新加载"
           />
         </div>
@@ -388,10 +421,25 @@ const Roadmap = () => {
           <div className="guide-header-actions">
             <span className="guide-progress-pill">
               已生成 {readyCount}/{sections.length || 7}
-              {completedCount > 0 ? ` · 已完成 ${completedCount}` : ''}
+              {failedCount > 0 ? ` · 失败 ${failedCount}` : ''}
+              {completedCount > 0 ? ` · 已读完 ${completedCount}` : ''}
             </span>
-            <Button variant="secondary" onClick={handleRetry} loading={isLoading} icon={<RefreshIcon />}>
-              重新生成
+            {failedCount > 0 && (
+              <Button
+                variant="primary"
+                onClick={handleRetryFailed}
+                loading={isGeneratingMore}
+              >
+                重试失败章节
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              onClick={handleRetryAll}
+              loading={isLoading}
+              icon={<RefreshIcon />}
+            >
+              全部重新生成
             </Button>
           </div>
         </header>
@@ -479,6 +527,11 @@ const Roadmap = () => {
               onCodeReview={() => navigate('/code-review')}
               onPrGenerator={() => navigate('/pr-generator')}
               onMentor={() => navigate('/mentor')}
+              onRetryPhase={handleRetryActivePhase}
+              isRetrying={
+                isGeneratingMore &&
+                activeSection.phase?.generationStatus === 'generating'
+              }
             />
           )}
         </div>

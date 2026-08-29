@@ -21,7 +21,27 @@ export function ensureStringArray(
   fallback: string[] = [],
 ): string[] {
   if (Array.isArray(value)) {
-    return value.filter((v): v is string => typeof v === 'string')
+    const items = value
+      .map((v) => {
+        if (typeof v === 'string') return v.trim()
+        if (v && typeof v === 'object') {
+          const record = v as Record<string, unknown>
+          for (const key of ['text', 'content', 'item', 'point', 'step', 'title']) {
+            if (typeof record[key] === 'string' && record[key].trim()) {
+              return String(record[key]).trim()
+            }
+          }
+        }
+        return ''
+      })
+      .filter(Boolean)
+    return items.length > 0 ? items : fallback
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(/\n+/)
+      .map((line) => line.replace(/^[-*•\d.\s]+/, '').trim())
+      .filter(Boolean)
   }
   return fallback
 }

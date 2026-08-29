@@ -81,12 +81,20 @@ function cacheKey(owner: string, repo: string, issueNumber: number) {
   return `${STORAGE_PREFIX}${owner}/${repo}#${issueNumber}`
 }
 
+type SharedGuideContext = {
+  repository: Record<string, unknown>
+  readme: string
+  repositoryContext: Record<string, unknown>
+  issueContext?: Record<string, unknown> | null
+}
+
 type PersistedGuide = {
   key: string
   owner: string
   repo: string
   roadmap: Roadmap
   steps: RoadmapPhase[]
+  sharedContext?: SharedGuideContext | null
   savedAt: number
 }
 
@@ -124,8 +132,13 @@ interface RoadmapState {
   /** 稳定缓存键：owner/repo#issueNumber */
   cacheKey: string
   generationToken: number
+  sharedContext: SharedGuideContext | null
 
   loadRoadmap: (owner: string, repo: string, options?: { force?: boolean }) => Promise<void>
+  /** 只重试指定失败章节，保留其他已生成内容 */
+  retryPhase: (phaseNumber: number) => Promise<void>
+  /** 只重试全部失败章节 */
+  retryFailedPhases: () => Promise<void>
   nextStep: () => void
   resetProgress: () => void
   updateStepStatus: (stepId: string, status: RoadmapStepStatus) => void
@@ -187,6 +200,7 @@ function persistCurrent(get: () => RoadmapState) {
     repo: state.currentRepo,
     roadmap: { ...state.roadmap, phases: state.steps },
     steps: state.steps,
+    sharedContext: state.sharedContext,
     savedAt: Date.now(),
   })
 }
@@ -227,6 +241,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
   currentRepo: '',
   cacheKey: '',
   generationToken: 0,
+  sharedContext: null,
 
   loadRoadmap: async (owner, repo, options) => {
     const userProfile = getEffectiveUserProfileContext()
@@ -243,6 +258,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         currentOwner: owner,
         currentRepo: repo,
         cacheKey: '',
+        sharedContext: null,
       })
       return
     }
@@ -307,6 +323,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           currentOwner: owner,
           currentRepo: repo,
           cacheKey: key,
+          sharedContext: persisted.sharedContext || null,
         })
         if (restoredSteps.every(isPhaseContentReady)) return
         // 未完成的章节继续补生成；不打断已恢复内容
@@ -396,6 +413,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         repositoryContext: prepared.repositoryContext,
         issueContext: prepared.issueContext,
       }
+      set({ sharedContext: shared })
 
       for (let phaseNumber = 1; phaseNumber <= titles.length; phaseNumber += 1) {
         if (get().generationToken !== token) return
@@ -443,7 +461,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           steps = patchPhase(get().steps, phaseNumber, {
             generationStatus: 'failed',
             generationError: message,
-            goal: '本章生成失败，可点击重新生成。',
+            goal: '本章生成失败，可点击「重试本章」。',
             learningItems: [],
           })
           set({ steps, progress: calculateProgress(steps) })
@@ -468,6 +486,109 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         isGeneratingMore: false,
         error: message,
       })
+    }
+  },
+
+  retryPhase: async (phaseNumber) => {
+    const state = get()
+    if (
+      !state.currentOwner ||
+      !state.currentRepo ||
+      phaseNumber < 1 ||
+      phaseNumber > DEFAULT_PHASE_TITLES.length
+    ) {
+      return
+    }
+
+    const userProfile = getEffectiveUserProfileContext()
+    const issueContext = buildIssueContext()
+    if (!issueContext) return
+
+    const token = state.generationToken + 1
+    set({
+      generationToken: token,
+      isGeneratingMore: true,
+      steps: patchPhase(state.steps, phaseNumber, {
+        generationStatus: 'generating',
+        generationError: null,
+        goal: '正在重新生成本章…',
+        learningItems: [],
+      }),
+    })
+
+    try {
+      let shared = get().sharedContext
+      if (!shared) {
+        const prepared = await aiService.prepareRoadmapContext(
+          state.currentOwner,
+          state.currentRepo,
+          userProfile,
+          issueContext,
+        )
+        if (get().generationToken !== token) return
+        shared = {
+          repository: prepared.repository,
+          readme: prepared.readme,
+          repositoryContext: prepared.repositoryContext,
+          issueContext: prepared.issueContext,
+        }
+        set({ sharedContext: shared })
+      }
+
+      const phase = await generateOnePhase({
+        owner: state.currentOwner,
+        repo: state.currentRepo,
+        phaseNumber,
+        userProfile,
+        shared,
+      })
+      if (get().generationToken !== token) return
+
+      const steps = patchPhase(get().steps, phaseNumber, {
+        ...phase,
+        id: `phase-${phaseNumber - 1}`,
+        status:
+          get().steps.find((item) => item.phase === phaseNumber)?.status ||
+          'pending',
+        generationStatus: 'ready',
+        generationError: null,
+      })
+      set({
+        steps,
+        progress: calculateProgress(steps),
+        isGeneratingMore: false,
+        roadmap: get().roadmap
+          ? { ...get().roadmap!, phases: steps }
+          : get().roadmap,
+      })
+      persistCurrent(get)
+    } catch (error) {
+      if (get().generationToken !== token) return
+      const message = getErrorMessage(error, '本章重试失败')
+      const steps = patchPhase(get().steps, phaseNumber, {
+        generationStatus: 'failed',
+        generationError: message,
+        goal: '本章生成失败，可再次点击「重试本章」。',
+        learningItems: [],
+      })
+      set({
+        steps,
+        progress: calculateProgress(steps),
+        isGeneratingMore: false,
+      })
+      persistCurrent(get)
+    }
+  },
+
+  retryFailedPhases: async () => {
+    const failed = get()
+      .steps.filter(
+        (step) =>
+          step.generationStatus === 'failed' || !isPhaseContentReady(step),
+      )
+      .map((step) => step.phase)
+    for (const phaseNumber of failed) {
+      await get().retryPhase(phaseNumber)
     }
   },
 
