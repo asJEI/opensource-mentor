@@ -382,6 +382,108 @@
   color: #fffdf8;
 }
 
+.landing-page .footer {
+  border-top: 1px solid rgba(244, 241, 234, 0.14);
+  background: #0c0c0a;
+  color: #8d8980;
+}
+
+.landing-page .footer-inner {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 42px 0 24px;
+}
+
+.landing-page .footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(160px, 0.55fr) minmax(160px, 0.55fr);
+  gap: 56px;
+  align-items: start;
+}
+
+.landing-page .footer-brand {
+  max-width: 480px;
+}
+
+.landing-page .footer-brand .nav-logo {
+  width: fit-content;
+  color: #f4f1ea;
+}
+
+.landing-page .footer-brand p {
+  margin: 14px 0 0;
+  color: #8d8980;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.landing-page .footer-col h4 {
+  margin: 0 0 14px;
+  color: #f4f1ea;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.landing-page .footer-col ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-page .footer-col a {
+  color: #8d8980;
+  font-size: 14px;
+}
+
+.landing-page .footer-col a:hover {
+  color: #f2c063;
+}
+
+.landing-page .footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 34px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(244, 241, 234, 0.12);
+}
+
+.landing-page .footer-bottom p {
+  margin: 0;
+  color: #67635b;
+  font-size: 13px;
+}
+
+.landing-page .footer-social {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.landing-page .footer-social a {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(244, 241, 234, 0.16);
+  border-radius: 8px;
+  color: #8d8980;
+}
+
+.landing-page .footer-social a:hover {
+  border-color: rgba(242, 192, 99, 0.34);
+  color: #f2c063;
+}
+
+.landing-page .footer-social svg {
+  width: 17px;
+  height: 17px;
+}
+
 @media (max-width: 860px) {
   .landing-page .nav {
     height: auto;
@@ -421,13 +523,28 @@
   }
 
   .landing-section,
-  .landing-product-strip {
+  .landing-product-strip,
+  .landing-page .footer-inner {
     width: min(100% - 32px, 620px);
   }
 
   .onboarding-grid,
   .pillar-grid {
     grid-template-columns: 1fr;
+  }
+
+  .landing-page .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+
+  .landing-page .footer-brand {
+    grid-column: 1 / -1;
+  }
+
+  .landing-page .footer-bottom {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .landing-product-strip {
@@ -447,6 +564,10 @@
 
   .nav-github-login {
     padding: 8px 12px;
+  }
+
+  .landing-page .footer-grid {
+    grid-template-columns: 1fr;
   }
 
   .terminal-body {
