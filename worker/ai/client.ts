@@ -7,6 +7,7 @@
 import { redactSecrets } from '../../shared/byok'
 import { ErrorCode } from '../../shared/errors'
 import { ApiError } from '../http'
+import { listAIModels, type AIModelOption } from './models'
 import {
   resolveChatCompletionsUrl,
   resolveProviderBaseUrl,
@@ -29,6 +30,10 @@ export interface AIClient {
     timeoutMs?: number
     responseFormat?: { type: 'json_object' | 'text' }
   }) => Promise<string>
+  listModels: () => Promise<{
+    provider: AIProvider
+    models: AIModelOption[]
+  }>
 }
 
 const MAX_RATE_LIMIT_RETRIES = 3
@@ -89,6 +94,16 @@ export function createAIClient(config: AIConfig): AIClient {
     provider: config.provider,
     model,
     baseUrl,
+    listModels() {
+      return listAIModels(
+        {
+          provider: config.provider,
+          baseUrl,
+          apiKey,
+        },
+        timeoutMs,
+      )
+    },
     async chatCompletions(params) {
       let attempt = 0
       while (true) {

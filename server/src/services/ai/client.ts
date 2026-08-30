@@ -76,3 +76,50 @@ export async function testConnection(runtime: AIRuntime): Promise<{
     latencyMs: Date.now() - startedAt,
   }
 }
+
+export async function listModels(runtime: AIRuntime): Promise<{
+  provider: string
+  models: Array<{
+    id: string
+    name: string
+    provider?: string
+    contextLength?: number
+  }>
+}> {
+  if (!runtime.client) {
+    throw new AppError('平台 AI API 尚未配置', 503)
+  }
+
+  const { data } = await runtime.client.get('/models', {
+    headers: { Accept: 'application/json' },
+  })
+  const models = (Array.isArray(data?.data) ? data.data : [])
+    .map((item: any) => {
+      const id = typeof item?.id === 'string' ? item.id.trim() : ''
+      if (!id) return null
+      return {
+        id,
+        name:
+          typeof item?.name === 'string' && item.name.trim()
+            ? item.name.trim()
+            : id,
+        provider:
+          typeof item?.provider === 'string' && item.provider.trim()
+            ? item.provider.trim()
+            : undefined,
+        contextLength:
+          typeof item?.context_length === 'number'
+            ? item.context_length
+            : typeof item?.contextLength === 'number'
+              ? item.contextLength
+              : undefined,
+      }
+    })
+    .filter(Boolean)
+    .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
+
+  return {
+    provider: runtime.isCustom ? 'custom' : 'platform',
+    models,
+  }
+}

@@ -120,5 +120,7 @@ export type {
   GitHubApiConfig,
   AIProvider,
   AIProviderConfig,
+  AIModelOption,
+  AIModelsResult,
   ConnectionTestResult,
 } from './settings'

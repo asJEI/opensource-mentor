@@ -26,3 +26,15 @@ export interface ConnectionTestResult {
   model?: string
   latencyMs?: number
 }
+
+export interface AIModelOption {
+  id: string
+  name: string
+  provider?: string
+  contextLength?: number
+}
+
+export interface AIModelsResult {
+  provider: AIProvider | string
+  models: AIModelOption[]
+}

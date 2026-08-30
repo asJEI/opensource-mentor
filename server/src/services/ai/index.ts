@@ -15,6 +15,7 @@ import { analyzeRepository as analyzeRepositoryFn } from './analyzeRepository'
 import {
   createPlatformClient,
   getRuntime,
+  listModels as listModelsFn,
   testConnection as testConnectionFn,
 } from './client'
 import { explainIssue as explainIssueFn } from './explainIssue'
@@ -60,6 +61,18 @@ class AIService {
     latencyMs: number
   }> {
     return testConnectionFn(getRuntime(this.client))
+  }
+
+  async listModels(): Promise<{
+    provider: string
+    models: Array<{
+      id: string
+      name: string
+      provider?: string
+      contextLength?: number
+    }>
+  }> {
+    return listModelsFn(getRuntime(this.client))
   }
 
   async explainIssue(

@@ -11,6 +11,7 @@ import type { ProfileOption as Option } from '@/constants/userProfile'
 import { aiService, authService, githubService } from '@/services'
 import { getConnectionErrorMessage } from '@/services/connectionErrors'
 import type {
+  AIModelOption,
   AIProvider,
   AIProviderConfig,
   ApiConfigMode,
@@ -445,6 +446,8 @@ const AIProviderSettings = () => {
     aiConfig.provider === 'openai-compatible',
   )
   const [testing, setTesting] = useState(false)
+  const [loadingModels, setLoadingModels] = useState(false)
+  const [modelOptions, setModelOptions] = useState<AIModelOption[]>([])
   const [status, setStatus] = useState<ConnectionStatus>(
     aiConfig.mode === 'custom' && !aiConfig.apiKey ? 'unconfigured' : 'idle',
   )
@@ -471,6 +474,7 @@ const AIProviderSettings = () => {
         (provider === 'openai-compatible' ? current.model : ''),
     }))
     setShowAdvanced(provider === 'openai-compatible')
+    setModelOptions([])
     setStatus('idle')
     setStatusDetail(undefined)
   }
@@ -531,6 +535,56 @@ const AIProviderSettings = () => {
     }
   }
 
+  const handleLoadModels = async () => {
+    const testConfig: AIProviderConfig = {
+      ...draft,
+      mode: aiConfig.mode === 'custom' ? 'custom' : 'platform',
+      baseUrl:
+        draft.baseUrl?.trim() || defaultBaseUrl(draft.provider) || undefined,
+    }
+    if (testConfig.mode === 'custom') {
+      if (!testConfig.apiKey?.trim()) {
+        setStatus('unconfigured')
+        setStatusDetail('请先填写 API Key')
+        showToast('error', '缺少 API Key', '读取模型列表需要当前服务商的 API Key')
+        return
+      }
+      if (testConfig.provider === 'openai-compatible' && !testConfig.baseUrl) {
+        setStatus('unconfigured')
+        setStatusDetail('请先填写 Base URL')
+        showToast('error', '缺少 Base URL', 'OpenAI Compatible 需要 Base URL 才能读取模型')
+        return
+      }
+    }
+
+    setLoadingModels(true)
+    setStatus('testing')
+    setStatusDetail(undefined)
+    try {
+      const result = await aiService.listModels(testConfig)
+      setModelOptions(result.models)
+      if (
+        result.models.length > 0 &&
+        !result.models.some((model) => model.id === draft.model)
+      ) {
+        setDraft((current) => ({
+          ...current,
+          model: result.models[0].id,
+        }))
+      }
+      setStatus('success')
+      setStatusDetail(`已读取 ${result.models.length} 个模型`)
+      showToast('success', '模型列表已更新', `读取到 ${result.models.length} 个可选模型`)
+    } catch (error) {
+      const message = getConnectionErrorMessage(error, '请检查 API Key 或服务商余额')
+      setStatus('failure')
+      setStatusDetail(message)
+      showToast('error', '读取模型失败', message)
+    } finally {
+      setLoadingModels(false)
+    }
+  }
+
   const handleSave = () => {
     const error = validateDraft()
     if (error) {
@@ -555,6 +609,7 @@ const AIProviderSettings = () => {
   const handleClear = () => {
     clearAIConfig()
     setDraft({ ...DEFAULT_AI_CONFIG })
+    setModelOptions([])
     setShowKey(false)
     setShowAdvanced(false)
     setStatus('idle')
@@ -637,32 +692,81 @@ const AIProviderSettings = () => {
               </p>
             </div>
 
-            {draft.provider === 'deepseek' ? (
-              <Input
-                type="select"
-                label="模型"
-                value={draft.model}
-                options={DEEPSEEK_MODELS}
-                onChange={(model) =>
-                  setDraft((current) => ({ ...current, model }))
-                }
-              />
-            ) : (
-              <Input
-                label="模型"
-                value={draft.model}
-                placeholder={
-                  draft.provider === 'openai'
-                    ? 'gpt-4o-mini'
-                    : draft.provider === 'orcarouter'
-                      ? 'deepseek/deepseek-chat'
-                    : 'your-model-name'
-                }
-                onChange={(model) =>
-                  setDraft((current) => ({ ...current, model }))
-                }
-              />
-            )}
+            <div className="form-group">
+              <label className="form-label" htmlFor="ai-model">
+                模型
+              </label>
+              <div className="model-select-row">
+                {modelOptions.length > 0 ? (
+                  <select
+                    id="ai-model"
+                    className="form-select filter-select"
+                    value={draft.model}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        model: event.target.value,
+                      }))
+                    }
+                  >
+                    {modelOptions.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name === model.id
+                          ? model.id
+                          : `${model.name} (${model.id})`}
+                      </option>
+                    ))}
+                  </select>
+                ) : draft.provider === 'deepseek' ? (
+                  <select
+                    id="ai-model"
+                    className="form-select filter-select"
+                    value={draft.model}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        model: event.target.value,
+                      }))
+                    }
+                  >
+                    {DEEPSEEK_MODELS.map((model) => (
+                      <option key={model.value} value={model.value}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="ai-model"
+                    className="form-input"
+                    value={draft.model}
+                    placeholder={
+                      draft.provider === 'openai'
+                        ? 'gpt-4o-mini'
+                        : draft.provider === 'orcarouter'
+                          ? 'deepseek/deepseek-chat'
+                          : 'your-model-name'
+                    }
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        model: event.target.value,
+                      }))
+                    }
+                  />
+                )}
+                <Button
+                  variant="secondary"
+                  loading={loadingModels}
+                  onClick={handleLoadModels}
+                >
+                  读取模型
+                </Button>
+              </div>
+              <p className="form-hint">
+                读取失败也可以手动填写模型名；模型列表只用于当前设置页选择，不会保存 API Key 到服务端。
+              </p>
+            </div>
 
             {draft.provider === 'openai-compatible' ? (
               <Input

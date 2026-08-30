@@ -3242,6 +3242,17 @@
   flex: 1;
 }
 
+.model-select-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.model-select-row .form-input,
+.model-select-row .form-select {
+  flex: 1;
+}
+
 .api-settings-actions {
   padding-top: 20px;
 }
@@ -4084,6 +4095,11 @@
 
   .secret-input-row {
     align-items: stretch;
+  }
+
+  .model-select-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .profile-option-grid,

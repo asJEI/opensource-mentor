@@ -456,6 +456,17 @@ export async function handleTestAIConnection(
   return success(result)
 }
 
+/** POST /api/ai/models */
+export async function handleListAIModels(
+  request: Request,
+  env: PlatformEnv,
+): Promise<Response> {
+  const body = await parseJsonBody(request).catch(() => ({}))
+  const { client } = await resolveAIClient(env, request, body)
+  const result = await client.listModels()
+  return success(result)
+}
+
 /** POST /api/ai/analyze-repo */
 export async function handleAnalyzeRepo(
   request: Request,

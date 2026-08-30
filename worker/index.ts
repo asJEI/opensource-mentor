@@ -11,6 +11,7 @@ import {
   handleGeneratePr,
   handleGenerateRoadmap,
   handleGenerateRoadmapPhase,
+  handleListAIModels,
   handlePrepareRoadmapContext,
   handleRecommendIssues,
   handleTestAIConnection,
@@ -129,6 +130,10 @@ export default {
         request.method === 'POST'
       ) {
         return await handleTestAIConnection(request, env)
+      }
+
+      if (url.pathname === '/api/ai/models' && request.method === 'POST') {
+        return await handleListAIModels(request, env)
       }
 
       if (

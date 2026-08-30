@@ -15,6 +15,7 @@ import type {
   ChatResponse,
   UserProfileContext,
   AIProviderConfig,
+  AIModelsResult,
   ConnectionTestResult,
 } from '@/types'
 
@@ -66,6 +67,32 @@ class AiService {
           mode: aiConfig.mode,
           provider: aiConfig.provider,
           model: aiConfig.model,
+          baseUrl: aiConfig.baseUrl,
+        },
+      },
+      { headers },
+    )
+  }
+
+  async listModels(
+    configOverride?: AIProviderConfig,
+  ): Promise<AIModelsResult> {
+    const aiConfig = configOverride ?? useSettingsStore.getState().aiConfig
+    const headers: Record<string, string> = {}
+    if (aiConfig.mode === 'custom') {
+      headers[BYOK_HEADERS.aiMode] = 'custom'
+      headers[BYOK_HEADERS.aiProvider] = aiConfig.provider
+      if (aiConfig.model) headers[BYOK_HEADERS.aiModel] = aiConfig.model
+      if (aiConfig.baseUrl) headers[BYOK_HEADERS.aiBaseUrl] = aiConfig.baseUrl
+      if (aiConfig.apiKey) headers[BYOK_HEADERS.aiKey] = aiConfig.apiKey
+    }
+    return bffPost<AIModelsResult>(
+      '/ai/models',
+      {
+        aiProviderConfig: {
+          mode: aiConfig.mode,
+          provider: aiConfig.provider,
+          model: aiConfig.model || 'model-list',
           baseUrl: aiConfig.baseUrl,
         },
       },

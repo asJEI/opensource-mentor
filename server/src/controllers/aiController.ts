@@ -145,6 +145,20 @@ export const testAIConnection = async (
   }
 }
 
+/** POST /api/ai/models */
+export const listAIModels = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await aiService.listModels()
+    res.json(success(result))
+  } catch (error) {
+    next(error)
+  }
+}
+
 /**
  * POST /api/ai/explain
  * 解释 Issue

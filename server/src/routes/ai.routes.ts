@@ -7,11 +7,13 @@ import {
   generateRoadmap,
   chat,
   testAIConnection,
+  listAIModels,
 } from '../controllers/aiController'
 
 const router = Router()
 
 router.post('/test-connection', testAIConnection)
+router.post('/models', listAIModels)
 
 // POST /api/ai/explain —— 解释 Issue
 router.post('/explain', explainIssue)
