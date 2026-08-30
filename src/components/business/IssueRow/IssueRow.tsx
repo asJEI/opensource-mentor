@@ -103,7 +103,7 @@ export const IssueRow: React.FC<IssueRowProps> = ({
         </div>
         <div className="issue-meta">
           <span>
-            由 <a href="#">{issue.author}</a> 于 {formatDate(issue.createdAt)} 创建
+            由 <span>{issue.author}</span> 于 {formatDate(issue.createdAt)} 创建
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <svg

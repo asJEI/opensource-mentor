@@ -61,8 +61,8 @@ export async function createSessionCookie(
   env: PlatformEnv,
   payload: Omit<SessionPayload, 'exp'>,
 ): Promise<string> {
-  const secret = env.SUPABASE_SECRET_KEY?.trim()
-  if (!secret) throw new Error('SUPABASE_SECRET_KEY is not configured')
+  const secret = env.SESSION_SECRET?.trim()
+  if (!secret) throw new Error('SESSION_SECRET is not configured')
 
   const session: SessionPayload = {
     ...payload,
@@ -92,7 +92,7 @@ export async function readSession(
   request: Request,
   env: PlatformEnv,
 ): Promise<SessionPayload | null> {
-  const secret = env.SUPABASE_SECRET_KEY?.trim()
+  const secret = env.SESSION_SECRET?.trim()
   if (!secret) return null
 
   const raw = getCookie(request, SESSION_COOKIE)

@@ -90,7 +90,7 @@ const onboardingSteps = [
   },
   {
     title: '陪你完成第一次贡献',
-    desc: '拆解 Issue、生成学习路线、准备 PR 描述，并在提交前做代码审查。',
+    desc: '把 Issue 拆成分章节的贡献指南，卡住时问 AI 导师，提交前先做代码审查再生成 PR 描述。',
   },
 ]
 
@@ -155,7 +155,8 @@ function HeroSection() {
         </div>
 
         <div className="landing-note">
-          仅请求 GitHub 公开资料权限；登录后会读取公开仓库、语言、PR / Issue 等信息生成画像。
+          仅请求 GitHub 公开资料权限，不会读取私有仓库，也不需要你提供 Token。
+          Issue 推荐和平台 AI 依赖登录后的开发者画像；你也可在设置中使用自己的 AI API。
         </div>
       </div>
 
@@ -238,10 +239,10 @@ function PreviewSection() {
     <section className="landing-product-strip" id="preview">
       <div>
         <span>当前可用能力</span>
-        <h2>仓库分析、Issue 推荐、路线图、PR 辅助和代码审查已经在产品内串起来。</h2>
+        <h2>仓库分析、Issue 推荐、贡献指南、代码审查和 PR 生成已经在产品内串起来。</h2>
       </div>
-      <a href="/dashboard" className="landing-inline-link">
-        查看 Issue 推荐
+      <a href="/issues" className="landing-inline-link">
+        登录后开始 Issue 推荐
         <ArrowRightIcon />
       </a>
     </section>

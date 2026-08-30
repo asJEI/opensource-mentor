@@ -50,8 +50,8 @@ export const usePrStore = create<PrState>((set, get) => ({
   prDraft: null,
   isGenerating: false,
   error: null,
-  currentOwner: 'microsoft',
-  currentRepo: 'vscode',
+  currentOwner: '',
+  currentRepo: '',
 
   setPrType: (type: PrType) => set({ prType: type }),
 

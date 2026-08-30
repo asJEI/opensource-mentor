@@ -103,7 +103,11 @@ const ProfileOnboarding = () => {
 
   const handleSkip = () => {
     skipProfileSetup()
-    showToast('info', '已跳过偏好补充', '暂不会自动推荐 Issue，你可以稍后在设置页补充画像')
+    showToast(
+      'info',
+      '已跳过偏好补充',
+      '推荐将只依据 GitHub 公开画像，准确度会低一些；随时可在偏好设置补充',
+    )
   }
 
   const addCustomTech = () => {
@@ -175,13 +179,13 @@ const ProfileOnboarding = () => {
       className="profile-onboarding-modal"
       icon={<SparklesIcon />}
       title="完善你的开源偏好"
-      subtitle="GitHub 只能告诉我们你做过什么，还不能可靠判断你想做什么。"
+      subtitle="GitHub 只能看出你做过什么，这 4 个问题用来判断你现在想做什么，直接影响 Issue 推荐结果。"
       footer={
         <div className="profile-onboarding-footer">
           <Button variant="ghost" onClick={handleSkip}>稍后再说</Button>
           <div className="profile-onboarding-footer-actions">
             {step > 0 && <Button variant="secondary" onClick={() => setStep((current) => current - 1)}>返回</Button>}
-            <Button variant="primary" loading={saving} onClick={handleNext}>{step === TOTAL_STEPS - 1 ? '保存并查看 Issue 推荐' : '继续'}</Button>
+            <Button variant="primary" loading={saving} onClick={handleNext}>{step === TOTAL_STEPS - 1 ? '保存偏好' : '继续'}</Button>
           </div>
         </div>
       }
@@ -189,7 +193,7 @@ const ProfileOnboarding = () => {
       <div className="profile-onboarding-progress">
         <div className="profile-onboarding-progress-meta">
           <span>Step {step + 1} / {TOTAL_STEPS}</span>
-          <span>不会自动推荐 Issue</span>
+          <span>约 1 分钟，之后可在偏好设置随时修改</span>
         </div>
         <div className="profile-onboarding-progress-track">
           <span style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }} />

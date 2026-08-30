@@ -42,6 +42,7 @@
   //   PLATFORM_LLM_API_KEY, PLATFORM_GITHUB_TOKEN
   //   GITHUB_OAUTH_CLIENT_ID, GITHUB_OAUTH_CLIENT_SECRET
   //   SUPABASE_SECRET_KEY
+  //   SESSION_SECRET
   // Not marked `secrets.required` so Preview/PoC can deploy without platform keys.
   // User BYOK stays request-scoped and is never stored as Worker Secrets.
   // See DEPLOY-CLOUDFLARE.md for the production secrets checklist.

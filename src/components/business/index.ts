@@ -18,8 +18,6 @@ export { default as IssueRow } from './IssueRow'
 export type { IssueRowProps } from './IssueRow'
 
 // Issue 解释弹窗
-export { default as IssueExplainModal } from './IssueExplainModal'
-export type { IssueExplainModalProps } from './IssueExplainModal'
 
 // PR 类型选择器
 export { default as PrTypeSelector } from './PrTypeSelector'
@@ -34,8 +32,6 @@ export { default as RoadmapTimeline } from './RoadmapTimeline'
 export type { RoadmapTimelineProps } from './RoadmapTimeline'
 
 // 进度总览卡片
-export { default as ProgressOverview } from './ProgressOverview'
-export type { ProgressOverviewProps } from './ProgressOverview'
 
 // 文件目录树
 export { default as FileTree } from './FileTree'

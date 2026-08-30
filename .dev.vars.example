@@ -8,6 +8,7 @@
 #             `npx wrangler secret put GITHUB_OAUTH_CLIENT_SECRET`
 #             `npx wrangler secret put SUPABASE_URL`
 #             `npx wrangler secret put SUPABASE_SECRET_KEY`
+#             `npx wrangler secret put SESSION_SECRET`
 #
 # User BYOK (provider/apiKey/model/baseUrl/githubToken) does NOT belong here.
 # Those stay in the browser and are sent per-request later.
@@ -18,6 +19,7 @@ GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
 SUPABASE_URL=
 SUPABASE_SECRET_KEY=
+SESSION_SECRET=
 
 # Non-secret model defaults live in wrangler.jsonc (DEFAULT_LLM_MODEL).
 # Current platform default: deepseek-v4-flash

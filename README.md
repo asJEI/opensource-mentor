@@ -74,6 +74,7 @@ GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
 SUPABASE_URL=
 SUPABASE_SECRET_KEY=
+SESSION_SECRET=
 ```
 
 非密钥默认配置位于 [wrangler.jsonc](./wrangler.jsonc)。用户在设置页填写的 BYOK 配置不应写入服务端环境文件。
@@ -101,6 +102,7 @@ Express 默认监听 `http://localhost:3001`，主要用于 Docker 路径；当�
 | `GITHUB_OAUTH_CLIENT_SECRET` | GitHub OAuth App 的 Client Secret |
 | `SUPABASE_URL` | Supabase Project URL，仅 Worker 服务端使用 |
 | `SUPABASE_SECRET_KEY` | Supabase 服务端 Secret Key，仅 Worker 服务端使用 |
+| `SESSION_SECRET` | 独立的会话签名密钥，不得与 Supabase Key 复用 |
 | `DEFAULT_LLM_PROVIDER` | 默认模型提供方 |
 | `DEFAULT_LLM_BASE_URL` | OpenAI-compatible API 地址 |
 | `DEFAULT_LLM_MODEL` | 默认模型 |

@@ -26,6 +26,7 @@ export const ErrorCode = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   REVIEW_FAILED: 'REVIEW_FAILED',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
@@ -49,6 +50,7 @@ export const ERROR_CODE_MESSAGES: Record<ErrorCode, string> = {
   VALIDATION_ERROR: '请求参数无效',
   INTERNAL_ERROR: '服务器内部错误',
   REVIEW_FAILED: '审查失败，请稍后重试',
+  AUTH_REQUIRED: '请先使用 GitHub 登录',
 }
 
 /**

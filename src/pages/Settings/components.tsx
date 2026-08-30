@@ -144,7 +144,7 @@ function ModeSelector({
         onClick={() => onChange('custom')}
       >
         <strong>{customLabel}</strong>
-        <span>配置保存在当前浏览器，按请求临时发送，服务端不持久化</span>
+        <span>密钥仅在当前页面会话中使用，刷新后需重新输入</span>
       </button>
     </div>
   )
@@ -370,8 +370,7 @@ const GitHubApiSettings = () => {
 
         {githubConfig.mode === 'platform' && (
           <p className="api-warning-note">
-            当前由部署环境的 PLATFORM_GITHUB_TOKEN 提供公共仓库分析额度。即使你已登录
-            GitHub，也不需要额外填写个人 Token。
+            公共仓库请求由平台统一提供额度。即使你已登录 GitHub，也不需要额外填写个人 Token。
           </p>
         )}
 
@@ -492,6 +491,23 @@ const AIProviderSettings = () => {
     return null
   }
 
+  const confirmCustomEndpoint = (config: AIProviderConfig): boolean => {
+    if (config.mode !== 'custom' || !config.baseUrl) return true
+    try {
+      const target = new URL(config.baseUrl)
+      const providerDefault = defaultBaseUrl(config.provider)
+      const isProviderDefault = providerDefault
+        ? target.origin === new URL(providerDefault).origin
+        : false
+      if (isProviderDefault) return true
+      return window.confirm(
+        `API Key 将发送到 ${target.hostname}。请确认这是你信任的 AI 服务地址。`,
+      )
+    } catch {
+      return false
+    }
+  }
+
   const handleTest = async () => {
     const testConfig =
       aiConfig.mode === 'platform'
@@ -512,6 +528,7 @@ const AIProviderSettings = () => {
         showToast('error', '配置不完整', error)
         return
       }
+      if (!confirmCustomEndpoint(testConfig)) return
     }
 
     setTesting(true)
@@ -555,6 +572,7 @@ const AIProviderSettings = () => {
         showToast('error', '缺少 Base URL', 'OpenAI Compatible 需要 Base URL 才能读取模型')
         return
       }
+      if (!confirmCustomEndpoint(testConfig)) return
     }
 
     setLoadingModels(true)
@@ -591,11 +609,15 @@ const AIProviderSettings = () => {
       showToast('error', '无法保存', error)
       return
     }
-    updateAIConfig({
+    const savedConfig: AIProviderConfig = {
       ...draft,
       mode: 'custom',
       baseUrl:
         draft.baseUrl?.trim() || defaultBaseUrl(draft.provider) || undefined,
+    }
+    if (!confirmCustomEndpoint(savedConfig)) return
+    updateAIConfig({
+      ...savedConfig,
     })
     setStatus('idle')
     setStatusDetail(undefined)
@@ -802,6 +824,12 @@ const AIProviderSettings = () => {
             <p className="form-hint api-provider-hint">
               {PROVIDER_HINTS[draft.provider]}
             </p>
+            {draft.baseUrl &&
+              draft.baseUrl !== defaultBaseUrl(draft.provider) && (
+                <p className="api-warning-note">
+                  使用自定义 Base URL 时，API Key 会发送到该域名。请只填写你信任的 AI 服务地址。
+                </p>
+              )}
           </div>
         )}
 
@@ -828,7 +856,7 @@ const AIProviderSettings = () => {
         </div>
 
         <p className="api-security-note">
-          配置保存在当前浏览器。密钥通过请求头临时发送，请求结束后不落库、不写日志。
+          服务商和模型选项保存在当前浏览器；密钥仅保留在当前页面会话内存中，刷新后需重新输入。请求时密钥会发送给你选择的 AI 服务商。
         </p>
       </div>
     </Card>

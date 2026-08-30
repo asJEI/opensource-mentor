@@ -148,7 +148,7 @@ const CandidateIssueCard = ({
       ? 'AI 分析暂时不可用，已根据 GitHub 基础字段推荐。'
       : analysisStatus === 'loading' || analysisStatus === 'idle'
         ? '正在分析匹配度…'
-      : '该 Issue 与你的当前画像存在一定匹配。')
+      : 'AI 暂未给出匹配理由，展开可查看 Issue 详情后自行判断。')
   const contributionAccess =
     issue.contributionAccess ||
     (issue.claimHint?.includes('认领') ? 'claim_required' : 'direct_submit')
@@ -396,7 +396,11 @@ const Issues = () => {
 
   const handleStart = (issue: CandidateIssue) => {
     startContribution(issue)
-    showToast('success', '已选择 Issue', `开始分析 ${issue.repository.fullName}#${issue.issueNumber}`)
+    showToast(
+      'success',
+      '已锁定这个 Issue',
+      `正在分析 ${issue.repository.fullName}#${issue.issueNumber} 所在的仓库，稍后可在贡献指南继续`,
+    )
     navigate('/dashboard')
   }
 
@@ -477,8 +481,9 @@ const Issues = () => {
               </span>
               <h1 className="page-title">Issue 推荐</h1>
               <p className="page-subtitle">
-                根据你的 GitHub 画像和 onboarding 偏好，从 GitHub 拉取候选 Issue。
-                也可以粘贴仓库或 Issue 链接进行定向筛选与评估。
+                根据你的 GitHub 画像和贡献偏好，从 GitHub 拉取候选 Issue。
+                也可以粘贴仓库或 Issue 链接做定向筛选。选定后点「开始贡献」，
+                后续的仓库分析、贡献指南和代码审查都会围绕它展开。
               </p>
             </div>
             <span className="repo-pill">
@@ -492,9 +497,9 @@ const Issues = () => {
           <AiPageError
             kicker="AUTH REQUIRED"
             title="需要先登录 GitHub"
-            message="候选 Issue 会基于你的 Developer Profile 生成，请先回到首页完成 GitHub 登录。"
+            message="候选 Issue 依据你的 GitHub 公开画像筛选，请先回到首页用 GitHub 登录。未登录时也可以先到「仓库分析」试用。"
             onRetry={() => navigate('/')}
-            retryLabel="回到首页"
+            retryLabel="回到首页登录"
           />
         ) : (
           <>
@@ -531,8 +536,8 @@ const Issues = () => {
                 ) : null}
               </div>
               <p className="issues-search-hint">
-                输入仓库链接：筛选该仓库下合适的开放 Issue。
-                输入 Issue 链接：只评估这一个 Issue。
+                留空搜索：按你的画像跨仓库推荐。输入仓库链接：只筛这个仓库下合适的开放
+                Issue。输入 Issue 链接：只评估这一个 Issue。
               </p>
               {searchError ? (
                 <p className="issues-search-error">{searchError}</p>
@@ -617,10 +622,10 @@ const Issues = () => {
                   ) : (
                     <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
                       {activeScope.type === 'repo'
-                        ? `在 ${activeScope.owner}/${activeScope.repo} 中暂未找到合适的开放 Issue。`
+                        ? `在 ${activeScope.owner}/${activeScope.repo} 中暂未找到标记为适合新手的开放 Issue，可以换一个仓库再试。`
                         : activeScope.type === 'issue'
-                          ? '未能评估该 Issue，请检查链接后重试。'
-                          : '暂未找到候选 Issue。当前阶段不会为了凑数扩展到普通 issue 搜索。'}
+                          ? '未能评估该 Issue，请确认链接指向一个开放的 Issue 后重试。'
+                          : '暂时没有匹配到候选 Issue。为了保证质量，这里只收录带 good first issue / help wanted 等标签的任务；可以在上方粘贴一个你想参与的仓库链接，或到偏好设置补充技术栈后重试。'}
                     </div>
                   )}
                 </div>

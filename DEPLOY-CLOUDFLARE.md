@@ -71,6 +71,7 @@ npx wrangler secret put GITHUB_OAUTH_CLIENT_ID
 npx wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
 npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_SECRET_KEY
+npx wrangler secret put SESSION_SECRET
 ```
 
 也可在 Dashboard → Worker → **Settings** → **Variables and Secrets** 添加类型为 Secret 的项。
@@ -83,6 +84,7 @@ npx wrangler secret put SUPABASE_SECRET_KEY
 | `GITHUB_OAUTH_CLIENT_SECRET` | GitHub 登录必需 | GitHub OAuth App 的 Client Secret |
 | `SUPABASE_URL` | 用户持久化必需 | Supabase Project URL，仅 Worker 使用 |
 | `SUPABASE_SECRET_KEY` | 用户持久化必需 | Supabase Secret Key，仅 Worker 使用，禁止返回前端 |
+| `SESSION_SECRET` | GitHub 登录必需 | 独立的高强度随机会话签名密钥，不得与 Supabase Key 复用 |
 
 非密钥默认（已在 `wrangler.jsonc` → `vars`）：
 
@@ -102,6 +104,7 @@ npx wrangler secret put SUPABASE_SECRET_KEY
 - [ ] `git push origin main` 触发成功部署
 - [ ] 生产前端可打开，`/api/health` 正常
 - [ ] `PLATFORM_*` 已按需配置（不含真实值进 Git）
+- [ ] `SESSION_SECRET` 已独立配置，且不与其他 API Key 复用
 - [ ] 连续请求已验证平台 AI 限流返回 `429`
 - [ ] Docker / `DEPLOY.md` 仍保留作 fallback
 

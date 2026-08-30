@@ -177,12 +177,12 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            PR Title
+            PR 标题
           </div>
           <button
             type="button"
             className="copy-btn"
-            onClick={() => handleCopy(draft.title, 'PR Title')}
+            onClick={() => handleCopy(draft.title, 'PR 标题')}
           >
             <svg
               viewBox="0 0 24 24"
@@ -218,12 +218,12 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               <line x1="16" y1="13" x2="8" y2="13" />
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
-            Description
+            PR 描述
           </div>
           <button
             type="button"
             className="copy-btn"
-            onClick={() => handleCopy(draft.description, 'PR Description')}
+            onClick={() => handleCopy(draft.description, 'PR 描述')}
           >
             <svg
               viewBox="0 0 24 24"
@@ -484,7 +484,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                 <polyline points="9 11 12 14 22 4" />
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
-              Checklist
+              提交前检查清单
             </div>
           </div>
           <div className="checklist">
@@ -513,7 +513,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              Review Suggestions
+              审查建议
             </div>
           </div>
           <div className="review-suggestions">

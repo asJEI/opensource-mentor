@@ -56,11 +56,30 @@ const PrGenerator = () => {
   const generatePr = usePrStore((s) => s.generatePr)
   const repositoryOwner = useRepositoryStore((s) => s.currentOwner)
   const repositoryName = useRepositoryStore((s) => s.currentRepoName)
+  const activeContributionIssue = useRepositoryStore(
+    (s) => s.activeContributionIssue,
+  )
   const showToast = useToastStore((s) => s.showToast)
 
   useEffect(() => {
-    setCurrentRepository(repositoryOwner, repositoryName)
-  }, [repositoryOwner, repositoryName, setCurrentRepository])
+    if (activeContributionIssue) {
+      setCurrentRepository(
+        activeContributionIssue.repository.owner,
+        activeContributionIssue.repository.name,
+      )
+      setLinkedIssue(String(activeContributionIssue.issueNumber))
+      return
+    }
+    if (repositoryOwner && repositoryName) {
+      setCurrentRepository(repositoryOwner, repositoryName)
+    }
+  }, [
+    activeContributionIssue,
+    repositoryOwner,
+    repositoryName,
+    setCurrentRepository,
+    setLinkedIssue,
+  ])
 
   const handleTypeSelect = (type: PrType) => {
     setPrType(type)
@@ -113,7 +132,7 @@ const PrGenerator = () => {
                 PULL REQUEST
               </span>
               <h1 className="page-title">PR 生成器</h1>
-              <p className="page-subtitle">根据你的改动生成标题、描述与关联 Issue，一次通过审核</p>
+              <p className="page-subtitle">根据你的改动生成 PR 标题、描述和关联 Issue，让维护者更容易 review</p>
             </div>
             <span className="repo-pill">
               <CodeIcon />
@@ -126,7 +145,7 @@ const PrGenerator = () => {
         <div className="generator-grid">
           {/* 左侧：Commit Summary Card */}
           <Card
-            title="Commit Summary"
+            title="改动信息"
             icon={<FileTextIcon />}
             className="commit-summary-card"
           >
@@ -163,7 +182,11 @@ const PrGenerator = () => {
                 value={linkedIssue}
                 onChange={(e) => setLinkedIssue(e.target.value)}
               />
-              <div className="form-hint">可选，AI 会在 PR 描述中自动关联</div>
+              <div className="form-hint">
+                {activeContributionIssue
+                  ? `已从当前任务自动带入，PR 会包含 Closes #${activeContributionIssue.issueNumber}`
+                  : '选定 Issue 后会自动带入，也可手动输入'}
+              </div>
             </div>
 
             {/* 错误提示 */}
@@ -234,10 +257,10 @@ const PrGenerator = () => {
               <div className="next-step-badge">
                 🎉 步骤 6 / 6 · 全部完成！
               </div>
-              <div className="next-step-title">恭喜，你的第一次开源贡献草稿已就绪！</div>
+              <div className="next-step-title">PR 草稿已就绪</div>
               <div className="next-step-desc">
-                复制上方 PR 标题和描述，到 GitHub 提交你的 Pull Request 吧。
-                感谢你为开源社区做出的贡献！
+                复制上方标题和描述，到 GitHub 发起 Pull Request。
+                提交前请再确认一次仓库的贡献规范（CONTRIBUTING、commit 格式、PR 模板）。
               </div>
             </div>
             <button

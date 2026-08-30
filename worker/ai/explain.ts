@@ -90,7 +90,7 @@ export async function explainIssue(
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.7,
+      temperature: 0.25,
       topP: 0.9,
       responseFormat: { type: 'json_object' },
     })

@@ -1,4 +1,4 @@
-import { Navbar } from '@/components/layout'
+import { Footer, Navbar } from '@/components/layout'
 import {
   FeaturesSection,
   HeroSection,
@@ -13,6 +13,7 @@ const Landing = () => (
     <WorkflowSection />
     <FeaturesSection />
     <PreviewSection />
+    <Footer />
   </div>
 )
 

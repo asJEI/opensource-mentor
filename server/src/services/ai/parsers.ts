@@ -184,7 +184,7 @@ export function validatePrDraftResult(
     title: String(parsed.title || `fix: ${issue.title}`),
     description: String(parsed.description || '暂无描述'),
     type: ensureEnum(parsed.type, validTypes, 'fix'),
-    relatedIssue: String(parsed.relatedIssue || `#${issue.number}`),
+    relatedIssue: `Closes #${issue.number}`,
     changes: ensureStringArray(parsed.changes),
     testingTips: ensureStringArray(parsed.testingTips),
     notes: ensureStringArray(parsed.notes),

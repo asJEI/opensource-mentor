@@ -30,7 +30,7 @@ const statusConfig: Record<ReviewStatus, { icon: string; text: string }> = {
   },
   completed: {
     icon: '🎉',
-    text: '审查完成！改完这些就可以提交 PR 啦',
+    text: '审查完成，请对照下方问题与风险逐条确认后再提交 PR',
   },
   failed: {
     icon: '❌',
@@ -100,7 +100,7 @@ export const ReviewActionBar: React.FC<ReviewActionBarProps> = ({
             </svg>
           }
         >
-          根据 Review 修改代码
+          查看修改建议
         </Button>
       </div>
     </div>

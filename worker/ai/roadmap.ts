@@ -179,7 +179,7 @@ export async function generateRoadmap(
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.8,
+      temperature: 0.3,
       topP: 0.9,
       timeoutMs: 120_000,
       responseFormat: { type: 'json_object' },

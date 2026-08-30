@@ -8,18 +8,15 @@ import Roadmap from '@/pages/Roadmap'
 import CodeReview from '@/pages/CodeReview'
 import AiMentor from '@/pages/AiMentor'
 import Settings from '@/pages/Settings'
+import NotFound from '@/pages/NotFound'
 import { ToastContainer } from '@/components/ui'
 import { authService } from '@/services'
 import { useToastStore, useUserStore } from '@/store'
 
 const githubLoginErrorMessages: Record<string, string> = {
-  github_oauth_not_configured: 'OAuth 应用尚未配置 Client ID / Secret',
-  invalid_oauth_state: '登录状态校验失败，请刷新首页后重新登录',
-  token_exchange_failed: 'GitHub 授权码交换失败，请检查 OAuth callback URL',
-  incorrect_client_credentials: 'GitHub OAuth Client ID 或 Secret 不正确',
-  bad_verification_code: 'GitHub 授权码已失效，请重新点击登录',
-  supabase_persistence_failed: 'GitHub 已授权，但写入 Supabase 用户数据失败，请检查表字段、RLS 或 service role key',
-  profile_fetch_failed: '读取 GitHub 公开资料失败，请稍后重试',
+  oauth_unavailable: 'GitHub 登录暂时不可用，请稍后重试',
+  oauth_expired: '本次授权已失效，请从首页重新登录',
+  oauth_failed: 'GitHub 登录未完成，请稍后重试',
 }
 
 /**
@@ -98,7 +95,7 @@ function App() {
         'GitHub 登录失败',
         reason
           ? (githubLoginErrorMessages[reason] ??
-              `登录流程在 ${reason} 阶段失败，请检查对应配置`)
+              '登录未完成，请稍后重试')
           : '请稍后重试，或检查 GitHub OAuth 配置',
       )
       navigate(location.pathname || '/', { replace: true })
@@ -202,6 +199,14 @@ function App() {
           element={
             <PageTransition>
               <Settings />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <PageTransition>
+              <NotFound />
             </PageTransition>
           }
         />

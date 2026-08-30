@@ -15,6 +15,7 @@ import { resolvePlatformConfig, type PlatformEnv } from '../config'
 import { ApiError } from '../http'
 import { createAIClient, type AIClient } from './client'
 import { PROVIDER_DEFAULT_BASE_URL } from './providers'
+import { readSession } from '../auth/session'
 
 export interface RequestAIProviderConfig {
   mode: 'platform' | 'custom'
@@ -152,6 +153,7 @@ export async function resolveAIClient(
   env: PlatformEnv,
   request: Request,
   body: unknown,
+  options: { allowUnauthenticatedPlatform?: boolean } = {},
 ): Promise<{ client: AIClient; isCustom: boolean }> {
   const platform = resolvePlatformConfig(env)
   const bodyConfig = isRecord(body)
@@ -170,6 +172,17 @@ export async function resolveAIClient(
         model: requestConfig.model,
         timeoutMs: platform.llmTimeoutMs,
       }),
+    }
+  }
+
+  if (!options.allowUnauthenticatedPlatform) {
+    const session = await readSession(request, env)
+    if (!session) {
+      throw new ApiError(
+        '请先使用 GitHub 登录后再使用平台 AI，或在设置中配置自己的 AI API。',
+        401,
+        { errorCode: ErrorCode.AUTH_REQUIRED },
+      )
     }
   }
 

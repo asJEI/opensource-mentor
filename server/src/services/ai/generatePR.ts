@@ -78,7 +78,7 @@ export function mockGeneratePrDraft(
     title: `${typePrefix}: ${issue.title}`,
     description: `## 描述\n\n本 PR 解决了 #${issue.number} Issue。\n\n### 做了什么\n\n- 根据 Issue 描述实现了对应的改动\n- 遵循了项目的代码风格和贡献规范\n\n### 为什么这么做\n\n${issue.body ? issue.body.slice(0, 200) : '解决 Issue 中描述的问题'}\n\n### 如何验证\n\n1. 在本地拉取分支并运行项目\n2. 按照 Issue 中的步骤复现原问题\n3. 确认问题已修复且没有引入新问题\n4. 运行所有测试确保通过`,
     type,
-    relatedIssue: `#${issue.number}`,
+    relatedIssue: `Closes #${issue.number}`,
     changes: [
       `根据 Issue #${issue.number} 的需求进行了相应修改`,
       '遵循了项目的代码风格和命名规范',

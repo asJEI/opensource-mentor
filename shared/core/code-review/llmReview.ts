@@ -208,7 +208,10 @@ export async function createLLMReview(
 硬性要求：
 1. 只返回 JSON，不要 markdown 围栏或其他说明文字。
 2. 所有面向用户的自然语言字段必须使用简体中文，包括 summary.title、summary.summary、keyChanges、affectedSystems、architecturalImpact、overallFeedback、risks[].description、risks[].recommendation、risks[].reasoning、issues[].title、issues[].description、issues[].suggestionText、issues[].whyItMatters、praises 全部字段、tips。
-3. category / severity / confidence 等枚举值保持英文 schema 不变。`,
+3. category / severity / confidence 等枚举值保持英文 schema 不变。
+4. 只审查本次 diff 中的变更，不得把旧代码、未展开的上下文或个人风格偏好写成确定缺陷。
+5. line 只能填 patch 可定位的新文件行号；无法确认时必须为 null。suggestionCode 必须是最小修改，不得引入未知 API、类或依赖。
+6. 先检查正确性、安全、数据丢失、并发、边界条件和测试缺口；纯格式或命名偏好最多作为 suggestion。`,
     user: `请审查以下代码变更，并严格返回该 JSON 结构（自然语言字段一律用简体中文）：\n{"summary":{"title":"","summary":"","keyChanges":[],"affectedSystems":[],"architecturalImpact":"","overallFeedback":""},"risks":{"overallRiskLevel":"low|medium|high","risks":[{"severity":"critical|high|medium|low","category":"","description":"","affectedFiles":[],"recommendation":"","confidence":"high|medium|low","reasoning":""}]},"issues":[{"severity":"critical|high|medium|low|suggestion","category":"bug|security|performance|maintainability|testing|other","title":"","description":"","file":"exact known path","line":null,"symbol":null,"yourCode":"","suggestionCode":"","suggestionText":"","whyItMatters":"","confidence":"high|medium|low","confidenceScore":0.0}],"praises":[{"title":"","description":"","file":"exact known path","codeSnippet":"","whyItMatters":""}],"tips":[]}\n\nPR DATA:\n${context}`,
   })
   return normalizeResult(extractJson(raw), input)

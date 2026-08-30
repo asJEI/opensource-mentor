@@ -238,13 +238,14 @@ function WelcomeState({
             {guideContext!.owner}/{guideContext!.repo}
           </strong>{' '}
           上解决 <strong>{summary.issue}</strong>，当前位于 {summary.phase}
-          （已完成第 {summary.completed} 章），当前步骤是「{summary.step}」。
+          （已完成章节：{summary.completed}），当前步骤是「{summary.step}」。
           直接问卡住的地方即可，不用重新解释背景。
         </p>
       ) : (
         <p>
-          我可以帮你解答关于 <strong>{repoName}</strong> 项目的任何问题，
-          包括技术栈、贡献指南、Issue 解析、代码审查建议等。
+          我会围绕当前选中的仓库 <strong>{repoName}</strong> 回答问题，
+          包括技术栈、贡献流程、Issue 拆解和代码审查建议。
+          想换一个项目，请先到「Issue 推荐」或「仓库分析」重新选择。
         </p>
       )}
       <div className="chat-welcome__quick">
@@ -473,8 +474,8 @@ const AiMentor = () => {
           <div className="chat-guide-context">
             <strong>当前进度</strong>
             <span>
-              Issue {guideSummary.issue} · {guideSummary.phase} · 已完成第{' '}
-              {guideSummary.completed} 章 · 当前步骤：{guideSummary.step}
+              Issue {guideSummary.issue} · {guideSummary.phase} · 已完成章节：
+              {guideSummary.completed} · 当前步骤：{guideSummary.step}
             </span>
           </div>
         )}
@@ -546,7 +547,7 @@ const AiMentor = () => {
             currentStep={4}
             totalSteps={6}
             title="准备动手了吗？"
-            description="带着 Issue 与 Mentor 建议继续做 Code Review，再生成 PR 草稿。"
+            description="改完代码后先做一次代码审查，通过了再生成 PR 描述。"
             buttonText="开始代码审查"
             nextPath="/code-review"
           />

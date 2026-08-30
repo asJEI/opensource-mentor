@@ -20,6 +20,7 @@ export type PlatformEnv = CloudflareEnv & {
   GITHUB_OAUTH_CLIENT_SECRET?: string
   SUPABASE_URL?: string
   SUPABASE_SECRET_KEY?: string
+  SESSION_SECRET?: string
   PLATFORM_LLM_API_KEY?: string
   PLATFORM_AI_RATE_LIMITER: RateLimit
 }

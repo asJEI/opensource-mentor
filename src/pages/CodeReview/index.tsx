@@ -408,11 +408,15 @@ const CodeReview = () => {
   }
 
   const handleFixCode = () => {
-    showToast('info', '修改指南已生成', 'AI 导师已为你整理好修改清单')
+    showToast(
+      'info',
+      '修改建议在右侧面板',
+      '「AI 审查」栏已按文件列出问题、风险和建议，逐条对照修改即可；有疑问可以问 AI 导师',
+    )
   }
 
   const handleGeneratePr = () => {
-    showToast('success', '正在生成 PR 描述', '即将跳转到 PR 生成器...')
+    showToast('info', '正在前往 PR 生成器', '在那里补一句改动说明，就能生成标题和描述')
     setTimeout(() => {
       navigate('/pr-generator')
     }, 800)
@@ -441,7 +445,7 @@ const CodeReview = () => {
                 </span>
                 <h1 className="page-title">代码审查</h1>
                 <p className="page-subtitle">
-                  AI 导师帮你检查代码，确保第一次贡献就高质量通过
+                  提交 PR 前先让 AI 过一遍改动，减少来回修改的次数
                 </p>
               </div>
               <span className="repo-pill">
@@ -459,7 +463,8 @@ const CodeReview = () => {
               </span>
               <h2>选择一个 Issue 开始代码审查</h2>
               <p className="empty-desc">
-                代码审查需要针对具体的 Issue 和你提交的代码进行。
+                审查需要知道你在解决哪个 Issue。可以从下面的候选中选一个；
+                如果列表是空的，请先到「Issue 推荐」锁定任务。
               </p>
             </div>
 
@@ -735,7 +740,8 @@ const CodeReview = () => {
                   🚀 开始 AI 审查
                 </button>
                 <p className="submit-disclaimer">
-                  审查约需 30 秒，结果会以「文件列表 | Diff | AI 审查」三列展示
+                  改动越大耗时越长，通常在 30 秒左右；结果会以「文件列表 | Diff | AI
+                  审查」三列展示
                 </p>
               </div>
             </div>
@@ -788,11 +794,11 @@ const CodeReview = () => {
           <NextStepCard
             currentStep={5}
             totalSteps={6}
-            title="AI 审查完成！"
+            title="AI 审查完成"
             description={
               createPrUrl
-                ? '改动看起来不错。可先打开 GitHub 发起合并申请，随后再到 PR 生成器完善描述。'
-                : '下一步生成专业的 PR 描述，让你的贡献更易被合并'
+                ? '确认审查结果没有遗漏后，可以打开 GitHub 发起合并申请，再回到 PR 生成器完善描述。'
+                : '确认审查结果没有遗漏后，下一步生成 PR 描述，让维护者更容易 review'
             }
             buttonText={createPrUrl ? '去开合并申请' : '生成 PR 描述'}
             nextPath="/pr-generator"

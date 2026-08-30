@@ -43,7 +43,7 @@ export async function chatWithMentor(
         })),
         { role: 'user', content: userMessage },
       ],
-      temperature: 0.7,
+      temperature: 0.45,
       topP: 0.9,
     })
 

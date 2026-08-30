@@ -42,7 +42,7 @@ function loadSavedRepository(): {
   } catch {
     // 忽略读取错误
   }
-  return { owner: 'microsoft', repoName: 'vscode', hasData: false, activeIssue: null }
+  return { owner: '', repoName: '', hasData: false, activeIssue: null }
 }
 
 /**
@@ -411,8 +411,8 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
         candidateIssuesError: null,
         candidateIssueAnalysisStatus: {},
         activeContributionIssue: null,
-        currentOwner: 'microsoft',
-        currentRepoName: 'vscode',
+        currentOwner: '',
+        currentRepoName: '',
         currentExplain: null,
         explainStatus: 'idle',
         explainError: null,

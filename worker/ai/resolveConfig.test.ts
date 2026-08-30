@@ -32,7 +32,9 @@ describe('resolveAIClient', () => {
       },
     })
 
-    const resolved = await resolveAIClient(env, request, {})
+    const resolved = await resolveAIClient(env, request, {}, {
+      allowUnauthenticatedPlatform: true,
+    })
 
     expect(resolved.isCustom).toBe(false)
     expect(resolved.client.baseUrl).toBe('https://api.deepseek.com')
@@ -60,6 +62,17 @@ describe('resolveAIClient', () => {
     expect(limit).not.toHaveBeenCalled()
   })
 
+  it('requires a valid session before using platform AI', async () => {
+    const { env, limit } = createEnv()
+    const request = new Request('https://mentor.example/api/ai/chat')
+
+    await expect(resolveAIClient(env, request, {})).rejects.toMatchObject({
+      status: 401,
+      errorCode: 'AUTH_REQUIRED',
+    })
+    expect(limit).not.toHaveBeenCalled()
+  })
+
   it('uses OrcaRouter defaults for BYOK when base URL is omitted', async () => {
     const { env, limit } = createEnv()
     const request = new Request('https://mentor.example/api/ai/chat', {
@@ -71,7 +84,9 @@ describe('resolveAIClient', () => {
       },
     })
 
-    const resolved = await resolveAIClient(env, request, {})
+    const resolved = await resolveAIClient(env, request, {}, {
+      allowUnauthenticatedPlatform: true,
+    })
 
     expect(resolved.isCustom).toBe(true)
     expect(resolved.client.provider).toBe('orcarouter')
@@ -84,7 +99,9 @@ describe('resolveAIClient', () => {
     const { env } = createEnv(false)
     const request = new Request('https://mentor.example/api/ai/chat')
 
-    await expect(resolveAIClient(env, request, {})).rejects.toMatchObject({
+    await expect(resolveAIClient(env, request, {}, {
+      allowUnauthenticatedPlatform: true,
+    })).rejects.toMatchObject({
       status: 429,
       errorCode: 'AI_RATE_LIMIT',
     })

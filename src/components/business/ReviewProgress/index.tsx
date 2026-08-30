@@ -43,8 +43,8 @@ const statusConfig: Record<ReviewStatus, { icon: string; title: string; subtitle
   },
   completed: {
     icon: '✅',
-    title: '审查完成！整体不错 👍',
-    subtitle: '看看有哪些可以改进的地方吧',
+    title: '审查完成',
+    subtitle: '下面按文件列出了问题、风险和建议，逐条看一遍',
   },
   failed: {
     icon: '❌',
@@ -61,7 +61,7 @@ const getMentorMessage = (
   phaseStatuses: ReviewProgressType['phases']
 ): string => {
   if (status === 'completed') {
-    return '整体代码质量不错！有几处可以优化的地方，改完就可以提交 PR 了～'
+    return '审查结果出来了，先看「严重」和「高」级别的问题，确认没有遗漏再提交 PR～'
   }
   if (status === 'failed') {
     return '抱歉，审查出了点问题，要不要重试一下？'

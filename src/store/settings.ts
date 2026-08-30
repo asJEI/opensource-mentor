@@ -73,10 +73,18 @@ function normalizeAIConfig(value: unknown): AIProviderConfig {
   }
 }
 
+function withoutPersistedSecrets(config: GitHubApiConfig): GitHubApiConfig {
+  return { mode: config.mode }
+}
+
+function withoutPersistedAIKey(config: AIProviderConfig): AIProviderConfig {
+  const { apiKey: _apiKey, ...safeConfig } = config
+  return safeConfig
+}
+
 /**
- * MVP 凭据存储适配器。
- * 当前按产品约束使用 localStorage；未来可在此替换为系统密钥链或加密存储，
- * 无需修改业务页面和 API service。
+ * 仅持久化非敏感选项。PAT 和 AI API Key 只保留在当前页面内存中，
+ * 刷新页面后需重新输入，避免长期明文留在 localStorage。
  */
 const createMvpCredentialStorage = () =>
   createJSONStorage<Pick<SettingsState, 'githubConfig' | 'aiConfig'>>(
@@ -113,12 +121,21 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: SETTINGS_STORAGE_KEY,
-      version: 1,
+      version: 2,
       storage: createMvpCredentialStorage(),
       partialize: (state) => ({
-        githubConfig: state.githubConfig,
-        aiConfig: state.aiConfig,
+        githubConfig: withoutPersistedSecrets(state.githubConfig),
+        aiConfig: withoutPersistedAIKey(state.aiConfig),
       }),
+      migrate: (persistedState) => {
+        const data = isRecord(persistedState) ? persistedState : {}
+        return {
+          githubConfig: withoutPersistedSecrets(
+            normalizeGitHubConfig(data.githubConfig),
+          ),
+          aiConfig: withoutPersistedAIKey(normalizeAIConfig(data.aiConfig)),
+        }
+      },
       merge: (persistedState, currentState) => {
         const data = isRecord(persistedState) ? persistedState : {}
         return {

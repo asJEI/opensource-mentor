@@ -41,7 +41,7 @@ export async function recommendIssues(
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.7,
+      temperature: 0.2,
       topP: 0.9,
       responseFormat: { type: 'json_object' },
     })

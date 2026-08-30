@@ -301,7 +301,7 @@ interface UserState {
 
 type PersistedUserState = Pick<
   UserState,
-  'profile' | 'preferences' | 'isAuthenticated' | 'githubProfile'
+  'profile' | 'preferences' | 'githubProfile'
 >
 
 /** 推荐、路线等业务统一使用的最小画像 selector */
@@ -366,10 +366,6 @@ function normalizePersistedState(value: unknown): PersistedUserState {
   return {
     profile: normalizeProfile(state.profile),
     preferences: normalizePreferences(state.preferences),
-    isAuthenticated:
-      typeof state.isAuthenticated === 'boolean'
-        ? state.isAuthenticated
-        : Boolean(githubProfile),
     githubProfile,
   }
 }
@@ -496,7 +492,6 @@ export const useUserStore = create<UserState>()(
       partialize: (state) => ({
         profile: state.profile,
         preferences: state.preferences,
-        isAuthenticated: state.isAuthenticated,
         githubProfile: state.githubProfile,
       }),
       migrate: (persistedState) =>
@@ -504,6 +499,8 @@ export const useUserStore = create<UserState>()(
       merge: (persistedState, currentState) => ({
         ...currentState,
         ...normalizePersistedState(persistedState),
+        // 登录态只由启动时的 /api/me 服务端会话校验恢复。
+        isAuthenticated: false,
       }),
     },
   ),

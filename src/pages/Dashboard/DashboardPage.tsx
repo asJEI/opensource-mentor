@@ -32,10 +32,10 @@ import {
 } from './components'
 
 const ONBOARDING_FLOW = [
-  { title: '选择仓库', desc: '输入 GitHub 地址并分析' },
-  { title: '找适合的 Issue', desc: '匹配适合你的入门任务' },
-  { title: '按指南推进', desc: '贡献指南 + AI 导师陪跑' },
-  { title: '审查并提交 PR', desc: '审查代码并生成 PR 草稿' },
+  { title: '选定目标', desc: '在上方输入仓库，或从「Issue 推荐」挑一个任务' },
+  { title: '读懂项目', desc: 'AI 给出项目定位、技术栈和可切入的贡献领域' },
+  { title: '按指南推进', desc: '贡献指南把 Issue 拆成章节，卡住随时问 AI 导师' },
+  { title: '审查并提交 PR', desc: '先做代码审查，再生成 PR 标题与描述' },
 ]
 
 function localizeIssueDifficulty(raw?: string | null): string | null {
@@ -97,7 +97,7 @@ const Dashboard = () => {
 
   // 输入框初始值从 store 读取（支持页面切换和刷新后保持）
   const [repoInput, setRepoInput] = useState(
-    `${currentOwner}/${currentRepoName}`,
+    currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : '',
   )
 
   // 首次访问引导（localStorage 记录，关闭后不再显示）
@@ -156,7 +156,7 @@ const Dashboard = () => {
       return
     }
 
-    if (analysisStatus === 'idle') {
+    if (analysisStatus === 'idle' && currentOwner && currentRepoName) {
       analyzeRepo(currentOwner, currentRepoName)
       loadRecommendedIssues(currentOwner, currentRepoName, { perPage: 10 })
     }
@@ -424,7 +424,7 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-          ) : (
+          ) : isLoading ? (
             <div className="osm-repo" aria-busy="true">
               <span className="osm-skeleton dash-sk-mark" />
               <div className="osm-repo-main">
@@ -435,6 +435,23 @@ const Dashboard = () => {
                   <span className="osm-skeleton dash-sk-chip" />
                   <span className="osm-skeleton dash-sk-chip" />
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="osm-repo dash-subject-error">
+              <span className="osm-repo-mark">
+                <InfoIcon />
+              </span>
+              <div className="osm-repo-main">
+                <div className="dash-subject-error-title">还没有选择要贡献的 Issue</div>
+                <p className="osm-repo-desc">
+                  建议先从 Issue 推荐中选定任务，系统会自动分析对应仓库。你也可以在上方手动输入仓库。
+                </p>
+              </div>
+              <div className="osm-repo-side">
+                <Button variant="primary" onClick={() => navigate('/issues')}>
+                  去选择 Issue
+                </Button>
               </div>
             </div>
           )}
@@ -718,7 +735,10 @@ const Dashboard = () => {
                 ) : (
                   <div className="osm-note">
                     <InfoIcon />
-                    <span>这个仓库暂时没有筛出适合入门的 Issue，可以换一个仓库再试。</span>
+                    <span>
+                      这个仓库暂时没有筛出适合入门的 Issue。可以换一个仓库再试，或到「Issue
+                      推荐」按你的画像跨仓库查找。
+                    </span>
                   </div>
                 )}
               </section>
@@ -835,7 +855,7 @@ const Dashboard = () => {
                 <div className="osm-panel-body">
                   <JourneyActions
                     title="仓库已读懂，选择下一步"
-                    description="推荐先从合适的 Issue 开始。"
+                    description="建议先锁定一个 Issue，后续步骤都会围绕它展开。"
                     paths={[
                       {
                         title: '查看推荐 Issue',
@@ -845,7 +865,7 @@ const Dashboard = () => {
                       },
                       {
                         title: '打开贡献指南',
-                        description: '围绕当前 Issue 阅读贡献指南',
+                        description: '需要先锁定一个 Issue 才能生成分章节指南',
                         path: '/roadmap',
                       },
                       {
@@ -880,10 +900,10 @@ const Dashboard = () => {
 
         {hasAnalyzed && !activeContributionIssue && (
           <NextStepCard
-            currentStep={1}
+            currentStep={2}
             totalSteps={6}
             title="仓库分析完成"
-            description="下一步查看 AI 为你推荐的适合 Issue"
+            description="下一步挑一个 Issue 锁定目标，后面的贡献指南、代码审查都会围绕它展开"
             buttonText="查看推荐 Issue"
             nextPath="/issues"
           />
