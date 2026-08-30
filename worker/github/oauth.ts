@@ -727,7 +727,15 @@ function redirectWithError(request: Request, reason: string): Response {
       ? 'oauth_unavailable'
       : reason === 'invalid_oauth_state' || reason === 'bad_verification_code'
         ? 'oauth_expired'
-        : 'oauth_failed'
+        : reason === 'token_exchange_failed' || reason === 'incorrect_client_credentials'
+          ? 'oauth_token_failed'
+          : reason === 'supabase_persistence_failed'
+            ? 'user_sync_failed'
+            : reason === 'session_cookie_failed'
+              ? 'session_failed'
+              : reason === 'profile_fetch_failed'
+                ? 'profile_fetch_failed'
+                : 'oauth_failed'
   url.searchParams.set('reason', publicReason)
   return redirect(url.toString(), {
     headers: {
@@ -845,10 +853,19 @@ export async function handleGitHubOAuthCallback(
       persisted.developerProfile.profile_setup_status
     profile.profileConfirmed = persisted.developerProfile.profile_confirmed
 
-    const sessionCookie = await createSessionCookie(request, env, {
-      userId: persisted.appUser.id,
-      githubId: profile.profile.githubId,
-    })
+    let sessionCookie: string
+    try {
+      sessionCookie = await createSessionCookie(request, env, {
+        userId: persisted.appUser.id,
+        githubId: profile.profile.githubId,
+      })
+    } catch (error) {
+      console.error(
+        '[github-oauth] session cookie failed:',
+        redactSecrets(error instanceof Error ? error.message : 'unknown error'),
+      )
+      return redirectWithError(request, 'session_cookie_failed')
+    }
     return renderOAuthSuccessPage(request, sessionCookie)
   } catch (error) {
     console.error(

@@ -16,6 +16,10 @@ import { useToastStore, useUserStore } from '@/store'
 const githubLoginErrorMessages: Record<string, string> = {
   oauth_unavailable: 'GitHub 登录暂时不可用，请稍后重试',
   oauth_expired: '本次授权已失效，请从首页重新登录',
+  oauth_token_failed: 'GitHub 授权校验失败，请检查 OAuth Client Secret 是否配置正确',
+  user_sync_failed: 'GitHub 已授权，但用户数据同步失败，请检查 Supabase 配置',
+  session_failed: 'GitHub 已授权，但登录会话创建失败，请检查 SESSION_SECRET 是否已保存并部署',
+  profile_fetch_failed: 'GitHub 已授权，但读取 GitHub 用户信息失败，请稍后重试',
   oauth_failed: 'GitHub 登录未完成，请稍后重试',
 }
 
