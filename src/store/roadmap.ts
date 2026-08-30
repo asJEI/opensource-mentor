@@ -263,8 +263,9 @@ async function generateOnePhase(params: {
       } catch (streamError) {
         const streamMessage = getErrorMessage(streamError, '')
         const canFallback =
-          /流式响应|stream|network|fetch/i.test(streamMessage) ||
-          streamMessage.includes('502')
+          /流式响应|stream|network|fetch|内容不完整|超时|timeout|限流|429/i.test(
+            streamMessage,
+          )
         if (!canFallback) throw streamError
         phase = await runOnce(false)
       }
@@ -555,7 +556,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         .filter((phaseNumber) => !isPhaseContentReady(
           get().steps.find((step) => step.phase === phaseNumber),
         ))
-      const concurrency = 2
+      const concurrency = 1
       let cursor = 0
       const workers = Array.from(
         { length: Math.min(concurrency, remainingPhases.length) },

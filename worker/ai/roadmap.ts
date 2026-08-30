@@ -20,16 +20,36 @@ import {
   validateRoadmapResult,
 } from './validate'
 
+function getPhaseGenerationLimits(phaseNumber: number): {
+  maxTokens: number
+  phaseTimeoutMs: number
+} {
+  // 2/4/6 章结构更重；给足输出额度，避免 JSON 截断导致“内容不完整”
+  const maxTokens =
+    phaseNumber === 2 || phaseNumber === 4 || phaseNumber === 6
+      ? 3200
+      : phaseNumber >= 5
+        ? 2600
+        : 2800
+  const phaseTimeoutMs =
+    phaseNumber >= 5 || phaseNumber === 2 || phaseNumber === 4
+      ? 110_000
+      : 95_000
+  return { maxTokens, phaseTimeoutMs }
+}
+
+type RoadmapPhaseParams = {
+  repository: RepositoryDto
+  readme: string
+  userProfile: UserProfileContext
+  repositoryContext?: Record<string, unknown>
+  issueContext?: Record<string, unknown>
+  phaseNumber: number
+}
+
 export async function generateRoadmapPhase(
   client: AIClient,
-  params: {
-    repository: RepositoryDto
-    readme: string
-    userProfile: UserProfileContext
-    repositoryContext?: Record<string, unknown>
-    issueContext?: Record<string, unknown>
-    phaseNumber: number
-  },
+  params: RoadmapPhaseParams,
 ): Promise<RoadmapPhase> {
   const prompt = roadmapPhasePrompt({
     repoName: params.repository.fullName,
@@ -44,22 +64,7 @@ export async function generateRoadmapPhase(
     phaseNumber: params.phaseNumber,
   })
 
-  // 2/4/6 章结构更重；给足输出额度，避免 JSON 截断导致“内容不完整”
-  const maxTokens =
-    params.phaseNumber === 2 ||
-    params.phaseNumber === 4 ||
-    params.phaseNumber === 6
-      ? 3200
-      : params.phaseNumber >= 5
-        ? 2600
-        : 2800
-
-  const phaseTimeoutMs =
-    params.phaseNumber >= 5 ||
-    params.phaseNumber === 2 ||
-    params.phaseNumber === 4
-      ? 110_000
-      : 95_000
+  const { maxTokens, phaseTimeoutMs } = getPhaseGenerationLimits(params.phaseNumber)
 
   const callModel = async (
     temperature: number,
@@ -138,13 +143,7 @@ export async function generateRoadmapPhase(
 
 export async function streamRoadmapPhase(
   client: AIClient,
-  params: {
-    repository: RepositoryDto
-    readme: string
-    userProfile: UserProfileContext
-    repositoryContext?: Record<string, unknown>
-    issueContext?: Record<string, unknown>
-    phaseNumber: number
+  params: RoadmapPhaseParams & {
     onDelta: (delta: string) => void | Promise<void>
   },
 ): Promise<RoadmapPhase> {
@@ -161,20 +160,7 @@ export async function streamRoadmapPhase(
     phaseNumber: params.phaseNumber,
   })
 
-  const maxTokens =
-    params.phaseNumber === 2 ||
-    params.phaseNumber === 4 ||
-    params.phaseNumber === 6
-      ? 2600
-      : params.phaseNumber >= 5
-        ? 2200
-        : 2400
-  const phaseTimeoutMs =
-    params.phaseNumber >= 5 ||
-    params.phaseNumber === 2 ||
-    params.phaseNumber === 4
-      ? 80_000
-      : 65_000
+  const { maxTokens, phaseTimeoutMs } = getPhaseGenerationLimits(params.phaseNumber)
 
   let content = ''
   try {
@@ -198,14 +184,15 @@ export async function streamRoadmapPhase(
       params.phaseNumber,
     )
   } catch (error) {
-    if (error instanceof ApiError) throw error
     const message = error instanceof Error ? error.message : 'unknown error'
-    console.error('[AI] streamRoadmapPhase failed:', message)
     if (message.includes('内容不完整')) {
-      throw new ApiError(`第 ${params.phaseNumber} 章生成内容不完整，请重试`, 502, {
-        errorCode: 'AI_PROVIDER_ERROR',
-      })
+      console.warn(
+        `[AI] streamRoadmapPhase phase ${params.phaseNumber} incomplete, falling back to repair generation`,
+      )
+      return generateRoadmapPhase(client, params)
     }
+    if (error instanceof ApiError) throw error
+    console.error('[AI] streamRoadmapPhase failed:', message)
     throw new ApiError('AI 服务暂时不可用，请稍后重试', 503, {
       errorCode: 'AI_PROVIDER_ERROR',
     })
