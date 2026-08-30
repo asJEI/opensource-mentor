@@ -1,4 +1,5 @@
-import { bffPost } from './request'
+import { bffPost, createBffHeaders } from './request'
+import { ApiClientError } from './errors'
 import { BYOK_HEADERS } from '@shared/byok'
 import { useSettingsStore } from '@/store/settings'
 import type {
@@ -259,6 +260,112 @@ class AiService {
       issueContext: shared.issueContext || undefined,
     }), { timeout: 140_000 })
     return this.mapRoadmapPhase(data.phase, phase - 1)
+  }
+
+  /**
+   * 流式生成贡献指南单章（NDJSON）
+   * POST /api/ai/generate-roadmap-phase-stream
+   */
+  async streamGenerateRoadmapPhase(
+    owner: string,
+    repo: string,
+    phase: number,
+    userProfile: UserProfileContext,
+    shared: {
+      repository: Record<string, unknown>
+      readme: string
+      repositoryContext: Record<string, unknown>
+      issueContext?: Record<string, unknown> | null
+    },
+    callbacks?: {
+      onDelta?: (delta: string, accumulated: string) => void
+      signal?: AbortSignal
+    },
+  ): Promise<RoadmapPhase> {
+    const response = await fetch('/api/ai/generate-roadmap-phase-stream', {
+      method: 'POST',
+      headers: createBffHeaders(),
+      body: JSON.stringify(
+        this.withProviderConfig({
+          owner,
+          repo,
+          phase,
+          userProfile,
+          repository: shared.repository,
+          readme: shared.readme,
+          repositoryContext: shared.repositoryContext,
+          issueContext: shared.issueContext || undefined,
+        }),
+      ),
+      signal: callbacks?.signal,
+    })
+
+    if (!response.ok) {
+      let message = `流式生成失败 (${response.status})`
+      try {
+        const body = (await response.json()) as {
+          message?: string
+          errorCode?: string
+        }
+        if (body.message) message = body.message
+        throw new ApiClientError(message, {
+          errorCode: body.errorCode,
+          status: response.status,
+        })
+      } catch (error) {
+        if (error instanceof ApiClientError) throw error
+        throw new ApiClientError(message, { status: response.status })
+      }
+    }
+
+    if (!response.body) {
+      throw new ApiClientError('流式响应为空', { status: 502 })
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let accumulated = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (!line.trim()) continue
+        const event = JSON.parse(line) as {
+          type: string
+          delta?: string
+          phase?: Record<string, unknown>
+          message?: string
+        }
+
+        if (event.type === 'start') continue
+
+        if (event.type === 'delta' && event.delta) {
+          accumulated += event.delta
+          callbacks?.onDelta?.(event.delta, accumulated)
+          continue
+        }
+
+        if (event.type === 'done' && event.phase) {
+          return this.mapRoadmapPhase(event.phase, phase - 1)
+        }
+
+        if (event.type === 'error') {
+          throw new ApiClientError(event.message || '本章生成失败', {
+            status: 502,
+            errorCode: 'AI_PROVIDER_ERROR',
+          })
+        }
+      }
+    }
+
+    throw new ApiClientError('流式响应意外结束', { status: 502 })
   }
 
   /**

@@ -8,7 +8,7 @@ import { generatePrDraft } from './generatePr'
 import { isRecord } from './json'
 import { recommendIssues } from './recommend'
 import { resolveAIClient } from './resolveConfig'
-import { generateRoadmap, generateRoadmapPhase } from './roadmap'
+import { generateRoadmap, generateRoadmapPhase, streamRoadmapPhase } from './roadmap'
 import { GUIDE_PHASE_TITLES } from './prompts/roadmap'
 import { testAIConnection } from './testConnection'
 import type {
@@ -702,6 +702,88 @@ export async function handleGenerateRoadmapPhase(
   return success({
     phase,
     tips: [],
+  })
+}
+
+function streamEvent(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  payload: Record<string, unknown>,
+) {
+  controller.enqueue(new TextEncoder().encode(`${JSON.stringify(payload)}\n`))
+}
+
+/** POST /api/ai/generate-roadmap-phase-stream — 流式生成单章 */
+export async function handleGenerateRoadmapPhaseStream(
+  request: Request,
+  env: PlatformEnv,
+): Promise<Response> {
+  const body = await parseJsonBody(request)
+  if (!isRecord(body)) {
+    throw new ApiError('请求体必须是 JSON 对象', 400, {
+      errorCode: 'VALIDATION_ERROR',
+    })
+  }
+
+  const phaseNumber = Number(body.phase)
+  if (
+    !Number.isInteger(phaseNumber) ||
+    phaseNumber < 1 ||
+    phaseNumber > GUIDE_PHASE_TITLES.length
+  ) {
+    throw new ApiError('phase 必须是 1-7 的整数', 400, {
+      errorCode: 'VALIDATION_ERROR',
+    })
+  }
+
+  const { client } = await resolveAIClient(env, request, body)
+  const prepared = await prepareRoadmapSharedContext(request, env, body)
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        streamEvent(controller, {
+          type: 'start',
+          phase: phaseNumber,
+        })
+        const phase = await streamRoadmapPhase(client, {
+          repository: prepared.repository,
+          readme: prepared.readme,
+          userProfile: prepared.userProfile,
+          repositoryContext: prepared.repositoryContext,
+          issueContext: prepared.issueContext,
+          phaseNumber,
+          onDelta(delta) {
+            streamEvent(controller, {
+              type: 'delta',
+              phase: phaseNumber,
+              delta,
+            })
+          },
+        })
+        streamEvent(controller, {
+          type: 'done',
+          phase,
+          tips: [],
+        })
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : '本章生成失败，请稍后重试'
+        streamEvent(controller, {
+          type: 'error',
+          message,
+        })
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Accel-Buffering': 'no',
+    },
   })
 }
 

@@ -30,6 +30,14 @@ export interface AIClient {
     timeoutMs?: number
     responseFormat?: { type: 'json_object' | 'text' }
   }) => Promise<string>
+  streamChatCompletions: (params: {
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
+    temperature?: number
+    topP?: number
+    maxTokens?: number
+    timeoutMs?: number
+    responseFormat?: { type: 'json_object' | 'text' }
+  }) => AsyncGenerator<string>
   listModels: () => Promise<{
     provider: AIProvider
     models: AIModelOption[]
@@ -69,6 +77,95 @@ function parseRetryAfterMs(response: Response): number | null {
     return Math.min(Math.max(asDate - Date.now(), 0), 60_000)
   }
   return null
+}
+
+async function readUpstreamError(response: Response): Promise<string> {
+  let upstreamMessage = `AI 服务请求失败 (${response.status})`
+  try {
+    const body = (await response.json()) as {
+      error?: { message?: string }
+      message?: string
+    }
+    const raw = body.error?.message || body.message || upstreamMessage
+    upstreamMessage = redactSecrets(String(raw))
+  } catch {
+    // ignore non-JSON error bodies
+  }
+  return upstreamMessage
+}
+
+async function handleBadAIResponse(
+  response: Response,
+  attempt: number,
+): Promise<{ retry: true; delayMs: number } | never> {
+  const upstreamMessage = await readUpstreamError(response)
+
+  if (response.status === 401 || response.status === 403) {
+    throw new ApiError('AI API Key 无效或无权限', 401, {
+      errorCode: ErrorCode.AI_AUTH_ERROR,
+    })
+  }
+  if (response.status === 429) {
+    if (attempt < MAX_RATE_LIMIT_RETRIES) {
+      const retryAfter = parseRetryAfterMs(response)
+      const delayMs = retryAfter ?? Math.min(1500 * 2 ** attempt, 12_000)
+      return { retry: true, delayMs }
+    }
+    throw new ApiError(
+      'AI 服务商触发限流（429）。请稍等 30～60 秒后重试；若正在生成贡献指南，可只重试失败章节。',
+      429,
+      { errorCode: ErrorCode.AI_RATE_LIMIT },
+    )
+  }
+  throw new ApiError(
+    upstreamMessage,
+    response.status >= 400 ? response.status : 502,
+    { errorCode: ErrorCode.AI_PROVIDER_ERROR },
+  )
+}
+
+async function* parseOpenAICompatibleStream(
+  stream: ReadableStream<Uint8Array>,
+): AsyncGenerator<string> {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      const lines = buffer.split(/\r?\n/u)
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data:')) continue
+        const data = trimmed.slice(5).trim()
+        if (!data || data === '[DONE]') continue
+        try {
+          const parsed = JSON.parse(data) as {
+            choices?: Array<{
+              delta?: { content?: string }
+              message?: { content?: string }
+              text?: string
+            }>
+          }
+          const token =
+            parsed.choices?.[0]?.delta?.content ||
+            parsed.choices?.[0]?.message?.content ||
+            parsed.choices?.[0]?.text ||
+            ''
+          if (token) yield token
+        } catch {
+          // Ignore provider keepalive or malformed partial lines.
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 export function createAIClient(config: AIConfig): AIClient {
@@ -130,48 +227,74 @@ export function createAIClient(config: AIConfig): AIClient {
           })
 
           if (!response.ok) {
-            let upstreamMessage = `AI 服务请求失败 (${response.status})`
-            try {
-              const body = (await response.json()) as {
-                error?: { message?: string }
-                message?: string
-              }
-              const raw = body.error?.message || body.message || upstreamMessage
-              upstreamMessage = redactSecrets(String(raw))
-            } catch {
-              // ignore non-JSON error bodies
-            }
-
-            if (response.status === 401 || response.status === 403) {
-              throw new ApiError('AI API Key 无效或无权限', 401, {
-                errorCode: ErrorCode.AI_AUTH_ERROR,
-              })
-            }
-            if (response.status === 429) {
-              if (attempt < MAX_RATE_LIMIT_RETRIES) {
-                const retryAfter = parseRetryAfterMs(response)
-                const backoff = retryAfter ?? Math.min(1500 * 2 ** attempt, 12_000)
+            const retry = await handleBadAIResponse(response, attempt)
+            if (retry.retry) {
                 attempt += 1
-                await sleep(backoff)
+                await sleep(retry.delayMs)
                 continue
-              }
-              throw new ApiError(
-                'AI 服务商触发限流（429）。请稍等 30～60 秒后重试；若正在生成贡献指南，可只重试失败章节。',
-                429,
-                { errorCode: ErrorCode.AI_RATE_LIMIT },
-              )
             }
-            throw new ApiError(
-              upstreamMessage,
-              response.status >= 400 ? response.status : 502,
-              { errorCode: ErrorCode.AI_PROVIDER_ERROR },
-            )
           }
 
           const data = (await response.json()) as {
             choices?: Array<{ message?: { content?: string } }>
           }
           return data.choices?.[0]?.message?.content || '{}'
+        } catch (error) {
+          if (error instanceof ApiError) throw error
+          if (isTimeoutError(error)) {
+            throw new ApiError('AI 请求超时，请稍后重试', 504, {
+              errorCode: ErrorCode.AI_TIMEOUT,
+            })
+          }
+          throw new ApiError('无法连接 AI 服务商，请稍后重试', 502, {
+            errorCode: ErrorCode.AI_NETWORK_ERROR,
+          })
+        }
+      }
+    },
+    async *streamChatCompletions(params) {
+      let attempt = 0
+      while (true) {
+        try {
+          const response = await fetch(completionsUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: params.messages,
+              temperature: params.temperature ?? 0.7,
+              top_p: params.topP ?? 0.9,
+              stream: true,
+              ...(typeof params.maxTokens === 'number'
+                ? { max_tokens: params.maxTokens }
+                : {}),
+              ...(params.responseFormat
+                ? { response_format: params.responseFormat }
+                : {}),
+            }),
+            signal: AbortSignal.timeout(params.timeoutMs ?? timeoutMs),
+          })
+
+          if (!response.ok) {
+            const retry = await handleBadAIResponse(response, attempt)
+            if (retry.retry) {
+              attempt += 1
+              await sleep(retry.delayMs)
+              continue
+            }
+          }
+
+          if (!response.body) {
+            throw new ApiError('AI 服务商没有返回流式内容', 502, {
+              errorCode: ErrorCode.AI_PROVIDER_ERROR,
+            })
+          }
+
+          yield* parseOpenAICompatibleStream(response.body)
+          return
         } catch (error) {
           if (error instanceof ApiError) throw error
           if (isTimeoutError(error)) {

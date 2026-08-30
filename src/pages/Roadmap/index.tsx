@@ -20,6 +20,7 @@ import type {
 } from '@/types'
 import { buildGithubBlobUrl } from '@/utils/githubUrl'
 import { GUIDE_SECTIONS } from '@/constants/guidePhases'
+import { extractStreamingGuidePreview } from '@/utils/streamingGuidePreview'
 
 const ArrowRightIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -288,18 +289,60 @@ function GuideArticle({
       Boolean(phase?.goal?.trim()) &&
       !/暂未生成|正在生成|正在准备|不完整|失败/.test(phase?.goal || ''))
 
-  if (generationStatus === 'generating' || generationStatus === 'queued') {
+  if (generationStatus === 'generating') {
+    const preview = phase?.streamingPreview
+      ? extractStreamingGuidePreview(phase.streamingPreview)
+      : null
+    const hasPreview =
+      Boolean(preview?.goal) ||
+      Boolean(preview?.actionIntro) ||
+      (preview?.stepTitles.length || 0) > 0
+
+    return (
+      <article className="guide-reader">
+        <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
+        <h2>{title}</h2>
+        <div className="guide-phase-streaming">
+          {hasPreview ? (
+            <>
+              {preview?.goal && (
+                <p className="guide-reader-goal guide-stream-fade-in">{preview.goal}</p>
+              )}
+              {preview?.actionIntro && (
+                <p className="guide-stream-intro guide-stream-fade-in">{preview.actionIntro}</p>
+              )}
+              {preview && preview.stepTitles.length > 0 && (
+                <ul className="guide-stream-steps">
+                  {preview.stepTitles.map((stepTitle, index) => (
+                    <li key={`${stepTitle}-${index}`} className="guide-stream-fade-in">
+                      {stepTitle}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="guide-stream-hint">
+                <span className="guide-stream-pulse" />
+                正在写入完整步骤…
+              </p>
+            </>
+          ) : (
+            <div className="guide-phase-loading">
+              <div className="ai-loading-spinner" />
+              <p>正在连接 AI 并开始生成本章…</p>
+            </div>
+          )}
+        </div>
+      </article>
+    )
+  }
+
+  if (generationStatus === 'queued') {
     return (
       <article className="guide-reader">
         <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
         <h2>{title}</h2>
         <div className="guide-phase-loading">
-          <div className="ai-loading-spinner" />
-          <p>
-            {generationStatus === 'generating'
-              ? '正在生成本章行动步骤，请稍候…'
-              : '排队等待生成，可先阅读已完成的章节。'}
-          </p>
+          <p>排队等待生成，可先阅读已完成的章节。</p>
         </div>
       </article>
     )

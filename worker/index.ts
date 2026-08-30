@@ -11,6 +11,7 @@ import {
   handleGeneratePr,
   handleGenerateRoadmap,
   handleGenerateRoadmapPhase,
+  handleGenerateRoadmapPhaseStream,
   handleListAIModels,
   handlePrepareRoadmapContext,
   handleRecommendIssues,
@@ -162,6 +163,13 @@ export default {
         request.method === 'POST'
       ) {
         return await handleGenerateRoadmapPhase(request, env)
+      }
+
+      if (
+        url.pathname === '/api/ai/generate-roadmap-phase-stream' &&
+        request.method === 'POST'
+      ) {
+        return await handleGenerateRoadmapPhaseStream(request, env)
       }
 
       if (

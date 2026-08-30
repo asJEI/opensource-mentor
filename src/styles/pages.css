@@ -3902,6 +3902,69 @@
   font-size: 13px;
 }
 
+.guide-phase-streaming {
+  margin-top: 12px;
+}
+
+.guide-stream-intro {
+  margin: 0 0 16px;
+  color: var(--tx-3);
+  line-height: 1.6;
+}
+
+.guide-stream-steps {
+  margin: 0 0 16px;
+  padding-left: 1.2em;
+  color: var(--tx-2);
+  line-height: 1.6;
+}
+
+.guide-stream-steps li + li {
+  margin-top: 6px;
+}
+
+.guide-stream-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.guide-stream-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: guide-stream-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes guide-stream-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.guide-stream-fade-in {
+  animation: guide-stream-fade-in 0.25s ease-out;
+}
+
+@keyframes guide-stream-fade-in {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .guide-stepper {
   display: flex;
   flex-wrap: wrap;

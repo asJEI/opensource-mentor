@@ -11,6 +11,7 @@ import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
 import { useRepositoryStore } from './repository'
 import { GUIDE_PHASE_TITLES } from '@/constants/guidePhases'
+import { extractStreamingGuidePreview } from '@/utils/streamingGuidePreview'
 
 const DEFAULT_PHASE_TITLES = [...GUIDE_PHASE_TITLES]
 
@@ -225,18 +226,49 @@ async function generateOnePhase(params: {
     repositoryContext: Record<string, unknown>
     issueContext?: Record<string, unknown> | null
   }
+  onStream?: (preview: string) => void
 }): Promise<RoadmapPhase> {
   const maxAttempts = 2
   let lastError: unknown
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      const phase = await aiService.generateRoadmapPhase(
+
+  const runOnce = async (useStream: boolean) => {
+    if (useStream) {
+      return aiService.streamGenerateRoadmapPhase(
         params.owner,
         params.repo,
         params.phaseNumber,
         params.userProfile,
         params.shared,
+        {
+          onDelta(_delta, accumulated) {
+            params.onStream?.(accumulated)
+          },
+        },
       )
+    }
+    return aiService.generateRoadmapPhase(
+      params.owner,
+      params.repo,
+      params.phaseNumber,
+      params.userProfile,
+      params.shared,
+    )
+  }
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      let phase: RoadmapPhase
+      try {
+        phase = await runOnce(true)
+      } catch (streamError) {
+        const streamMessage = getErrorMessage(streamError, '')
+        const canFallback =
+          /流式响应|stream|network|fetch/i.test(streamMessage) ||
+          streamMessage.includes('502')
+        if (!canFallback) throw streamError
+        phase = await runOnce(false)
+      }
+
       if (!isPhaseContentReady({ ...phase, generationStatus: 'ready' })) {
         throw new Error('本章生成结果为空')
       }
@@ -248,7 +280,6 @@ async function generateOnePhase(params: {
         /限流|429|rate.?limit|过于频繁|额度已用完/i.test(message)
       const isTimeout = /超时|timeout|timed out|aborted/i.test(message)
       if ((!isRateLimited && !isTimeout) || attempt >= maxAttempts) break
-      // 限流/超时时稍等再打一次，避免整章立刻标失败
       await new Promise((resolve) =>
         setTimeout(resolve, (isTimeout ? 1500 : 2500) * attempt),
       )
@@ -451,9 +482,25 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         steps = patchPhase(get().steps, phaseNumber, {
           generationStatus: 'generating',
           generationError: null,
+          streamingPreview: undefined,
           goal: '正在生成本章内容…',
         })
         set({ steps, progress: calculateProgress(steps), isGeneratingMore: true })
+
+        let lastStreamUpdate = 0
+        const applyStreamPreview = (accumulated: string) => {
+          if (get().generationToken !== token) return
+          const now = Date.now()
+          if (now - lastStreamUpdate < 80) return
+          lastStreamUpdate = now
+          const preview = extractStreamingGuidePreview(accumulated)
+          steps = patchPhase(get().steps, phaseNumber, {
+            streamingPreview: accumulated,
+            goal: preview.goal || '正在生成本章内容…',
+            actionIntro: preview.actionIntro,
+          })
+          set({ steps })
+        }
 
         try {
           const phase = await generateOnePhase({
@@ -462,6 +509,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
             phaseNumber,
             userProfile,
             shared,
+            onStream: applyStreamPreview,
           })
           if (get().generationToken !== token) return
 
@@ -473,6 +521,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
               (phaseNumber === 1 ? 'current' : 'pending'),
             generationStatus: 'ready',
             generationError: null,
+            streamingPreview: undefined,
           })
           set({
             steps,
@@ -563,10 +612,27 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       steps: patchPhase(state.steps, phaseNumber, {
         generationStatus: 'generating',
         generationError: null,
+        streamingPreview: undefined,
         goal: '正在重新生成本章…',
         learningItems: [],
       }),
     })
+
+    let lastStreamUpdate = 0
+    const applyStreamPreview = (accumulated: string) => {
+      if (get().generationToken !== token) return
+      const now = Date.now()
+      if (now - lastStreamUpdate < 80) return
+      lastStreamUpdate = now
+      const preview = extractStreamingGuidePreview(accumulated)
+      set({
+        steps: patchPhase(get().steps, phaseNumber, {
+          streamingPreview: accumulated,
+          goal: preview.goal || '正在重新生成本章…',
+          actionIntro: preview.actionIntro,
+        }),
+      })
+    }
 
     try {
       let shared = get().sharedContext
@@ -593,6 +659,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         phaseNumber,
         userProfile,
         shared,
+        onStream: applyStreamPreview,
       })
       if (get().generationToken !== token) return
 
@@ -604,6 +671,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           'pending',
         generationStatus: 'ready',
         generationError: null,
+        streamingPreview: undefined,
       })
       set({
         steps,

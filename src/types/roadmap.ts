@@ -86,6 +86,8 @@ export interface RoadmapPhase {
   tasks: RoadmapTask[]
   generationStatus?: RoadmapGenerationStatus
   generationError?: string | null
+  /** 流式生成中的原始 JSON 片段，用于实时预览 */
+  streamingPreview?: string
 }
 
 export interface Roadmap {

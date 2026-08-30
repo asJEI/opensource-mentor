@@ -136,6 +136,82 @@ export async function generateRoadmapPhase(
   }
 }
 
+export async function streamRoadmapPhase(
+  client: AIClient,
+  params: {
+    repository: RepositoryDto
+    readme: string
+    userProfile: UserProfileContext
+    repositoryContext?: Record<string, unknown>
+    issueContext?: Record<string, unknown>
+    phaseNumber: number
+    onDelta: (delta: string) => void | Promise<void>
+  },
+): Promise<RoadmapPhase> {
+  const prompt = roadmapPhasePrompt({
+    repoName: params.repository.fullName,
+    repoDescription: params.repository.description,
+    repoLanguage: params.repository.language,
+    repoTopics: params.repository.topics,
+    stars: params.repository.stars,
+    userProfile: params.userProfile,
+    readme: params.readme,
+    repositoryContext: params.repositoryContext,
+    issueContext: params.issueContext,
+    phaseNumber: params.phaseNumber,
+  })
+
+  const maxTokens =
+    params.phaseNumber === 2 ||
+    params.phaseNumber === 4 ||
+    params.phaseNumber === 6
+      ? 2600
+      : params.phaseNumber >= 5
+        ? 2200
+        : 2400
+  const phaseTimeoutMs =
+    params.phaseNumber >= 5 ||
+    params.phaseNumber === 2 ||
+    params.phaseNumber === 4
+      ? 80_000
+      : 65_000
+
+  let content = ''
+  try {
+    for await (const delta of client.streamChatCompletions({
+      messages: [
+        { role: 'system', content: roadmapPhaseSystemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.35,
+      topP: 0.85,
+      maxTokens,
+      timeoutMs: phaseTimeoutMs,
+      responseFormat: { type: 'json_object' },
+    })) {
+      content += delta
+      await params.onDelta(delta)
+    }
+
+    return validateRoadmapPhaseResult(
+      parseJsonSafely(content),
+      params.phaseNumber,
+    )
+  } catch (error) {
+    if (error instanceof ApiError) throw error
+    const message = error instanceof Error ? error.message : 'unknown error'
+    console.error('[AI] streamRoadmapPhase failed:', message)
+    if (message.includes('内容不完整')) {
+      throw new ApiError(`第 ${params.phaseNumber} 章生成内容不完整，请重试`, 502, {
+        errorCode: 'AI_PROVIDER_ERROR',
+      })
+    }
+    throw new ApiError('AI 服务暂时不可用，请稍后重试', 503, {
+      errorCode: 'AI_PROVIDER_ERROR',
+    })
+  }
+}
+
 /** 全量生成（兼容旧调用） */
 export async function generateRoadmap(
   client: AIClient,

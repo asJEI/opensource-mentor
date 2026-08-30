@@ -31,33 +31,50 @@ const bffService: AxiosInstance = axios.create({
   },
 })
 
+export function createBffHeaders(
+  initial?: Record<string, string>,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(initial || {}),
+  }
+  const { githubConfig, aiConfig } = useSettingsStore.getState()
+
+  if (
+    githubConfig.mode === 'custom' &&
+    githubConfig.token &&
+    !headers[BYOK_HEADERS.githubToken]
+  ) {
+    headers[BYOK_HEADERS.githubToken] = githubConfig.token
+  }
+
+  if (aiConfig.mode === 'custom') {
+    headers[BYOK_HEADERS.aiMode] = 'custom'
+    headers[BYOK_HEADERS.aiProvider] = aiConfig.provider
+    if (aiConfig.model) {
+      headers[BYOK_HEADERS.aiModel] = aiConfig.model
+    }
+    if (aiConfig.baseUrl) {
+      headers[BYOK_HEADERS.aiBaseUrl] = aiConfig.baseUrl
+    }
+    if (aiConfig.apiKey && !headers[BYOK_HEADERS.aiKey]) {
+      headers[BYOK_HEADERS.aiKey] = aiConfig.apiKey
+    }
+  }
+
+  return headers
+}
+
 /**
  * Attach BYOK credentials via headers only (never URL query).
  * AI apiKey goes in X-AI-Key; GitHub token in X-User-GitHub-Token.
  */
 bffService.interceptors.request.use(
   (requestConfig: InternalAxiosRequestConfig) => {
-    const { githubConfig, aiConfig } = useSettingsStore.getState()
-
-    if (
-      githubConfig.mode === 'custom' &&
-      githubConfig.token &&
-      !requestConfig.headers[BYOK_HEADERS.githubToken]
-    ) {
-      requestConfig.headers[BYOK_HEADERS.githubToken] = githubConfig.token
-    }
-
-    if (aiConfig.mode === 'custom') {
-      requestConfig.headers[BYOK_HEADERS.aiMode] = 'custom'
-      requestConfig.headers[BYOK_HEADERS.aiProvider] = aiConfig.provider
-      if (aiConfig.model) {
-        requestConfig.headers[BYOK_HEADERS.aiModel] = aiConfig.model
-      }
-      if (aiConfig.baseUrl) {
-        requestConfig.headers[BYOK_HEADERS.aiBaseUrl] = aiConfig.baseUrl
-      }
-      if (aiConfig.apiKey && !requestConfig.headers[BYOK_HEADERS.aiKey]) {
-        requestConfig.headers[BYOK_HEADERS.aiKey] = aiConfig.apiKey
+    const headers = createBffHeaders()
+    for (const [key, value] of Object.entries(headers)) {
+      if (!requestConfig.headers[key]) {
+        requestConfig.headers[key] = value
       }
     }
 
