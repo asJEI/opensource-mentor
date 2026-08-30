@@ -449,10 +449,10 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       }
       set({ sharedContext: shared })
 
-      for (let phaseNumber = 1; phaseNumber <= titles.length; phaseNumber += 1) {
+      const generatePhase = async (phaseNumber: number) => {
         if (get().generationToken !== token) return
         if (isPhaseContentReady(get().steps.find((s) => s.phase === phaseNumber))) {
-          continue
+          return
         }
 
         steps = patchPhase(get().steps, phaseNumber, {
@@ -489,10 +489,6 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
               : get().roadmap,
           })
           persistCurrent(get)
-          // 章与章之间稍作间隔，降低平台/上游 RPM 撞限
-          if (phaseNumber < titles.length) {
-            await new Promise((resolve) => setTimeout(resolve, 900))
-          }
         } catch (phaseError) {
           if (get().generationToken !== token) return
           const message = getErrorMessage(phaseError, '本章生成失败')
@@ -506,6 +502,31 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           persistCurrent(get)
         }
       }
+
+      // 第一章决定用户能否立刻开始阅读，优先生成；其余章节后台限并发补齐。
+      await generatePhase(1)
+      if (get().generationToken !== token) return
+
+      const remainingPhases = titles
+        .map((_, index) => index + 1)
+        .filter((phaseNumber) => phaseNumber !== 1)
+        .filter((phaseNumber) => !isPhaseContentReady(
+          get().steps.find((step) => step.phase === phaseNumber),
+        ))
+      const concurrency = 2
+      let cursor = 0
+      const workers = Array.from(
+        { length: Math.min(concurrency, remainingPhases.length) },
+        async () => {
+          while (cursor < remainingPhases.length) {
+            if (get().generationToken !== token) return
+            const phaseNumber = remainingPhases[cursor]
+            cursor += 1
+            await generatePhase(phaseNumber)
+          }
+        },
+      )
+      await Promise.all(workers)
 
       if (get().generationToken !== token) return
       set({ isGeneratingMore: false, isLoading: false })
