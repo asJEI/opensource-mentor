@@ -52,13 +52,21 @@ reproduce 必须为 null。`,
 - checkboxLabel
 另给 actionSteps 2 步（可含检查命令）。
 fileRefs 可为空。`,
-  5: `### 修正方案
-actionSteps：2-3 步短句；fileRefs 最多 3 个，只能选真实路径。明确标出“仓库确认事实”与“AI 建议”。
-reproduce 必须为 null。不要长篇论证。`,
-  6: `### 实现与验证
-actionSteps 恰好 3 步：改哪里、怎么改、怎么验证。
-commands 只能用已确认的测试命令；没有时留空并引导用户查看仓库文档或 scripts。
-reproduce 必须为 null。`,
+  5: `### 修正方案（只做方案选择，不写执行清单）
+本章回答：应该采用哪种修法、为什么这样改、改动边界和风险是什么。
+actionSteps 恰好 3 步：
+1. Step 1 · 确认修复原则（解释选择该方案的理由）
+2. Step 2 · 界定改动范围（只列真实 fileRefs 或模块方向，不重复定位/审计步骤）
+3. Step 3 · 检查风险点（说明可能影响的状态、样式、兼容性或测试面）
+fileRefs 最多 3 个，只能选真实路径。明确标出“仓库确认事实”与“AI 建议”。
+reproduce 必须为 null。不要写“运行验证”“准备截图”“执行测试”等实现验证步骤；这些留给第 6 章。`,
+  6: `### 实现与验证（只写执行与验证，不重新设计方案）
+本章从第 5 章方案出发，回答：具体修改时怎么做、如何确认没有破坏现有行为。
+actionSteps 恰好 3 步：
+1. Step 1 · 执行最小修改（不要重新审计/定位，不重复第 5 章的方案论证）
+2. Step 2 · 本地验证（commands 只能用已确认的测试命令；没有时留空并说明需查看文档/scripts）
+3. Step 3 · 人工检查与记录结果（说明要看哪些页面/状态/截图，而不是再次提出修复方案）
+reproduce 必须为 null。不要把“选择颜色/制定策略/分析风险”写成主要内容；这些属于第 5 章。`,
   7: `### PR 提交
 actionSteps 3 步：去代码审查、去 PR 生成器、按 CONTRIBUTING 检查。
 reproduce 必须为 null。fileRefs 可为空。`,
@@ -249,6 +257,7 @@ ${schemaExample}
 - 步骤只有 title，没有 description / expectedResult / commands
 - 使用空泛句子如「按步骤操作」「参考后续章节」充当 goal/actionIntro
 - 第 4 章把 reproduce 设为 null，或把环境准备内容写进复现章
+- 第 5 章和第 6 章输出相同或近似的行动步骤；第 5 章是方案，第 6 章是执行验证
 - 输出 JSON 以外的任何文字
 - 把模板中的示例文字、占位内容或常见项目结构当作真实仓库信息
 
