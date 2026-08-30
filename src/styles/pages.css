@@ -637,6 +637,55 @@
   margin-bottom: 16px;
 }
 
+.issues-search-panel {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+}
+
+.issues-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.issues-search-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.issues-search-input-wrap > svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--muted-2);
+  pointer-events: none;
+}
+
+.issues-search-input {
+  width: 100%;
+  padding-left: 38px;
+}
+
+.issues-search-hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.issues-search-error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--red);
+}
+
 .issues-filters {
   display: flex;
   gap: 8px;
@@ -973,6 +1022,11 @@
 }
 
 @media (max-width: 900px) {
+  .issues-search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .issues-toolbar,
   .issue-expanded-footer,
   .selected-issue-header,

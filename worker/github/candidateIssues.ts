@@ -147,6 +147,12 @@ type CandidateIssuesMeta = {
     minBodyLength: number
     recentUpdateDays: number
   }
+  scope?: {
+    type: 'profile' | 'repo' | 'issue'
+    owner?: string
+    repo?: string
+    number?: number
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -218,8 +224,24 @@ function quoteLabel(label: string): string {
   return `label:"${label}"`
 }
 
-function createSearchQueries(technologies: string[]): string[] {
+function createSearchQueries(
+  technologies: string[],
+  scope?: { owner: string; repo: string } | null,
+): string[] {
   const labels = ['good first issue', 'help wanted']
+  const repoQualifier = scope ? `repo:${scope.owner}/${scope.repo}` : null
+
+  // Repo-scoped search uses the repository as the primary filter.
+  // Prefer beginner-friendly labels, then fall back to open unassigned issues.
+  if (repoQualifier) {
+    return [
+      ...labels.map(
+        (label) => `is:issue is:open ${repoQualifier} ${quoteLabel(label)}`,
+      ),
+      `is:issue is:open ${repoQualifier} no:assignee`,
+    ]
+  }
+
   const usableTechnologies = technologies.filter(isGitHubSearchLanguage)
   const queries =
     usableTechnologies.length > 0
@@ -232,6 +254,173 @@ function createSearchQueries(technologies: string[]): string[] {
       : labels.map((label) => `is:issue is:open ${quoteLabel(label)}`)
 
   return queries
+}
+
+function parseCandidateScope(request: Request): {
+  owner?: string
+  repo?: string
+  number?: number
+} {
+  const url = new URL(request.url)
+  const owner = url.searchParams.get('owner')?.trim() || undefined
+  const repo = url.searchParams.get('repo')?.trim() || undefined
+  const numberRaw = url.searchParams.get('number')?.trim()
+  const number = numberRaw ? Number(numberRaw) : undefined
+
+  if (
+    numberRaw &&
+    (!Number.isInteger(number) || !number || number <= 0)
+  ) {
+    throw new ApiError('Issue number 必须是正整数', 400)
+  }
+
+  if (number && (!owner || !repo)) {
+    throw new ApiError('评估单个 Issue 需要同时提供 owner、repo 和 number', 400)
+  }
+
+  if ((owner && !repo) || (!owner && repo)) {
+    throw new ApiError('仓库筛选需要同时提供 owner 和 repo', 400)
+  }
+
+  return { owner, repo, number }
+}
+
+function candidateIssueFromFetchedIssue(
+  issue: {
+    id: number
+    number: number
+    title: string
+    body: string | null
+    state: 'open' | 'closed'
+    htmlUrl: string
+    comments: number
+    createdAt: string
+    updatedAt: string
+    author: string
+    authorAvatar: string
+    labels: Array<{ name: string }>
+  },
+  owner: string,
+  repo: string,
+  repository?: RepositoryDto,
+): CandidateIssue {
+  const fullName = `${owner}/${repo}`
+  const base: CandidateIssue = {
+    id: issue.id,
+    issueNumber: issue.number,
+    title: issue.title,
+    body: issue.body || '',
+    issueUrl: issue.htmlUrl,
+    repository: repository
+      ? repositorySummary(repository)
+      : {
+          owner,
+          name: repo,
+          fullName,
+          url: `https://github.com/${fullName}`,
+        },
+    labels: issue.labels.map((label) => label.name).filter(Boolean),
+    language: repository?.language ?? null,
+    languageSource: 'unknown',
+    state: issue.state,
+    comments: issue.comments,
+    assignee: null,
+    assignees: [],
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt,
+    user: {
+      login: issue.author,
+      avatarUrl: issue.authorAvatar,
+    },
+  }
+  const access = detectContributionAccess(base)
+  const availability = buildBaseAvailability(base)
+  return {
+    ...base,
+    contributionAccess: access.access,
+    claimHint: access.hint,
+    availability,
+  }
+}
+
+async function evaluateSingleCandidateIssue(
+  request: Request,
+  env: PlatformEnv,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<Response> {
+  const github = createGitHubService(request, env)
+  const warnings: string[] = []
+
+  let fetched
+  try {
+    fetched = await github.getIssue(owner, repo, issueNumber)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      throw new ApiError(`未找到 Issue ${owner}/${repo}#${issueNumber}`, 404)
+    }
+    throw error
+  }
+
+  if (/\/pull\//i.test(fetched.htmlUrl)) {
+    throw new ApiError('当前链接指向的是 Pull Request，请输入 Issue 链接', 400)
+  }
+
+  let repository: RepositoryDto | undefined
+  try {
+    repository = await github.getRepository(owner, repo)
+  } catch (error) {
+    warnings.push(
+      `仓库信息获取失败: ${error instanceof Error ? error.message : 'unknown error'}`,
+    )
+  }
+
+  let issue = candidateIssueFromFetchedIssue(
+    fetched,
+    owner,
+    repo,
+    repository,
+  )
+  issue = await enrichIssueAvailability(github, issue)
+
+  if (!issue.body.trim()) {
+    warnings.push('该 Issue 正文为空，评估结果可能不够准确。')
+  }
+
+  console.info('[candidate-issues] evaluated single issue', {
+    repository: `${owner}/${repo}`,
+    issueNumber,
+    canRecommend: issue.availability?.canRecommend,
+  })
+
+  return success({
+    issues: [issue],
+    meta: {
+      queries: [`repo:${owner}/${repo} issue:${issueNumber}`],
+      rawCount: 1,
+      deduplicatedCount: 1,
+      filteredCount: 1,
+      recommendedCount: 1,
+      languages: [],
+      warnings,
+      failedQueries: [],
+      limits: {
+        perQuery: PER_QUERY_LIMIT,
+        maxTechnologies: MAX_TECHNOLOGIES,
+        maxCandidates: TARGET_MAX_CANDIDATES,
+        maxLlmAnalyzedIssues: MAX_LLM_ANALYZED_ISSUES,
+        minBodyLength: MIN_BODY_LENGTH,
+        recentUpdateDays: RECENT_UPDATE_DAYS,
+      },
+      scope: {
+        type: 'issue',
+        owner,
+        repo,
+        number: issueNumber,
+      },
+    } satisfies CandidateIssuesMeta,
+  })
 }
 
 function repositoryFromApiUrl(
@@ -1115,16 +1304,35 @@ export async function handleGetCandidateIssues(
     throw new ApiError('登录状态已失效', 401)
   }
 
+  const scope = parseCandidateScope(request)
+  if (scope.owner && scope.repo && scope.number) {
+    return evaluateSingleCandidateIssue(
+      request,
+      env,
+      scope.owner,
+      scope.repo,
+      scope.number,
+    )
+  }
+
   const profileRow = currentUser.developerProfile as Record<string, unknown>
   const technologies = getPreferredTechnologies(profileRow)
   const onboarding = getOnboardingContext(profileRow, technologies)
-  const queries = createSearchQueries(technologies)
+  const repoScope =
+    scope.owner && scope.repo
+      ? { owner: scope.owner, repo: scope.repo }
+      : null
+  const queries = createSearchQueries(technologies, repoScope)
   const github = createGitHubService(request, env)
   const warnings: string[] = []
   const failedQueries: CandidateIssuesMeta['failedQueries'] = []
   const rawItems: Array<{ item: GitHubSearchIssueItemDto; query: string }> = []
 
-  if (technologies.length === 0) {
+  if (repoScope) {
+    warnings.push(
+      `已按仓库 ${repoScope.owner}/${repoScope.repo} 筛选 suitable Issue（优先 good first issue / help wanted）。`,
+    )
+  } else if (technologies.length === 0) {
     warnings.push('用户没有 preferred technologies，已回退到通用 good first issue / help wanted 搜索。')
   }
 
@@ -1221,6 +1429,7 @@ export async function handleGetCandidateIssues(
 
   console.info('[candidate-issues] fetched', {
     technologies,
+    repoScope,
     queryCount: queries.length,
     rawCount: rawItems.length,
     deduplicatedCount: deduped.size,
@@ -1248,6 +1457,13 @@ export async function handleGetCandidateIssues(
         minBodyLength: MIN_BODY_LENGTH,
         recentUpdateDays: RECENT_UPDATE_DAYS,
       },
+      scope: repoScope
+        ? {
+            type: 'repo',
+            owner: repoScope.owner,
+            repo: repoScope.repo,
+          }
+        : { type: 'profile' },
     } satisfies CandidateIssuesMeta,
   })
 }

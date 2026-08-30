@@ -345,26 +345,9 @@
   color: var(--muted-2);
 }
 
-.app-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 /* App Content & Pages */
 .app-content {
   padding: 28px;
-}
-
-.app-layout .icon-btn {
-  background: var(--bg-soft);
-  border-color: var(--rule);
-  color: var(--muted);
-}
-
-.app-layout .icon-btn:hover {
-  background: var(--bg-hover);
-  color: var(--ink);
 }
 
 .app-page {

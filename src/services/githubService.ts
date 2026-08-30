@@ -64,9 +64,20 @@ class GithubService {
   /**
    * 获取当前登录用户的候选 Issue
    * GET /api/issues/candidates
+   * 可选：owner+repo 按仓库筛选；owner+repo+number 评估单个 Issue
    */
-  async getCandidateIssues(): Promise<CandidateIssuesResult> {
-    const data = await bffGet<any>('/issues/candidates')
+  async getCandidateIssues(params?: {
+    owner?: string
+    repo?: string
+    number?: number
+  }): Promise<CandidateIssuesResult> {
+    const data = await bffGet<any>('/issues/candidates', {
+      params: {
+        ...(params?.owner ? { owner: params.owner } : {}),
+        ...(params?.repo ? { repo: params.repo } : {}),
+        ...(params?.number ? { number: String(params.number) } : {}),
+      },
+    })
     return {
       issues: (data.issues || []).map((item: any) =>
         this.mapCandidateIssue(item),
@@ -80,6 +91,7 @@ class GithubService {
         languages: data.meta?.languages || [],
         warnings: data.meta?.warnings || [],
         failedQueries: data.meta?.failedQueries || [],
+        scope: data.meta?.scope,
       },
     }
   }
@@ -258,6 +270,7 @@ class GithubService {
           ? data.contributionAccess
           : undefined,
       claimHint: typeof data.claimHint === 'string' ? data.claimHint : undefined,
+      availability: data.availability,
     }
   }
 }

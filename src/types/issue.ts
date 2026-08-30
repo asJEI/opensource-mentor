@@ -201,6 +201,12 @@ export interface CandidateIssuesMeta {
   languages: string[]
   warnings: string[]
   failedQueries: Array<{ query: string; message: string; status?: number }>
+  scope?: {
+    type: 'profile' | 'repo' | 'issue'
+    owner?: string
+    repo?: string
+    number?: number
+  }
 }
 
 export interface CandidateIssuesResult {

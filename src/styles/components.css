@@ -711,40 +711,6 @@
   text-align: left;
 }
 
-/* ---------- Icon Button ---------- */
-.icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  transition: all 0.15s;
-  position: relative;
-}
-
-.icon-btn:hover {
-  background: var(--bg-hover);
-  color: var(--ink);
-}
-
-.icon-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.notif-dot {
-  position: absolute;
-  top: 9px;
-  right: 9px;
-  width: 7px;
-  height: 7px;
-  background: var(--red);
-  border-radius: 50%;
-  border: 2px solid var(--bg-white);
-}
-
 /* ---------- Tabs ---------- */
 .preview-tabs {
   display: flex;

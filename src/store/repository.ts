@@ -147,8 +147,12 @@ interface RepositoryState {
   ) => Promise<void>
   /** 选中某个推荐 Issue */
   selectIssue: (issue: RecommendedIssue | null) => void
-  /** 加载登录用户候选 Issue */
-  loadCandidateIssues: () => Promise<void>
+  /** 加载登录用户候选 Issue；可按仓库或单个 Issue 筛选 */
+  loadCandidateIssues: (params?: {
+    owner?: string
+    repo?: string
+    number?: number
+  }) => Promise<void>
   analyzeCandidateIssue: (
     issue: CandidateIssue,
     options?: { force?: boolean },
@@ -261,14 +265,14 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
     selectIssue: (issue: RecommendedIssue | null) =>
       set({ selectedIssue: issue }),
 
-    loadCandidateIssues: async () => {
+    loadCandidateIssues: async (params) => {
       const requestId = ++issuesRequestId
       set({
         candidateIssuesStatus: 'loading',
         candidateIssuesError: null,
       })
       try {
-        const result = await githubService.getCandidateIssues()
+        const result = await githubService.getCandidateIssues(params)
         if (requestId !== issuesRequestId) return
         set({
           candidateIssues: result.issues,

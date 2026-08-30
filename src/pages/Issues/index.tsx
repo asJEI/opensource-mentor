@@ -6,6 +6,7 @@ import { AiPageError } from '@/components/business'
 import { Button } from '@/components/ui'
 import { useRepositoryStore, useToastStore, useUserStore } from '@/store'
 import type { CandidateIssue } from '@/types'
+import { parseGitHubIssueOrRepoInput } from '@/utils/githubRepository'
 
 const CodeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -19,6 +20,13 @@ const IssueIcon = () => (
     <circle cx="12" cy="12" r="9" />
     <path d="M12 8h.01" />
     <path d="M12 12v4" />
+  </svg>
+)
+
+const SearchIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
   </svg>
 )
 
@@ -111,6 +119,11 @@ function looksLikeEnglishSummary(text: string): boolean {
   if (/[\u4e00-\u9fff]/.test(trimmed)) return false
   return /[A-Za-z]{3,}/.test(trimmed)
 }
+
+type CandidateSearchScope =
+  | { type: 'profile' }
+  | { type: 'repo'; owner: string; repo: string }
+  | { type: 'issue'; owner: string; repo: string; number: number }
 
 const CandidateIssueCard = ({
   issue,
@@ -306,6 +319,11 @@ const Issues = () => {
     (state) => state.analyzeCandidateIssue,
   )
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [activeScope, setActiveScope] = useState<CandidateSearchScope>({
+    type: 'profile',
+  })
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -314,12 +332,18 @@ const Issues = () => {
 
   useEffect(() => {
     if (status === 'success') {
-      showToast('success', '候选 Issue 已加载', `已筛选出 ${issues.length} 个候选 Issue`)
+      const scopeLabel =
+        activeScope.type === 'issue'
+          ? `已评估 ${activeScope.owner}/${activeScope.repo}#${activeScope.number}`
+          : activeScope.type === 'repo'
+            ? `已筛选 ${activeScope.owner}/${activeScope.repo} 下的候选 Issue`
+            : `已筛选出 ${issues.length} 个候选 Issue`
+      showToast('success', '候选 Issue 已加载', scopeLabel)
     }
     if (status === 'error' && error) {
       showToast('error', '候选 Issue 加载失败', error)
     }
-  }, [error, issues.length, showToast, status])
+  }, [activeScope, error, issues.length, showToast, status])
 
   useEffect(() => {
     if (status !== 'success' || issues.length === 0) return
@@ -359,10 +383,16 @@ const Issues = () => {
   }, [analysisStatusByIssue, analyzeCandidateIssue, issues, status])
 
   const languageText = useMemo(() => {
+    if (activeScope.type === 'issue') {
+      return `${activeScope.owner}/${activeScope.repo}#${activeScope.number}`
+    }
+    if (activeScope.type === 'repo') {
+      return `${activeScope.owner}/${activeScope.repo}`
+    }
     if (meta?.languages.length) return meta.languages.join('、')
     if (profile.preferredTechStack.length) return profile.preferredTechStack.join('、')
     return '通用 good first issue / help wanted'
-  }, [meta?.languages, profile.preferredTechStack])
+  }, [activeScope, meta?.languages, profile.preferredTechStack])
 
   const handleStart = (issue: CandidateIssue) => {
     startContribution(issue)
@@ -370,9 +400,70 @@ const Issues = () => {
     navigate('/dashboard')
   }
 
+  const handleSearch = () => {
+    const trimmed = searchInput.trim()
+    if (!trimmed) {
+      setSearchError(null)
+      setActiveScope({ type: 'profile' })
+      setExpandedId(null)
+      void loadCandidateIssues()
+      return
+    }
+
+    const parsed = parseGitHubIssueOrRepoInput(trimmed)
+    if (!parsed) {
+      setSearchError(
+        '请输入有效的仓库链接（如 owner/repo）或 Issue 链接（如 owner/repo#123）',
+      )
+      return
+    }
+
+    setSearchError(null)
+    setExpandedId(null)
+
+    if (parsed.type === 'issue') {
+      setActiveScope({
+        type: 'issue',
+        owner: parsed.owner,
+        repo: parsed.name,
+        number: parsed.number,
+      })
+      void loadCandidateIssues({
+        owner: parsed.owner,
+        repo: parsed.name,
+        number: parsed.number,
+      })
+      return
+    }
+
+    setActiveScope({
+      type: 'repo',
+      owner: parsed.owner,
+      repo: parsed.name,
+    })
+    void loadCandidateIssues({
+      owner: parsed.owner,
+      repo: parsed.name,
+    })
+  }
+
+  const handleClearSearch = () => {
+    setSearchInput('')
+    setSearchError(null)
+    setActiveScope({ type: 'profile' })
+    setExpandedId(null)
+    void loadCandidateIssues()
+  }
+
   const isLoading = status === 'idle' || status === 'loading'
   const aiFallbackWarnings =
     meta?.warnings.filter((warning) => warning.includes('AI')) ?? []
+  const listTitle =
+    activeScope.type === 'issue'
+      ? '指定 Issue 评估'
+      : activeScope.type === 'repo'
+        ? '仓库内候选'
+        : '为你推荐'
 
   return (
     <AppLayout breadcrumbs={[{ label: 'Issue 推荐' }]}>
@@ -383,6 +474,7 @@ const Issues = () => {
               <h1 className="page-title">Issue 推荐首页</h1>
               <p className="page-subtitle">
                 根据你的 GitHub 画像和 onboarding 偏好，从 GitHub 拉取候选 Issue。
+                也可以粘贴仓库或 Issue 链接进行定向筛选与评估。
               </p>
             </div>
             <span className="repo-pill">
@@ -399,59 +491,135 @@ const Issues = () => {
             onRetry={() => navigate('/')}
             retryLabel="回到首页"
           />
-        ) : isLoading ? (
-          <div className="ai-loading active">
-            <div className="ai-loading-spinner" />
-            <div className="ai-loading-title">正在获取候选 Issue...</div>
-            <div className="ai-loading-desc">
-              正在从 GitHub 拉取 good first issue / help wanted 候选项
-            </div>
-          </div>
-        ) : status === 'error' ? (
-          <AiPageError
-            title="加载候选 Issue 失败"
-            message={error || '请稍后重试'}
-            onRetry={loadCandidateIssues}
-          />
         ) : (
           <>
-            <div className="issues-toolbar">
-              <div className="issues-tabs">
-                <button className="issues-tab active">
-                  为你推荐
-                  <span className="issues-tab-count">{issues.length}</span>
-                </button>
-              </div>
-            </div>
-
-            {aiFallbackWarnings.length ? (
-              <div className="issue-subtle-notice">
-                部分推荐暂时使用基础信息生成，稍后刷新可能会更完整。
-              </div>
-            ) : null}
-
-            <div className="issues-list candidate-issues-list">
-              {issues.length > 0 ? (
-                issues.map((issue) => (
-                  <CandidateIssueCard
-                    key={issue.id}
-                    issue={issue}
-                    expanded={expandedId === issue.id}
-                    analysisStatus={analysisStatusByIssue[issue.id] || 'idle'}
-                    onToggle={() =>
-                      setExpandedId((current) =>
-                        current === issue.id ? null : issue.id,
-                      )
-                    }
-                    onStart={() => handleStart(issue)}
+            <div className="issues-search-panel">
+              <div className="issues-search-row">
+                <div className="issues-search-input-wrap">
+                  <SearchIcon />
+                  <input
+                    type="text"
+                    className="form-input issues-search-input"
+                    value={searchInput}
+                    onChange={(event) => {
+                      setSearchInput(event.target.value)
+                      if (searchError) setSearchError(null)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') handleSearch()
+                    }}
+                    placeholder="粘贴仓库链接或 Issue 链接，例如 owner/repo 或 owner/repo#123"
+                    aria-label="搜索仓库或 Issue"
                   />
-                ))
-              ) : (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-                  暂未找到候选 Issue。当前阶段不会为了凑数扩展到普通 issue 搜索。
                 </div>
-              )}
+                <Button
+                  variant="primary"
+                  onClick={handleSearch}
+                  disabled={isLoading}
+                >
+                  {isLoading ? '搜索中…' : '搜索'}
+                </Button>
+                {activeScope.type !== 'profile' ? (
+                  <Button variant="ghost" onClick={handleClearSearch} disabled={isLoading}>
+                    清除
+                  </Button>
+                ) : null}
+              </div>
+              <p className="issues-search-hint">
+                输入仓库链接：筛选该仓库下合适的开放 Issue。
+                输入 Issue 链接：只评估这一个 Issue。
+              </p>
+              {searchError ? (
+                <p className="issues-search-error">{searchError}</p>
+              ) : null}
             </div>
+
+            {isLoading ? (
+              <div className="ai-loading active">
+                <div className="ai-loading-spinner" />
+                <div className="ai-loading-title">
+                  {activeScope.type === 'issue'
+                    ? '正在评估指定 Issue...'
+                    : activeScope.type === 'repo'
+                      ? '正在筛选仓库候选 Issue...'
+                      : '正在获取候选 Issue...'}
+                </div>
+                <div className="ai-loading-desc">
+                  {activeScope.type === 'issue'
+                    ? `正在拉取并评估 ${activeScope.owner}/${activeScope.repo}#${activeScope.number}`
+                    : activeScope.type === 'repo'
+                      ? `正在从 ${activeScope.owner}/${activeScope.repo} 拉取合适的 Issue`
+                      : '正在从 GitHub 拉取 good first issue / help wanted 候选项'}
+                </div>
+              </div>
+            ) : status === 'error' ? (
+              <AiPageError
+                title="加载候选 Issue 失败"
+                message={error || '请稍后重试'}
+                onRetry={() => {
+                  if (activeScope.type === 'issue') {
+                    void loadCandidateIssues({
+                      owner: activeScope.owner,
+                      repo: activeScope.repo,
+                      number: activeScope.number,
+                    })
+                    return
+                  }
+                  if (activeScope.type === 'repo') {
+                    void loadCandidateIssues({
+                      owner: activeScope.owner,
+                      repo: activeScope.repo,
+                    })
+                    return
+                  }
+                  void loadCandidateIssues()
+                }}
+              />
+            ) : (
+              <>
+                <div className="issues-toolbar">
+                  <div className="issues-tabs">
+                    <button className="issues-tab active">
+                      {listTitle}
+                      <span className="issues-tab-count">{issues.length}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {aiFallbackWarnings.length ? (
+                  <div className="issue-subtle-notice">
+                    部分推荐暂时使用基础信息生成，稍后刷新可能会更完整。
+                  </div>
+                ) : null}
+
+                <div className="issues-list candidate-issues-list">
+                  {issues.length > 0 ? (
+                    issues.map((issue) => (
+                      <CandidateIssueCard
+                        key={issue.id}
+                        issue={issue}
+                        expanded={expandedId === issue.id}
+                        analysisStatus={analysisStatusByIssue[issue.id] || 'idle'}
+                        onToggle={() =>
+                          setExpandedId((current) =>
+                            current === issue.id ? null : issue.id,
+                          )
+                        }
+                        onStart={() => handleStart(issue)}
+                      />
+                    ))
+                  ) : (
+                    <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
+                      {activeScope.type === 'repo'
+                        ? `在 ${activeScope.owner}/${activeScope.repo} 中暂未找到合适的开放 Issue。`
+                        : activeScope.type === 'issue'
+                          ? '未能评估该 Issue，请检查链接后重试。'
+                          : '暂未找到候选 Issue。当前阶段不会为了凑数扩展到普通 issue 搜索。'}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
