@@ -180,7 +180,7 @@ export interface UserProfileContext {
 
 export interface AIProviderConfig {
   mode: 'platform' | 'custom'
-  provider: 'deepseek' | 'openai' | 'openai-compatible'
+  provider: 'deepseek' | 'openai' | 'orcarouter' | 'openai-compatible'
   baseUrl?: string
   apiKey?: string
   model: string

@@ -10,7 +10,11 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-type PlatformLlmProvider = 'deepseek' | 'openai' | 'openai-compatible'
+type PlatformLlmProvider =
+  | 'deepseek'
+  | 'openai'
+  | 'orcarouter'
+  | 'openai-compatible'
 
 function readEnv(name: string): string | undefined {
   const value = process.env[name]
@@ -18,7 +22,12 @@ function readEnv(name: string): string | undefined {
 }
 
 function normalizeProvider(value: string | undefined): PlatformLlmProvider {
-  if (value === 'openai' || value === 'openai-compatible' || value === 'deepseek') {
+  if (
+    value === 'openai' ||
+    value === 'orcarouter' ||
+    value === 'openai-compatible' ||
+    value === 'deepseek'
+  ) {
     return value
   }
   return 'deepseek'
@@ -35,6 +44,20 @@ function normalizeTimeoutMs(value: string | undefined, fallback: number): number
   return Math.floor(parsed)
 }
 
+function defaultBaseUrlForProvider(provider: PlatformLlmProvider): string {
+  if (provider === 'openai') return 'https://api.openai.com/v1'
+  if (provider === 'orcarouter') return 'https://api.orcarouter.ai/v1'
+  if (provider === 'openai-compatible') return ''
+  return 'https://api.deepseek.com'
+}
+
+function defaultModelForProvider(provider: PlatformLlmProvider): string {
+  if (provider === 'openai') return 'gpt-4o-mini'
+  if (provider === 'orcarouter') return 'deepseek/deepseek-chat'
+  if (provider === 'openai-compatible') return ''
+  return 'deepseek-v4-flash'
+}
+
 const githubApiBaseUrl = normalizeBaseUrl(
   readEnv('GITHUB_API_BASE_URL'),
   'https://api.github.com',
@@ -43,10 +66,12 @@ const defaultLlmProvider = normalizeProvider(
   readEnv('DEFAULT_LLM_PROVIDER') ?? readEnv('LLM_PROVIDER'),
 )
 const defaultLlmModel =
-  readEnv('DEFAULT_LLM_MODEL') ?? readEnv('LLM_MODEL') ?? 'deepseek-v4-flash'
+  readEnv('DEFAULT_LLM_MODEL') ??
+  readEnv('LLM_MODEL') ??
+  defaultModelForProvider(defaultLlmProvider)
 const defaultLlmBaseUrl = normalizeBaseUrl(
   readEnv('DEFAULT_LLM_BASE_URL') ?? readEnv('LLM_API_BASE_URL'),
-  'https://api.deepseek.com',
+  defaultBaseUrlForProvider(defaultLlmProvider),
 )
 const llmTimeoutMs = normalizeTimeoutMs(
   readEnv('LLM_TIMEOUT_MS') ?? readEnv('LLM_TIMEOUT'),

@@ -203,6 +203,8 @@ const DEEPSEEK_MODELS = [
 const PROVIDER_HINTS: Record<AIProvider, string> = {
   deepseek: '默认 Base URL 为 https://api.deepseek.com，一般无需修改。',
   openai: '使用 OpenAI 官方 endpoint，主要填写 API Key 与模型。',
+  orcarouter:
+    'OrcaRouter 使用 OpenAI Compatible 接口，默认 Base URL 为 https://api.orcarouter.ai/v1，模型名通常形如 deepseek/deepseek-chat。',
   'openai-compatible':
     '适用于 OpenRouter、代理或本地兼容服务，需同时填写 Base URL、Key 与模型。',
 }
@@ -210,12 +212,14 @@ const PROVIDER_HINTS: Record<AIProvider, string> = {
 function defaultBaseUrl(provider: AIProvider): string {
   if (provider === 'deepseek') return 'https://api.deepseek.com'
   if (provider === 'openai') return 'https://api.openai.com/v1'
+  if (provider === 'orcarouter') return 'https://api.orcarouter.ai/v1'
   return ''
 }
 
 function defaultModel(provider: AIProvider): string {
   if (provider === 'deepseek') return 'deepseek-v4-flash'
   if (provider === 'openai') return 'gpt-4o-mini'
+  if (provider === 'orcarouter') return 'deepseek/deepseek-chat'
   return ''
 }
 
@@ -593,6 +597,7 @@ const AIProviderSettings = () => {
               options={[
                 { value: 'deepseek', label: 'DeepSeek' },
                 { value: 'openai', label: 'OpenAI' },
+                { value: 'orcarouter', label: 'OrcaRouter' },
                 {
                   value: 'openai-compatible',
                   label: 'OpenAI Compatible',
@@ -649,6 +654,8 @@ const AIProviderSettings = () => {
                 placeholder={
                   draft.provider === 'openai'
                     ? 'gpt-4o-mini'
+                    : draft.provider === 'orcarouter'
+                      ? 'deepseek/deepseek-chat'
                     : 'your-model-name'
                 }
                 onChange={(model) =>

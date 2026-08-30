@@ -37,7 +37,7 @@ function isPublicProviderUrl(value: string): boolean {
 const aiProviderConfigSchema = z
   .object({
     mode: z.enum(['platform', 'custom']),
-    provider: z.enum(['deepseek', 'openai', 'openai-compatible']),
+    provider: z.enum(['deepseek', 'openai', 'orcarouter', 'openai-compatible']),
     baseUrl: z
       .string()
       .url()
@@ -130,6 +130,8 @@ export const aiRequestContext = (
       data.baseUrl = 'https://api.deepseek.com'
     } else if (data.provider === 'openai') {
       data.baseUrl = 'https://api.openai.com/v1'
+    } else if (data.provider === 'orcarouter') {
+      data.baseUrl = 'https://api.orcarouter.ai/v1'
     }
   }
 

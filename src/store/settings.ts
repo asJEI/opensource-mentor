@@ -43,9 +43,11 @@ function normalizeAIConfig(value: unknown): AIProviderConfig {
   const provider =
     data.provider === 'openai'
       ? 'openai'
-      : data.provider === 'openai-compatible'
-        ? 'openai-compatible'
-        : 'deepseek'
+      : data.provider === 'orcarouter'
+        ? 'orcarouter'
+        : data.provider === 'openai-compatible'
+          ? 'openai-compatible'
+          : 'deepseek'
 
   return {
     mode: data.mode === 'custom' ? 'custom' : 'platform',
@@ -65,7 +67,9 @@ function normalizeAIConfig(value: unknown): AIProviderConfig {
           ? 'deepseek-v4-flash'
           : provider === 'openai'
             ? 'gpt-4o-mini'
-            : '',
+            : provider === 'orcarouter'
+              ? 'deepseek/deepseek-chat'
+              : '',
   }
 }
 

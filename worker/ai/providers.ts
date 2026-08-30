@@ -4,6 +4,10 @@
  */
 
 import type { PlatformLlmProvider } from '../../shared/config'
+import {
+  PLATFORM_LLM_PROVIDER_DEFAULT_BASE_URL,
+  PLATFORM_LLM_PROVIDER_DEFAULT_MODEL,
+} from '../../shared/config'
 import { ErrorCode } from '../../shared/errors'
 import { ApiError } from '../http'
 
@@ -17,17 +21,9 @@ export type AIConfig = {
   timeoutMs?: number
 }
 
-export const PROVIDER_DEFAULT_BASE_URL: Record<AIProvider, string> = {
-  deepseek: 'https://api.deepseek.com',
-  openai: 'https://api.openai.com/v1',
-  'openai-compatible': '',
-}
+export const PROVIDER_DEFAULT_BASE_URL = PLATFORM_LLM_PROVIDER_DEFAULT_BASE_URL
 
-export const PROVIDER_DEFAULT_MODEL: Record<AIProvider, string> = {
-  deepseek: 'deepseek-v4-flash',
-  openai: 'gpt-4o-mini',
-  'openai-compatible': '',
-}
+export const PROVIDER_DEFAULT_MODEL = PLATFORM_LLM_PROVIDER_DEFAULT_MODEL
 
 function isPublicHttpsUrl(value: string): boolean {
   try {

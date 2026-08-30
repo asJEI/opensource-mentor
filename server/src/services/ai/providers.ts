@@ -5,6 +5,7 @@ import type { AIRuntime } from './types'
 export const PROVIDER_DEFAULT_BASE_URLS: Record<string, string> = {
   deepseek: 'https://api.deepseek.com',
   openai: 'https://api.openai.com/v1',
+  orcarouter: 'https://api.orcarouter.ai/v1',
   'openai-compatible': '',
 }
 

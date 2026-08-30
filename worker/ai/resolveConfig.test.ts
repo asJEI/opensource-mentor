@@ -60,6 +60,26 @@ describe('resolveAIClient', () => {
     expect(limit).not.toHaveBeenCalled()
   })
 
+  it('uses OrcaRouter defaults for BYOK when base URL is omitted', async () => {
+    const { env, limit } = createEnv()
+    const request = new Request('https://mentor.example/api/ai/chat', {
+      headers: {
+        [BYOK_HEADERS.aiMode]: 'custom',
+        [BYOK_HEADERS.aiProvider]: 'orcarouter',
+        [BYOK_HEADERS.aiModel]: 'deepseek/deepseek-chat',
+        [BYOK_HEADERS.aiKey]: 'sk-orca-user-secret',
+      },
+    })
+
+    const resolved = await resolveAIClient(env, request, {})
+
+    expect(resolved.isCustom).toBe(true)
+    expect(resolved.client.provider).toBe('orcarouter')
+    expect(resolved.client.baseUrl).toBe('https://api.orcarouter.ai/v1')
+    expect(resolved.client.model).toBe('deepseek/deepseek-chat')
+    expect(limit).not.toHaveBeenCalled()
+  })
+
   it('rejects platform requests after the quota is exhausted', async () => {
     const { env } = createEnv(false)
     const request = new Request('https://mentor.example/api/ai/chat')

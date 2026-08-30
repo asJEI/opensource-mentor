@@ -4,7 +4,11 @@
  * User BYOK values are request-scoped only (localStorage → request → Worker).
  */
 
-export type PlatformLlmProvider = 'deepseek' | 'openai' | 'openai-compatible'
+export type PlatformLlmProvider =
+  | 'deepseek'
+  | 'openai'
+  | 'orcarouter'
+  | 'openai-compatible'
 
 /** Non-secret platform defaults (safe for wrangler vars / docs). */
 export interface PlatformPublicConfig {
@@ -43,6 +47,26 @@ export const PLATFORM_PUBLIC_DEFAULTS: PlatformPublicConfig = {
   llmTimeoutMs: 120_000,
 }
 
+export const PLATFORM_LLM_PROVIDER_DEFAULT_BASE_URL: Record<
+  PlatformLlmProvider,
+  string
+> = {
+  deepseek: 'https://api.deepseek.com',
+  openai: 'https://api.openai.com/v1',
+  orcarouter: 'https://api.orcarouter.ai/v1',
+  'openai-compatible': '',
+}
+
+export const PLATFORM_LLM_PROVIDER_DEFAULT_MODEL: Record<
+  PlatformLlmProvider,
+  string
+> = {
+  deepseek: 'deepseek-v4-flash',
+  openai: 'gpt-4o-mini',
+  orcarouter: 'deepseek/deepseek-chat',
+  'openai-compatible': '',
+}
+
 /** Safe status payload — never includes secret values. */
 export interface PlatformConfigStatus {
   githubApiBaseUrl: string
@@ -69,7 +93,12 @@ export function toPlatformConfigStatus(
 }
 
 export function normalizeProvider(value: string | undefined): PlatformLlmProvider {
-  if (value === 'openai' || value === 'openai-compatible' || value === 'deepseek') {
+  if (
+    value === 'openai' ||
+    value === 'orcarouter' ||
+    value === 'openai-compatible' ||
+    value === 'deepseek'
+  ) {
     return value
   }
   return PLATFORM_PUBLIC_DEFAULTS.defaultLlmProvider

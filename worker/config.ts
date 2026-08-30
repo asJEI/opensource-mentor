@@ -2,6 +2,8 @@ import {
   normalizeBaseUrl,
   normalizeProvider,
   normalizeTimeoutMs,
+  PLATFORM_LLM_PROVIDER_DEFAULT_BASE_URL,
+  PLATFORM_LLM_PROVIDER_DEFAULT_MODEL,
   PLATFORM_PUBLIC_DEFAULTS,
   type PlatformConfig,
   type PlatformConfigStatus,
@@ -23,17 +25,21 @@ export type PlatformEnv = CloudflareEnv & {
 }
 
 export function resolvePlatformConfig(env: PlatformEnv): PlatformConfig {
+  const defaultLlmProvider = normalizeProvider(env.DEFAULT_LLM_PROVIDER)
   return {
     githubApiBaseUrl: normalizeBaseUrl(
       env.GITHUB_API_BASE_URL,
       PLATFORM_PUBLIC_DEFAULTS.githubApiBaseUrl,
     ),
-    defaultLlmProvider: normalizeProvider(env.DEFAULT_LLM_PROVIDER),
+    defaultLlmProvider,
     defaultLlmModel:
-      env.DEFAULT_LLM_MODEL?.trim() || PLATFORM_PUBLIC_DEFAULTS.defaultLlmModel,
+      env.DEFAULT_LLM_MODEL?.trim() ||
+      PLATFORM_LLM_PROVIDER_DEFAULT_MODEL[defaultLlmProvider] ||
+      PLATFORM_PUBLIC_DEFAULTS.defaultLlmModel,
     defaultLlmBaseUrl: normalizeBaseUrl(
       env.DEFAULT_LLM_BASE_URL,
-      PLATFORM_PUBLIC_DEFAULTS.defaultLlmBaseUrl,
+      PLATFORM_LLM_PROVIDER_DEFAULT_BASE_URL[defaultLlmProvider] ||
+        PLATFORM_PUBLIC_DEFAULTS.defaultLlmBaseUrl,
     ),
     llmTimeoutMs: normalizeTimeoutMs(
       env.LLM_TIMEOUT_MS,
