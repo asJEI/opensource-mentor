@@ -759,6 +759,12 @@
   color: #34d399;
 }
 
+.issue-access-chip.possibly-outdated {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(96, 165, 250, 0.12);
+  color: #93c5fd;
+}
+
 .issue-row-labels {
   display: flex;
   gap: 6px;

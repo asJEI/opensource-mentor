@@ -17,6 +17,10 @@ export interface PullRequestFile {
   raw_url: string
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export class GitHubService {
   constructor(private readonly client: GitHubClient) {}
 
@@ -92,6 +96,40 @@ export class GitHubService {
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
     )
     return mapIssue(data)
+  }
+
+  async getIssueComments(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    perPage = 30,
+  ): Promise<
+    Array<{
+      id: number
+      body: string
+      author: string
+      authorAssociation: string
+      createdAt: string
+      updatedAt: string
+    }>
+  > {
+    const { data } = await this.client.getJson<Array<Record<string, unknown>>>(
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments`,
+      {
+        query: {
+          per_page: Math.min(Math.max(perPage, 1), 100),
+          page: 1,
+        },
+      },
+    )
+    return data.map((comment) => ({
+      id: Number(comment.id) || 0,
+      body: typeof comment.body === 'string' ? comment.body : '',
+      author: isRecord(comment.user) ? String(comment.user.login || '') : '',
+      authorAssociation: String(comment.author_association || ''),
+      createdAt: String(comment.created_at || ''),
+      updatedAt: String(comment.updated_at || ''),
+    }))
   }
 
   async searchIssues(

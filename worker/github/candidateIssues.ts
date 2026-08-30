@@ -49,10 +49,33 @@ type IssueLLMAnalysis = {
 
 type ContributionAccess = 'claim_required' | 'direct_submit'
 
+type AvailabilityStatus =
+  | 'ready_to_start'
+  | 'ask_first'
+  | 'claimed'
+  | 'assigned'
+  | 'has_linked_pr'
+  | 'possibly_outdated'
+  | 'uncertain'
+
 type ContributionAccessInfo = {
   access: ContributionAccess
   hint: string
   signals: string[]
+}
+
+type IssueAvailabilityInfo = {
+  status: AvailabilityStatus
+  canRecommend: boolean
+  shouldAskFirst: boolean
+  reasons: string[]
+  evidence: string[]
+  linkedPullRequests: Array<{
+    number: number
+    title: string
+    url: string
+    state: 'open' | 'closed'
+  }>
 }
 
 type MatchDetails = {
@@ -99,6 +122,7 @@ type CandidateIssue = {
   contributionAccess?: ContributionAccess
   /** 认领/直接提交说明 */
   claimHint?: string
+  availability?: IssueAvailabilityInfo
   analysis?: IssueLLMAnalysis
   whyThisFitsYou?: string[]
   matchScore?: number
@@ -271,10 +295,12 @@ function toCandidateIssue(
     user: item.user,
   }
   const access = detectContributionAccess(base)
+  const availability = buildBaseAvailability(base)
   return {
     ...base,
     contributionAccess: access.access,
     claimHint: access.hint,
+    availability,
   }
 }
 
@@ -322,6 +348,191 @@ function detectContributionAccess(issue: CandidateIssue): ContributionAccessInfo
     hint: '当前看不需要额外认领，可直接按 Issue 完成修改并提交 PR。',
     signals: [],
   }
+}
+
+const CLAIM_PATTERNS = [
+  /\bi['’]?d like to work on this\b/i,
+  /\bcan i (take|work on|pick up) this\b/i,
+  /\bi'?m working on this\b/i,
+  /\bi can work on this\b/i,
+  /\bassign me\b/i,
+  /\bplease assign\b/i,
+  /我(想|来|可以).*?(处理|解决|认领|做)/i,
+  /可以.*?(分配|指派).*?我/i,
+]
+
+const MAINTAINER_APPROVAL_PATTERNS = [
+  /\bassigned to you\b/i,
+  /\bgo ahead\b/i,
+  /\bsure\b/i,
+  /\bplease do\b/i,
+  /\bthanks.*assigned\b/i,
+  /已(分配|指派).*?(给你|给|处理)/i,
+  /可以.*?(开始|处理|解决)/i,
+]
+
+const ASK_FIRST_PATTERNS = [
+  /please (ask|comment|claim) before (working|starting)/i,
+  /comment before (working|starting)/i,
+  /needs? approval/i,
+  /claim this issue/i,
+  /first[-\s]?time contributors?.*?(ask|comment)/i,
+  /请先(认领|评论|沟通|申请)/i,
+  /等待(维护者|maintainer).*?(确认|指派|分配)/i,
+]
+
+const STALE_DOC_PATTERNS = [
+  /add.*readme/i,
+  /create.*readme/i,
+  /missing.*readme/i,
+  /补(全|充|写).*readme/i,
+  /添加.*readme/i,
+]
+
+type IssueCommentSignal = {
+  body: string
+  author: string
+  authorAssociation: string
+}
+
+function hasMaintainerAssociation(authorAssociation: string): boolean {
+  return /OWNER|MEMBER|COLLABORATOR/i.test(authorAssociation)
+}
+
+function buildBaseAvailability(issue: CandidateIssue): IssueAvailabilityInfo {
+  if (issue.assignee || issue.assignees.length > 0) {
+    return {
+      status: 'assigned',
+      canRecommend: false,
+      shouldAskFirst: false,
+      reasons: ['这个 Issue 已经分配给其他贡献者。'],
+      evidence: [
+        `assignees: ${[
+          issue.assignee?.login,
+          ...issue.assignees.map((item) => item.login),
+        ]
+          .filter(Boolean)
+          .join(', ')}`,
+      ],
+      linkedPullRequests: [],
+    }
+  }
+
+  const access = detectContributionAccess(issue)
+  if (access.access === 'claim_required') {
+    return {
+      status: 'ask_first',
+      canRecommend: true,
+      shouldAskFirst: true,
+      reasons: ['这个 Issue 看起来需要先评论认领或等待维护者确认。'],
+      evidence: access.signals,
+      linkedPullRequests: [],
+    }
+  }
+
+  return {
+    status: 'ready_to_start',
+    canRecommend: true,
+    shouldAskFirst: false,
+    reasons: ['没有发现已分配、已认领或必须先申请的明确信号。'],
+    evidence: [],
+    linkedPullRequests: [],
+  }
+}
+
+function mergeAvailability(
+  current: IssueAvailabilityInfo,
+  next: Partial<IssueAvailabilityInfo>,
+): IssueAvailabilityInfo {
+  return {
+    status: next.status ?? current.status,
+    canRecommend: next.canRecommend ?? current.canRecommend,
+    shouldAskFirst: next.shouldAskFirst ?? current.shouldAskFirst,
+    reasons: [...current.reasons, ...(next.reasons ?? [])],
+    evidence: [...current.evidence, ...(next.evidence ?? [])],
+    linkedPullRequests: next.linkedPullRequests ?? current.linkedPullRequests,
+  }
+}
+
+function evaluateCommentsAvailability(
+  issue: CandidateIssue,
+  comments: IssueCommentSignal[],
+): Partial<IssueAvailabilityInfo> {
+  const claimComments = comments.filter((comment) =>
+    CLAIM_PATTERNS.some((pattern) => pattern.test(comment.body)),
+  )
+  const maintainerApprovals = comments.filter(
+    (comment) =>
+      hasMaintainerAssociation(comment.authorAssociation) &&
+      MAINTAINER_APPROVAL_PATTERNS.some((pattern) => pattern.test(comment.body)),
+  )
+  const askFirstComments = comments.filter((comment) =>
+    ASK_FIRST_PATTERNS.some((pattern) => pattern.test(comment.body)),
+  )
+
+  if (claimComments.length > 0 && maintainerApprovals.length > 0) {
+    return {
+      status: 'claimed',
+      canRecommend: false,
+      shouldAskFirst: false,
+      reasons: ['评论区已有贡献者认领，并且维护者看起来已经确认。'],
+      evidence: [
+        `claim: ${claimComments[0].author}`,
+        `maintainer: ${maintainerApprovals[0].author}`,
+      ],
+    }
+  }
+
+  if (claimComments.length > 0) {
+    return {
+      status: 'claimed',
+      canRecommend: false,
+      shouldAskFirst: false,
+      reasons: ['评论区已有贡献者表示正在处理或想认领。'],
+      evidence: [`claim: ${claimComments[0].author}`],
+    }
+  }
+
+  if (askFirstComments.length > 0) {
+    return {
+      status: 'ask_first',
+      canRecommend: true,
+      shouldAskFirst: true,
+      reasons: ['评论区提示需要先沟通或确认后再开始。'],
+      evidence: [`comment: ${askFirstComments[0].author}`],
+    }
+  }
+
+  return {}
+}
+
+function evaluateOutdatedRisk(
+  issue: CandidateIssue,
+  repositoryFiles: Set<string>,
+): Partial<IssueAvailabilityInfo> {
+  const haystack = `${issue.title}\n${issue.body}`
+  if (
+    STALE_DOC_PATTERNS.some((pattern) => pattern.test(haystack)) &&
+    repositoryFiles.has('readme.md')
+  ) {
+    return {
+      status: 'possibly_outdated',
+      canRecommend: true,
+      shouldAskFirst: true,
+      reasons: ['这个 Issue 提到 README 相关工作，但仓库当前已经存在 README，需要先核验是否仍有效。'],
+      evidence: ['confirmed file: README.md'],
+    }
+  }
+  return {}
+}
+
+function availabilityPenalty(availability?: IssueAvailabilityInfo): number {
+  if (!availability) return 0
+  if (!availability.canRecommend) return -1000
+  if (availability.status === 'possibly_outdated') return -35
+  if (availability.status === 'ask_first') return -18
+  if (availability.status === 'uncertain') return -12
+  return 0
 }
 
 function isRecentlyUpdated(updatedAt: string): boolean {
@@ -402,6 +613,7 @@ function calculatePreselectScore(
   if (issue.body.trim().length >= 500) score += 10
   if (issue.comments <= 5) score += 8
   if (isRecentlyUpdated(issue.updatedAt)) score += 12
+  score += availabilityPenalty(issue.availability)
   return score
 }
 
@@ -567,7 +779,10 @@ function createWhyThisFitsYou(
   user: OnboardingContext,
 ): string[] {
   const reasons: string[] = []
-  const access = detectContributionAccess(issue)
+  const availability = issue.availability
+  const access = availability?.shouldAskFirst
+    ? { access: 'claim_required' as const }
+    : detectContributionAccess(issue)
   const techScore = technologyMatchScore(issue, analysis, user)
   if (techScore >= 50 && user.technologies.length > 0) {
     reasons.push('它和你当前选择或常用的技术栈有重合。')
@@ -585,9 +800,12 @@ function createWhyThisFitsYou(
     reasons.push('改动范围看起来较小，适合先从局部理解和验证开始。')
   }
   if (access.access === 'claim_required') {
-    reasons.push('注意：动手前需要先评论认领，并等待维护者指派。')
+    reasons.push('注意：动手前建议先评论询问维护者，确认无人处理后再开始。')
   } else {
     reasons.push('看起来可直接动手修改并提交 PR，无需额外认领流程。')
+  }
+  if (availability?.status === 'possibly_outdated') {
+    reasons.push('这个 Issue 可能需要先核验仓库现状，避免处理已经完成的需求。')
   }
   if (reasons.length === 0) {
     reasons.push('它具备较清晰的 Issue 描述，可以作为候选任务进一步评估。')
@@ -650,6 +868,102 @@ function passesBasicFilters(item: GitHubSearchIssueItemDto): boolean {
   if (!item.body || item.body.trim().length < MIN_BODY_LENGTH) return false
   if (!isRecentlyUpdated(item.updatedAt)) return false
   return true
+}
+
+async function enrichIssueAvailability(
+  github: ReturnType<typeof createGitHubService>,
+  issue: CandidateIssue,
+): Promise<CandidateIssue> {
+  let availability = buildBaseAvailability(issue)
+
+  try {
+    const comments = await github.getIssueComments(
+      issue.repository.owner,
+      issue.repository.name,
+      issue.issueNumber,
+      30,
+    )
+    availability = mergeAvailability(
+      availability,
+      evaluateCommentsAvailability(issue, comments),
+    )
+  } catch (error) {
+    availability = mergeAvailability(availability, {
+      status: availability.status === 'ready_to_start' ? 'uncertain' : availability.status,
+      reasons: ['评论区状态暂时无法确认，已降低推荐优先级。'],
+      evidence: [
+        `comments unavailable: ${error instanceof Error ? error.message : 'unknown error'}`,
+      ],
+    })
+  }
+
+  try {
+    const linked = await github.searchIssues(
+      `repo:${issue.repository.fullName} type:pr ${JSON.stringify(`#${issue.issueNumber}`)}`,
+      {
+        sort: 'updated',
+        order: 'desc',
+        perPage: 5,
+      },
+    )
+    const linkedPullRequests = linked.items
+      .filter((item) => item.pullRequest)
+      .map((item) => ({
+        number: item.number,
+        title: item.title,
+        url: item.htmlUrl,
+        state: item.state,
+      }))
+    if (linkedPullRequests.length > 0) {
+      availability = mergeAvailability(availability, {
+        status: 'has_linked_pr',
+        canRecommend: false,
+        shouldAskFirst: false,
+        reasons: ['已经发现关联 PR，可能已有贡献者开始或完成实现。'],
+        evidence: linkedPullRequests.map((pr) => `PR #${pr.number}: ${pr.title}`),
+        linkedPullRequests,
+      })
+    }
+  } catch (error) {
+    availability = mergeAvailability(availability, {
+      status: availability.status === 'ready_to_start' ? 'uncertain' : availability.status,
+      reasons: ['关联 PR 暂时无法确认，已降低推荐优先级。'],
+      evidence: [
+        `linked PR search unavailable: ${error instanceof Error ? error.message : 'unknown error'}`,
+      ],
+    })
+  }
+
+  try {
+    const tree = await github.getRepositoryTree(
+      issue.repository.owner,
+      issue.repository.name,
+      issue.repository.defaultBranch || 'main',
+    )
+    const repositoryFiles = new Set(tree.map((item) => item.path.toLowerCase()))
+    availability = mergeAvailability(
+      availability,
+      evaluateOutdatedRisk(issue, repositoryFiles),
+    )
+  } catch (error) {
+    availability = mergeAvailability(availability, {
+      reasons: ['仓库当前文件树暂时无法确认，过时风险未完全排除。'],
+      evidence: [
+        `file tree unavailable: ${error instanceof Error ? error.message : 'unknown error'}`,
+      ],
+    })
+  }
+
+  return {
+    ...issue,
+    availability,
+    contributionAccess: availability.shouldAskFirst
+      ? 'claim_required'
+      : issue.contributionAccess,
+    claimHint: availability.shouldAskFirst
+      ? '这个 Issue 需要先确认状态：请先评论询问维护者，确认无人处理后再开始。'
+      : issue.claimHint,
+  }
 }
 
 async function readJsonBody(request: Request): Promise<Record<string, unknown>> {
@@ -717,6 +1031,31 @@ function candidateIssueFromBody(body: Record<string, unknown>): CandidateIssue {
     },
   }
   const access = detectContributionAccess(base)
+  const availability =
+    isRecord(issue.availability)
+      ? {
+          status:
+            typeof issue.availability.status === 'string'
+              ? (issue.availability.status as AvailabilityStatus)
+              : buildBaseAvailability(base).status,
+          canRecommend: issue.availability.canRecommend !== false,
+          shouldAskFirst: Boolean(issue.availability.shouldAskFirst),
+          reasons: stringArray(issue.availability.reasons),
+          evidence: stringArray(issue.availability.evidence),
+          linkedPullRequests: Array.isArray(issue.availability.linkedPullRequests)
+            ? issue.availability.linkedPullRequests
+                .filter(isRecord)
+                .map((pr) => ({
+                  number: Number(pr.number) || 0,
+                  title: String(pr.title || ''),
+                  url: String(pr.url || ''),
+                  state: (pr.state === 'closed' ? 'closed' : 'open') as
+                    | 'open'
+                    | 'closed',
+                }))
+            : [],
+        }
+      : buildBaseAvailability(base)
   return {
     ...base,
     contributionAccess:
@@ -728,6 +1067,7 @@ function candidateIssueFromBody(body: Record<string, unknown>): CandidateIssue {
       typeof issue.claimHint === 'string' && issue.claimHint.trim()
         ? issue.claimHint.trim()
         : access.hint,
+    availability,
   }
 }
 
@@ -840,7 +1180,7 @@ export async function handleGetCandidateIssues(
     .slice(0, MAX_PRESELECTED_ISSUES)
     .map((entry) => entry.issue)
 
-  const recommendedIssues = await Promise.all(
+  const enrichedIssues = await Promise.all(
     preselectedIssues.slice(0, MAX_LLM_ANALYZED_ISSUES).map(async (issue) => {
       try {
         const repository = await github.getRepository(
@@ -865,6 +1205,19 @@ export async function handleGetCandidateIssues(
       }
     }),
   )
+
+  const availabilityCheckedIssues = await Promise.all(
+    enrichedIssues.map((issue) => enrichIssueAvailability(github, issue)),
+  )
+
+  const recommendedIssues = availabilityCheckedIssues
+    .filter((issue) => issue.availability?.canRecommend !== false)
+    .sort((a, b) => {
+      const scoreA = calculatePreselectScore(a, onboarding)
+      const scoreB = calculatePreselectScore(b, onboarding)
+      if (scoreB !== scoreA) return scoreB - scoreA
+      return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
+    })
 
   console.info('[candidate-issues] fetched', {
     technologies,
@@ -941,7 +1294,13 @@ export async function handleAnalyzeCandidateIssue(
     analysis,
     onboarding,
   )
-  const access = detectContributionAccess(issue)
+  const availability = issue.availability ?? buildBaseAvailability(issue)
+  const access = availability.shouldAskFirst
+    ? {
+        access: 'claim_required' as const,
+        hint: '这个 Issue 需要先确认状态：请先评论询问维护者，确认无人处理后再开始。',
+      }
+    : detectContributionAccess(issue)
 
   return success({
     issueId: String(issue.id),
@@ -951,6 +1310,7 @@ export async function handleAnalyzeCandidateIssue(
     matchDetails,
     contributionAccess: access.access,
     claimHint: access.hint,
+    availability,
     fromCache,
     recommendationFallback: fallback,
   })

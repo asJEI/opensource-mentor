@@ -321,6 +321,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
                     contributionAccess:
                       result.contributionAccess || candidate.contributionAccess,
                     claimHint: result.claimHint || candidate.claimHint,
+                    availability: result.availability || candidate.availability,
                   }
                 : candidate,
             )

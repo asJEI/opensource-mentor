@@ -90,6 +90,21 @@ function localizeScope(raw?: string | null): string {
   return raw.trim()
 }
 
+function availabilityLabel(issue: CandidateIssue): string {
+  const status = issue.availability?.status
+  if (status === 'ask_first' || issue.availability?.shouldAskFirst) return '建议先确认'
+  if (status === 'possibly_outdated') return '先核验现状'
+  if (status === 'uncertain') return '状态待确认'
+  return '可以开始'
+}
+
+function availabilityDescription(issue: CandidateIssue): string {
+  if (issue.availability?.reasons?.length) {
+    return issue.availability.reasons.join(' ')
+  }
+  return issue.claimHint || '当前没有发现已分配、已认领或已有 PR 的明确信号。'
+}
+
 function looksLikeEnglishSummary(text: string): boolean {
   const trimmed = text.trim()
   if (!trimmed) return false
@@ -125,10 +140,12 @@ const CandidateIssueCard = ({
     issue.contributionAccess ||
     (issue.claimHint?.includes('认领') ? 'claim_required' : 'direct_submit')
   const claimHint =
+    availabilityDescription(issue) ||
     issue.claimHint ||
     (contributionAccess === 'claim_required'
       ? '开始动手前，请先按仓库要求在 Issue 下评论认领，并等待维护者审核或指派。'
       : '当前看不需要额外认领，可直接按 Issue 完成修改并提交 PR。')
+  const availabilityText = availabilityLabel(issue)
 
   return (
     <article className={clsx('issue-row-card', expanded && 'expanded')}>
@@ -148,14 +165,14 @@ const CandidateIssueCard = ({
           <span
             className={clsx(
               'issue-access-chip',
-              contributionAccess === 'claim_required'
+              issue.availability?.status === 'possibly_outdated'
+                ? 'possibly-outdated'
+                : contributionAccess === 'claim_required'
                 ? 'claim-required'
                 : 'direct-submit',
             )}
           >
-            {contributionAccess === 'claim_required'
-              ? '需先认领'
-              : '可直接提交'}
+            {availabilityText}
           </span>
           {technologies.slice(0, 3).map((technology) => (
             <span key={technology}>{technology}</span>
@@ -177,12 +194,20 @@ const CandidateIssueCard = ({
               <p>
                 <strong>
                   {contributionAccess === 'claim_required'
-                    ? '需先认领'
-                    : '可直接提交'}
+                    ? '建议先确认'
+                    : availabilityText}
                 </strong>
                 {' · '}
                 {claimHint}
               </p>
+              {issue.availability?.linkedPullRequests?.length ? (
+                <p>
+                  已发现关联 PR：
+                  {issue.availability.linkedPullRequests
+                    .map((pr) => `#${pr.number} ${pr.title}`)
+                    .join('；')}
+                </p>
+              ) : null}
             </section>
             <section>
               <h3>Issue 简介</h3>

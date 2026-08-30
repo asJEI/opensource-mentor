@@ -153,6 +153,26 @@ export interface CandidateIssue extends Issue {
     repositoryHealth: number
   }
   recommendationFallback?: boolean
+  availability?: {
+    status:
+      | 'ready_to_start'
+      | 'ask_first'
+      | 'claimed'
+      | 'assigned'
+      | 'has_linked_pr'
+      | 'possibly_outdated'
+      | 'uncertain'
+    canRecommend: boolean
+    shouldAskFirst: boolean
+    reasons: string[]
+    evidence: string[]
+    linkedPullRequests: Array<{
+      number: number
+      title: string
+      url: string
+      state: 'open' | 'closed'
+    }>
+  }
   /** 是否需要先认领：claim_required | direct_submit */
   contributionAccess?: 'claim_required' | 'direct_submit'
   /** 认领/直接提交说明 */
@@ -169,6 +189,7 @@ export interface CandidateIssueAnalysisResult {
   recommendationFallback: boolean
   contributionAccess?: 'claim_required' | 'direct_submit'
   claimHint?: string
+  availability?: CandidateIssue['availability']
 }
 
 export interface CandidateIssuesMeta {

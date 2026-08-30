@@ -100,6 +100,7 @@ class GithubService {
       matchDetails: data.matchDetails,
       fromCache: Boolean(data.fromCache),
       recommendationFallback: Boolean(data.recommendationFallback),
+      availability: data.availability,
       contributionAccess:
         data.contributionAccess === 'claim_required' ||
         data.contributionAccess === 'direct_submit'
