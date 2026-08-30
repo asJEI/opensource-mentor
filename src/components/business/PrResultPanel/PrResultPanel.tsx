@@ -83,7 +83,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
   // Loading 状态
   if (status === 'loading') {
     return (
-      <div className={clsx('card', className)}>
+      <div className={className}>
         <div className="pr-loading active">
           <div className="pr-loading-spinner" />
           <div className="pr-loading-title">AI 正在生成 PR...</div>
@@ -117,9 +117,10 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
   // 错误状态
   if (status === 'error') {
     return (
-      <div className={clsx('card', className)}>
+      <div className={className}>
         <div className="card-body">
           <AiPageError
+            kicker="GENERATION FAILED"
             title="生成失败"
             message={error || 'PR 生成过程中出现错误，请稍后重试'}
             onRetry={onRetry}
@@ -129,59 +130,24 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
     )
   }
 
-  // 空状态
+  // 空状态：说明缺什么，而不是画一个居中的大图标
   if (!draft) {
     return (
-      <div className={clsx('card', className)}>
-        <div className="card-body">
-          <div
-            className="result-empty"
-            style={{ textAlign: 'center', padding: '40px 20px' }}
-          >
-            <div
-              className="result-empty-icon"
-              style={{
-                width: '64px',
-                height: '64px',
-                margin: '0 auto 16px',
-                borderRadius: '16px',
-                background: 'var(--accent-soft)',
-                color: 'var(--accent)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ width: '32px', height: '32px' }}
-              >
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-            </div>
-            <div
-              className="result-empty-title"
-              style={{
-                fontSize: '16px',
-                fontWeight: 600,
-                marginBottom: '6px',
-                color: 'var(--ink)',
-              }}
-            >
-              还没有生成 PR
-            </div>
-            <div
-              className="result-empty-desc"
-              style={{ fontSize: '13px', color: 'var(--muted)' }}
-            >
-              选择 PR 类型，填写相关信息，让 AI 帮你生成专业的 PR 内容
-            </div>
-          </div>
+      <div className={className}>
+        <div className="result-empty">
+          <span className="osm-kicker">
+            <span className="osm-kicker-dot" />
+            AWAITING INPUT
+          </span>
+          <div className="result-empty-title">还没有生成 PR</div>
+          <p className="result-empty-desc">
+            填好左边的类型和改动描述，AI 会给出标题、描述、变更点和测试建议。
+          </p>
+          <ol className="osm-list osm-list-ordered result-empty-steps">
+            <li>选择改动类型（fix / feat / docs）</li>
+            <li>用一两句话说明你改了什么</li>
+            <li>可选：填写要关联的 Issue 编号</li>
+          </ol>
         </div>
       </div>
     )
@@ -195,7 +161,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
   )
 
   return (
-    <div className={clsx('card', 'pr-result-content active', className)}>
+    <div className={clsx('pr-result-content active', className)}>
       {/* PR Title */}
       <div className="result-section">
         <div className="result-section-header">

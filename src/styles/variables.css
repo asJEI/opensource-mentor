@@ -1,65 +1,173 @@
 /* ============================================
-   CSS Variables & Reset
+   Design Tokens & Reset
+
+   OpenSource Mentor's visual language treats the product as a workbench for
+   reading unfamiliar codebases — not a dashboard and not a marketing page.
+   Three decisions carry the brand:
+
+   1. Warm ink neutrals. The greys sit around hue 45 at very low saturation,
+      so the dark UI reads like ink on paper rather than the cold blue-black
+      that every AI product ships with.
+   2. Brass as the single accent. Open source runs on stars and annotations;
+      brass marks what matters and never fills large areas.
+   3. Mono for every machine-authored value. Paths, counts, scores and
+      timings are data, and data is set in IBM Plex Mono with tabular figures.
+
+   Legacy token names (--ink, --accent, --rule, ...) are kept as aliases so
+   every existing page inherits the new palette without markup changes.
    ============================================ */
 
 :root {
-  /* Backgrounds */
-  --bg: #f6f8fa;
-  --bg-white: #ffffff;
-  --bg-soft: #f6f8fa;
-  --bg-hover: #f3f4f6;
+  /* ---- Typography ---- */
+  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
 
-  /* Text */
-  --ink: #111827;
-  --ink-2: #374151;
-  --muted: #6b7280;
-  --muted-2: #9ca3af;
+  /* Type scale — 1.25 ratio, tuned so 14px body stays the anchor */
+  --t-micro: 11px;
+  --t-tiny: 12px;
+  --t-small: 13px;
+  --t-body: 14px;
+  --t-lead: 15px;
+  --t-h4: 16px;
+  --t-h3: 19px;
+  --t-h2: 24px;
+  --t-h1: 30px;
 
-  /* Borders */
-  --rule: #e5e7eb;
-  --rule-soft: #f3f4f6;
+  /* Tracking — tight for display, open for mono eyebrows */
+  --tr-tight: -0.022em;
+  --tr-snug: -0.012em;
+  --tr-wide: 0.06em;
+  --tr-widest: 0.1em;
 
-  /* Accent colors */
-  --accent: #6366f1;
-  --accent-2: #8b5cf6;
-  --accent-3: #a855f7;
-  --accent-soft: #eef2ff;
-  --accent-soft-2: #f5f3ff;
+  /* ---- Space scale ---- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s7: 32px;
+  --s8: 40px;
+  --s9: 56px;
 
-  /* Status colors */
-  --green: #10b981;
-  --green-soft: #ecfdf5;
-  --yellow: #f59e0b;
-  --yellow-soft: #fffbeb;
-  --red: #ef4444;
-  --red-soft: #fef2f2;
-  --blue: #3b82f6;
-  --blue-soft: #eff6ff;
+  /* ---- Radii — controls stay crisp, containers get a little softness ---- */
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-full: 9999px;
 
-  /* Gradients */
-  --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-  --gradient-soft: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.08) 100%);
+  /* ---- Light surface set (landing page) ---- */
+  --sf-canvas: #fbfaf7;
+  --sf-1: #ffffff;
+  --sf-2: #f4f2ed;
+  --sf-3: #eae7e0;
+  --sf-inset: #f7f5f0;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 10px 40px rgba(99,102,241,0.15);
-  --shadow-xl: 0 20px 60px rgba(99,102,241,0.2);
+  --tx-1: #1a1816;
+  --tx-2: #423e38;
+  --tx-3: #6d685f;
+  --tx-4: #99938a;
 
-  /* Border radii */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
+  --ln-1: rgba(26, 24, 21, 0.11);
+  --ln-2: rgba(26, 24, 21, 0.06);
+  --ln-3: rgba(26, 24, 21, 0.2);
 
-  /* Layout */
-  --sidebar-w: 248px;
-  --header-h: 60px;
+  /* Brass — darkened on light surfaces to hold contrast */
+  --brand: #9c6f14;
+  --brand-hi: #b8861f;
+  --brand-lo: #7d5709;
+  --brand-wash: rgba(156, 111, 20, 0.09);
+  --brand-edge: rgba(156, 111, 20, 0.28);
+  --on-brand: #fffaf0;
+
+  /* Diff-native semantics: the vocabulary developers already read */
+  --ok: #157f4d;
+  --ok-wash: rgba(21, 127, 77, 0.1);
+  --ok-edge: rgba(21, 127, 77, 0.3);
+  --warn: #b8541c;
+  --warn-wash: rgba(184, 84, 28, 0.1);
+  --warn-edge: rgba(184, 84, 28, 0.3);
+  --danger: #c0332f;
+  --danger-wash: rgba(192, 51, 47, 0.09);
+  --danger-edge: rgba(192, 51, 47, 0.3);
+  --info: #24608f;
+  --info-wash: rgba(36, 96, 143, 0.09);
+  --info-edge: rgba(36, 96, 143, 0.3);
+
+  /* ---- Elevation. Content uses hairlines + bevel; only overlays float ---- */
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --el-1: 0 1px 2px rgba(26, 24, 21, 0.06);
+  --el-2: 0 10px 28px -12px rgba(26, 24, 21, 0.24);
+  --el-3: 0 28px 64px -20px rgba(26, 24, 21, 0.32);
+
+  --focus-ring: 0 0 0 2px var(--sf-canvas), 0 0 0 4px var(--brand-edge);
+
+  /* ---- Layout ---- */
+  --sidebar-w: 252px;
+  --header-h: 56px;
+  --content-max: 1320px;
+
+  /* ============================================
+     Legacy aliases — existing pages read these.
+
+     Custom properties are substituted where they are declared, not where they
+     are used, so this whole block has to be repeated in every theme scope that
+     overrides the tokens above (see `.app-layout` in layout.css).
+     ============================================ */
+  --bg: var(--sf-canvas);
+  --bg-white: var(--sf-1);
+  --bg-soft: var(--sf-2);
+  --bg-hover: var(--sf-3);
+  --surface: var(--sf-1);
+  --surface-2: var(--sf-2);
+  --border: var(--ln-1);
+
+  --ink: var(--tx-1);
+  --ink-1: var(--tx-1);
+  --ink-2: var(--tx-2);
+  --ink-soft: var(--tx-3);
+  --muted: var(--tx-3);
+  --muted-2: var(--tx-4);
+
+  --rule: var(--ln-1);
+  --rule-soft: var(--ln-2);
+
+  --accent: var(--brand);
+  --accent-2: var(--brand-hi);
+  --accent-3: var(--brand-lo);
+  --accent-soft: var(--brand-wash);
+  --accent-soft-2: var(--brand-wash);
+
+  --green: var(--ok);
+  --green-soft: var(--ok-wash);
+  --yellow: var(--warn);
+  --yellow-soft: var(--warn-wash);
+  --red: var(--danger);
+  --red-soft: var(--danger-wash);
+  --blue: var(--info);
+  --blue-soft: var(--info-wash);
+
+  --gradient: linear-gradient(140deg, var(--brand-hi) 0%, var(--brand-lo) 100%);
+  --gradient-soft: transparent;
+
+  --shadow-sm: var(--el-1);
+  --shadow-md: var(--el-1);
+  --shadow-lg: var(--el-2);
+  --shadow-xl: var(--el-3);
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-full: var(--r-full);
 }
 
 /* ============================================
-   Reset Styles
+   Reset
    ============================================ */
 
 *,
@@ -73,16 +181,26 @@
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--ink);
   line-height: 1.6;
-  font-size: 14px;
+  font-size: var(--t-body);
   overflow-x: hidden;
+  font-feature-settings: "kern" 1, "liga" 1, "cv05" 1;
+}
+
+/* Every machine-authored value is data, and data is set in mono */
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 a {
@@ -95,6 +213,13 @@ button {
   cursor: pointer;
   border: none;
   background: none;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
 }
 
 img,
@@ -103,4 +228,57 @@ svg {
   width: 1em;
   height: 1em;
   flex-shrink: 0;
+}
+
+::selection {
+  background: var(--brand-wash);
+  color: var(--tx-1);
+}
+
+/* Keyboard focus is a brass ring; radius is left to the element so focusing
+   never reshapes a control. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Thin, warm scrollbars — the app is a reading surface */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ln-3) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ln-3);
+  border: 3px solid transparent;
+  border-radius: var(--r-full);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tx-4);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

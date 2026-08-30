@@ -121,14 +121,6 @@ const GitBranchIcon = () => (
   </svg>
 )
 
-const AlertIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-)
-
 function mapAnalysisDifficulty(
   value?: string | null,
 ): RecommendedIssue['difficulty'] {
@@ -443,29 +435,28 @@ const CodeReview = () => {
           <div className="page-header">
             <div className="page-title-row">
               <div>
+                <span className="osm-kicker">
+                  <span className="osm-kicker-dot" />
+                  CODE REVIEW
+                </span>
                 <h1 className="page-title">代码审查</h1>
                 <p className="page-subtitle">
                   AI 导师帮你检查代码，确保第一次贡献就高质量通过
                 </p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="repo-pill">
-                  <CodeIcon />
-                  {repoName}
-                </span>
-                <span className="hero-badge" style={{ marginBottom: 0 }}>
-                  <span className="hero-badge-dot" />
-                  AI 导师审查
-                </span>
-              </div>
+              <span className="repo-pill">
+                <CodeIcon />
+                {repoName}
+              </span>
             </div>
           </div>
 
           <div className="code-review__empty">
             <div className="empty-state">
-              <div className="empty-state__icon">
-                <AlertIcon />
-              </div>
+              <span className="osm-kicker">
+                <span className="osm-kicker-dot" />
+                NO ISSUE BOUND
+              </span>
               <h2>选择一个 Issue 开始代码审查</h2>
               <p className="empty-desc">
                 代码审查需要针对具体的 Issue 和你提交的代码进行。
@@ -511,21 +502,19 @@ const CodeReview = () => {
         <div className="page-header">
           <div className="page-title-row">
             <div>
+              <span className="osm-kicker">
+                <span className="osm-kicker-dot" />
+                CODE REVIEW
+              </span>
               <h1 className="page-title">代码审查</h1>
               <p className="page-subtitle">
                 支持 PR 链接，或审查你个人 Fork 分支相对上游的改动
               </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span className="repo-pill">
-                <CodeIcon />
-                {repoName}
-              </span>
-              <span className="hero-badge" style={{ marginBottom: 0 }}>
-                <span className="hero-badge-dot" />
-                AI 导师审查
-              </span>
-            </div>
+            <span className="repo-pill">
+              <CodeIcon />
+              {repoName}
+            </span>
           </div>
         </div>
 
@@ -777,6 +766,7 @@ const CodeReview = () => {
         {status === 'failed' && (
           <AiPageError
             className="code-review__error"
+            kicker="REVIEW FAILED"
             title="审查遇到了一点问题"
             message={error || '请检查网络或 GitHub Token 后重试'}
             onRetry={() => reset()}

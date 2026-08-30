@@ -248,6 +248,10 @@ const Settings = () => {
       <div className="page-header">
         <div className="page-title-row">
           <div>
+            <span className="osm-kicker">
+              <span className="osm-kicker-dot" />
+              PREFERENCES
+            </span>
             <h1 className="page-title">偏好设置</h1>
             <p className="page-subtitle">
               管理 GitHub 公开画像和贡献偏好，让后续 Issue 匹配更贴近你的当前目标。

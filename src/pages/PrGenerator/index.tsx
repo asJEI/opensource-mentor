@@ -108,19 +108,17 @@ const PrGenerator = () => {
         <div className="page-header">
           <div className="page-title-row">
             <div>
+              <span className="osm-kicker">
+                <span className="osm-kicker-dot" />
+                PULL REQUEST
+              </span>
               <h1 className="page-title">PR 生成器</h1>
-              <p className="page-subtitle">AI 智能生成专业的 Pull Request，一次通过审核</p>
+              <p className="page-subtitle">根据你的改动生成标题、描述与关联 Issue，一次通过审核</p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span className="repo-pill">
-                <CodeIcon />
-                {currentOwner}/{currentRepo}
-              </span>
-              <span className="hero-badge" style={{ marginBottom: 0 }}>
-                <span className="hero-badge-dot" />
-                AI 驱动生成
-              </span>
-            </div>
+            <span className="repo-pill">
+              <CodeIcon />
+              {currentOwner}/{currentRepo}
+            </span>
           </div>
         </div>
 

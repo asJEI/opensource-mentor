@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
+import clsx from 'clsx'
 import type { RepoAnalysis, DifficultyLevel } from '@/types'
 import { parseGitHubRepositoryInput } from '@/utils/githubRepository'
-import clsx from 'clsx'
 
 const CodeIcon = () => (
   <svg
@@ -73,64 +74,6 @@ const ZapIcon = () => (
   </svg>
 )
 
-const BotIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="8" width="18" height="12" rx="3" />
-    <path d="M12 2v4" />
-    <circle cx="9" cy="14" r="1" />
-    <circle cx="15" cy="14" r="1" />
-    <path d="M9 18h6" />
-  </svg>
-)
-
-const CheckIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-)
-
-const ArrowUpIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <line x1="12" y1="19" x2="12" y2="5" />
-    <polyline points="5 12 12 5 19 12" />
-  </svg>
-)
-
-const ArrowDownIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <polyline points="19 12 12 19 5 12" />
-  </svg>
-)
-
 const RefreshIcon = () => (
   <svg
     viewBox="0 0 24 24"
@@ -176,7 +119,7 @@ const AlertIcon = () => (
   </svg>
 )
 
-const SparklesIcon = () => (
+const ArrowRightIcon = () => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
@@ -185,39 +128,163 @@ const SparklesIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
   </svg>
 )
 
-// ==================== StatCard 组件 ====================
-interface StatCardProps {
-  icon: React.ReactNode
-  iconClass: string
+const BranchIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="6" y1="3" x2="6" y2="15" />
+    <circle cx="18" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <path d="M18 9a9 9 0 0 1-9 9" />
+  </svg>
+)
+
+const PulseIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+)
+
+const ExternalIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+)
+
+// ==================== 视觉语言小组件 ====================
+
+/** 编号 + 标签 + 延伸至右侧的细线，全站通用的章节分隔 */
+export function SectionRule({
+  index,
+  label,
+  aside,
+}: {
+  index: string
   label: string
-  value: string
-  change: string
-  changeUp: boolean
+  aside?: ReactNode
+}) {
+  return (
+    <div className="osm-section-head">
+      <span className="osm-section-index">{index}</span>
+      <span className="osm-section-label">{label}</span>
+      <span className="osm-section-rule" />
+      {aside && <span className="osm-section-aside">{aside}</span>}
+    </div>
+  )
 }
 
-function StatCard({
+/** 仓库信息条中的单项数据 */
+export function RepoStat({
   icon,
-  iconClass,
-  label,
   value,
-  change,
-  changeUp,
-}: StatCardProps) {
+  label,
+}: {
+  icon: ReactNode
+  value: string
+  label?: string
+}) {
   return (
-    <div className="stat-card">
-      <div className="stat-label">
-        <span className={clsx('stat-label-icon', iconClass)}>{icon}</span>
-        {label}
+    <span className="osm-stat" title={label}>
+      {icon}
+      {value}
+      {label && <span className="osm-stat-label">{label}</span>}
+    </span>
+  )
+}
+
+export type LogState = 'pending' | 'running' | 'done' | 'failed'
+
+const LOG_MARKS: Record<LogState, string> = {
+  pending: '[    ]',
+  running: '[ ·· ]',
+  done: '[ ok ]',
+  failed: '[fail]',
+}
+
+/** 把 AI 工作过程呈现为终端日志，而不是一个转圈的图标 */
+export function LogLine({ state, children }: { state: LogState; children: ReactNode }) {
+  return (
+    <div className={clsx('osm-log-line', state)}>
+      <span className="osm-log-mark">{LOG_MARKS[state]}</span>
+      <span className={clsx(state === 'running' && 'osm-log-cursor')}>{children}</span>
+    </div>
+  )
+}
+
+/** 分段式评分仪表：比平滑进度条更像仪器，也更容易读出具体分值 */
+export function Meter({
+  score,
+  max = 10,
+  verdict,
+  verdictTone = 'brand',
+  foot,
+}: {
+  score: number
+  max?: number
+  verdict?: string
+  verdictTone?: 'good' | 'brand' | 'hard'
+  foot?: ReactNode
+}) {
+  const clamped = Math.max(0, Math.min(max, score))
+  const filled = Math.round(clamped)
+  const toneClass =
+    verdictTone === 'good'
+      ? 'osm-meter-good'
+      : verdictTone === 'hard'
+        ? 'osm-meter-hard'
+        : ''
+  const verdictColor =
+    verdictTone === 'good'
+      ? 'var(--ok)'
+      : verdictTone === 'hard'
+        ? 'var(--warn)'
+        : 'var(--brand)'
+
+  return (
+    <div className={toneClass}>
+      <div className="osm-meter-head">
+        <span className="osm-meter-value">
+          {clamped.toFixed(1)}
+          <small> / {max}</small>
+        </span>
+        {verdict && (
+          <span className="osm-meter-verdict" style={{ color: verdictColor }}>
+            {verdict}
+          </span>
+        )}
       </div>
-      <div className="stat-value">{value}</div>
-      <div className={clsx('stat-change', !changeUp && 'down')}>
-        {changeUp ? <ArrowUpIcon /> : <ArrowDownIcon />}
-        {change}
+      <div className="osm-meter-track" role="presentation">
+        {Array.from({ length: max }, (_, i) => (
+          <span key={i} className={clsx('osm-meter-seg', i < filled && 'on')} />
+        ))}
       </div>
+      {foot && <div className="osm-meter-foot">{foot}</div>}
     </div>
   )
 }
@@ -267,22 +334,54 @@ function getFriendlyLabel(level?: string): string {
   return map[level || ''] || '未知'
 }
 
-// ==================== Dashboard 页面 ====================
+/** 项目活跃度等级中文映射 */
+function getActivityLabel(level?: string): string {
+  const map: Record<string, string> = {
+    'very-active': '非常活跃',
+    active: '活跃',
+    moderate: '一般',
+    low: '偏低',
+    inactive: '停滞',
+  }
+  return map[level || ''] || '未知'
+}
+
+/** 贡献领域难度中文映射 */
+function getAreaDifficultyLabel(difficulty?: string): string {
+  const map: Record<string, string> = {
+    easy: '入门',
+    medium: '中等',
+    hard: '进阶',
+  }
+  return map[difficulty || ''] || '未知'
+}
+
+/** 大数字缩写：228431 → 228.4k，让统计条保持等宽对齐 */
+function formatCount(value?: number | null): string {
+  if (value == null || Number.isNaN(value)) return '--'
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 10_000) return `${Math.round(value / 1000)}k`
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`
+  return String(value)
+}
 
 export {
   AlertIcon,
-  BotIcon,
-  CheckIcon,
+  ArrowRightIcon,
+  BranchIcon,
   CodeIcon,
+  ExternalIcon,
   GitForkIcon,
   InfoIcon,
   IssueIcon,
+  PulseIcon,
   RefreshIcon,
-  SparklesIcon,
   StarIcon,
-  StatCard,
   ZapIcon,
   deriveDifficulty,
+  formatCount,
+  getActivityLabel,
+  getAreaDifficultyLabel,
   getFriendlyLabel,
   isBeginnerFriendly,
   parseRepoInput,

@@ -1,0 +1,906 @@
+/* ============================================
+   OSM Visual Language
+   ============================================
+
+   A small, opinionated vocabulary that every page can be rebuilt on. Three
+   devices carry the brand and are meant to repeat everywhere:
+
+   · Numbered mono section rules — `01 ANALYSIS ────────`. Borrowed from the
+     contribution guide's own 01–07 chapters, so the rhythm is native to the
+     product instead of imported from a template. It groups content with
+     typography and a hairline, which is why the page needs far fewer boxes.
+
+   · Brass left rule = machine authorship. Anything the model wrote carries a
+     2px brass marker. It is simultaneously a brand signature and a piece of
+     real information: you always know who is talking.
+
+   · Mono tabular data. Paths, counts, scores and durations are values, not
+     prose, and they are set as values.
+
+   Containers are used only for things that are genuinely objects (a
+   repository, a score, an issue). Everything else is separated by rhythm.
+   ============================================ */
+
+/* ---------------------------------------------
+   1 · Eyebrows and section rules
+   --------------------------------------------- */
+.osm-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tr-widest);
+  color: var(--tx-4);
+}
+
+.osm-kicker-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brand);
+  flex-shrink: 0;
+}
+
+.osm-section {
+  margin-top: var(--s7);
+}
+
+.osm-section:first-child {
+  margin-top: 0;
+}
+
+.osm-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--s4);
+}
+
+.osm-section-index {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  color: var(--brand);
+  letter-spacing: var(--tr-wide);
+  flex-shrink: 0;
+}
+
+/* Set in sans, not mono: these labels are mostly CJK, and mono CJK with open
+   tracking reads badly. Mono is reserved for Latin eyebrows and data. */
+.osm-section-label {
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--tx-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.osm-section-rule {
+  flex: 1;
+  height: 1px;
+  min-width: 16px;
+  background: var(--ln-2);
+}
+
+/* Mono for the figures, but no tracking so mixed CJK counts stay tight */
+.osm-section-aside {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0;
+  color: var(--tx-4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------
+   2 · Panels — for real objects only
+   --------------------------------------------- */
+.osm-panel {
+  background: var(--sf-1);
+  border: 1px solid var(--ln-1);
+  border-radius: var(--r-lg);
+  box-shadow: var(--bevel);
+}
+
+.osm-panel-quiet {
+  background: var(--sf-2);
+  box-shadow: none;
+}
+
+.osm-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--ln-2);
+}
+
+.osm-panel-title {
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--tx-2);
+}
+
+/* No open tracking here: these asides are often CJK, where letter-spacing
+   just prises the glyphs apart. */
+.osm-panel-aside {
+  font-size: var(--t-micro);
+  color: var(--tx-4);
+}
+
+.osm-panel-body {
+  padding: 14px;
+}
+
+.osm-panel-foot {
+  padding: 11px 14px;
+  border-top: 1px solid var(--ln-2);
+}
+
+/* ---------------------------------------------
+   3 · Machine authorship marker
+   --------------------------------------------- */
+.osm-ai {
+  position: relative;
+  padding-left: var(--s4);
+}
+
+.osm-ai::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 1px;
+  background: linear-gradient(
+    to bottom,
+    var(--brand) 0%,
+    var(--brand-edge) 100%
+  );
+}
+
+.osm-ai-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tr-wide);
+  color: var(--brand);
+  margin-bottom: var(--s2);
+}
+
+.osm-ai-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---------------------------------------------
+   4 · Prose — the reading surface
+   --------------------------------------------- */
+.osm-prose {
+  font-size: var(--t-lead);
+  line-height: 1.75;
+  color: var(--tx-2);
+  max-width: 74ch;
+}
+
+.osm-prose strong {
+  color: var(--tx-1);
+  font-weight: 600;
+}
+
+.osm-prose code {
+  background: var(--sf-2);
+  border: 1px solid var(--ln-2);
+  padding: 1px 5px;
+  border-radius: var(--r-xs);
+  font-size: 0.88em;
+  color: var(--tx-1);
+}
+
+.osm-prose + .osm-prose {
+  margin-top: var(--s3);
+}
+
+/* Ordered and unordered lists as reading content, hung off a mono index */
+.osm-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  max-width: 74ch;
+  counter-reset: osm-list;
+}
+
+.osm-list > li {
+  position: relative;
+  padding-left: 26px;
+  font-size: var(--t-body);
+  line-height: 1.7;
+  color: var(--tx-2);
+}
+
+.osm-list-ordered > li {
+  counter-increment: osm-list;
+}
+
+.osm-list-ordered > li::before {
+  content: counter(osm-list, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  color: var(--tx-4);
+  letter-spacing: 0;
+}
+
+.osm-list-check > li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  opacity: 0.85;
+}
+
+.osm-list-dash > li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-tiny);
+  color: var(--tx-4);
+}
+
+/* ---------------------------------------------
+   5 · Facts — key/value data rows
+   --------------------------------------------- */
+.osm-facts {
+  display: flex;
+  flex-direction: column;
+}
+
+.osm-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--ln-2);
+}
+
+.osm-fact:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.osm-fact:first-child {
+  padding-top: 0;
+}
+
+.osm-fact-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--t-tiny);
+  color: var(--tx-3);
+  white-space: nowrap;
+}
+
+.osm-fact-key svg {
+  width: 13px;
+  height: 13px;
+  color: var(--tx-4);
+}
+
+.osm-fact-val {
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+  font-weight: 500;
+  color: var(--tx-1);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------
+   6 · Meter — a segmented instrument, not a progress bar
+   --------------------------------------------- */
+.osm-meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: var(--s3);
+}
+
+.osm-meter-value {
+  font-family: var(--font-mono);
+  font-size: var(--t-h2);
+  font-weight: 600;
+  letter-spacing: var(--tr-tight);
+  color: var(--tx-1);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.osm-meter-value small {
+  font-size: var(--t-small);
+  font-weight: 400;
+  color: var(--tx-4);
+  letter-spacing: 0;
+}
+
+.osm-meter-verdict {
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: var(--tr-snug);
+}
+
+.osm-meter-track {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+
+.osm-meter-seg {
+  flex: 1;
+  border-radius: 1px;
+  background: var(--sf-3);
+  transition: background 0.4s ease;
+}
+
+.osm-meter-seg.on {
+  background: var(--brand);
+}
+
+.osm-meter-good .osm-meter-seg.on {
+  background: var(--ok);
+}
+
+.osm-meter-hard .osm-meter-seg.on {
+  background: var(--warn);
+}
+
+.osm-meter-foot {
+  margin-top: var(--s2);
+  font-size: var(--t-tiny);
+  color: var(--tx-4);
+  line-height: 1.6;
+}
+
+.osm-meter-foot-sep {
+  margin: 0 0.5em;
+  color: var(--line-3);
+}
+
+/* ---------------------------------------------
+   7 · Tags — mono chips for taxonomy
+   --------------------------------------------- */
+.osm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.osm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--tx-2);
+  background: var(--sf-2);
+  border: 1px solid var(--ln-2);
+  border-radius: var(--r-xs);
+  white-space: nowrap;
+}
+
+.osm-tag-brand {
+  color: var(--brand);
+  background: var(--brand-wash);
+  border-color: var(--brand-edge);
+}
+
+/* ---------------------------------------------
+   8 · Log — progress as a terminal stream
+   The most honest way to show an agent working.
+   --------------------------------------------- */
+.osm-log {
+  font-family: var(--font-mono);
+  font-size: var(--t-tiny);
+  line-height: 1.5;
+  background: var(--sf-inset);
+  border: 1px solid var(--ln-2);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.osm-log-line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--tx-4);
+}
+
+.osm-log-mark {
+  flex: 0 0 auto;
+  white-space: pre;
+  letter-spacing: 0;
+}
+
+.osm-log-line.pending .osm-log-mark {
+  color: var(--tx-4);
+}
+
+.osm-log-line.running {
+  color: var(--tx-1);
+}
+
+.osm-log-line.running .osm-log-mark {
+  color: var(--brand);
+}
+
+.osm-log-line.done {
+  color: var(--tx-2);
+}
+
+.osm-log-line.done .osm-log-mark {
+  color: var(--ok);
+}
+
+.osm-log-line.failed {
+  color: var(--tx-2);
+}
+
+.osm-log-line.failed .osm-log-mark {
+  color: var(--danger);
+}
+
+.osm-log-cursor::after {
+  content: "▌";
+  color: var(--brand);
+  margin-left: 2px;
+  animation: osmBlink 1.1s step-end infinite;
+}
+
+/* ---------------------------------------------
+   9 · Action steps — numbered routes forward
+   --------------------------------------------- */
+.osm-steps {
+  display: flex;
+  flex-direction: column;
+}
+
+.osm-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 4px 12px 0;
+  border-bottom: 1px solid var(--ln-2);
+  text-align: left;
+  cursor: pointer;
+  transition: padding-left 0.18s ease;
+}
+
+.osm-step:last-child {
+  border-bottom: none;
+}
+
+.osm-step::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 0;
+  background: var(--brand);
+  transform: translateY(-50%);
+  transition: height 0.18s ease;
+}
+
+.osm-step:hover {
+  padding-left: 10px;
+}
+
+.osm-step:hover::before {
+  height: 60%;
+}
+
+.osm-step-index {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  color: var(--tx-4);
+  flex-shrink: 0;
+  transition: color 0.18s;
+}
+
+.osm-step:hover .osm-step-index {
+  color: var(--brand);
+}
+
+.osm-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.osm-step-title {
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: var(--tr-snug);
+  color: var(--tx-1);
+}
+
+.osm-step-desc {
+  font-size: var(--t-tiny);
+  color: var(--tx-3);
+  line-height: 1.55;
+  margin-top: 2px;
+}
+
+.osm-step-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--tx-4);
+  flex-shrink: 0;
+  transition: color 0.18s, transform 0.18s;
+}
+
+.osm-step:hover .osm-step-arrow {
+  color: var(--brand);
+  transform: translateX(2px);
+}
+
+.osm-step-primary .osm-step-index {
+  color: var(--brand);
+}
+
+/* ---------------------------------------------
+   10 · Repository identity — the page's subject
+   --------------------------------------------- */
+.osm-repo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s4);
+  padding: var(--s4);
+}
+
+.osm-repo-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  background: var(--sf-2);
+  border: 1px solid var(--ln-2);
+  color: var(--tx-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.osm-repo-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.osm-repo-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The path is the headline. Owner recedes, repository name carries. */
+.osm-repo-path {
+  font-family: var(--font-mono);
+  font-size: var(--t-h3);
+  letter-spacing: var(--tr-snug);
+  line-height: 1.25;
+  color: var(--tx-1);
+  word-break: break-all;
+}
+
+.osm-repo-owner {
+  color: var(--tx-3);
+  font-weight: 400;
+}
+
+.osm-repo-sep {
+  color: var(--tx-4);
+  margin: 0 1px;
+}
+
+.osm-repo-name {
+  font-weight: 600;
+}
+
+.osm-repo-desc {
+  margin-top: 6px;
+  font-size: var(--t-small);
+  color: var(--tx-3);
+  line-height: 1.6;
+  max-width: 68ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.osm-repo-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  margin-top: var(--s3);
+}
+
+.osm-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--t-tiny);
+  color: var(--tx-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.osm-stat svg {
+  width: 13px;
+  height: 13px;
+  color: var(--tx-4);
+}
+
+.osm-stat-label {
+  color: var(--tx-4);
+}
+
+.osm-repo-side {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------------------------------------------
+   11 · Command field — fused prefix + input + action
+   --------------------------------------------- */
+.osm-cmd {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--sf-inset);
+  border: 1px solid var(--ln-1);
+  border-radius: var(--r-sm);
+  padding: 3px 3px 3px 11px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-width: 0;
+}
+
+.osm-cmd:focus-within {
+  border-color: var(--brand-edge);
+  box-shadow: 0 0 0 3px var(--brand-wash);
+}
+
+.osm-cmd-prefix {
+  font-family: var(--font-mono);
+  font-size: var(--t-tiny);
+  color: var(--tx-4);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.osm-cmd-input {
+  flex: 1;
+  min-width: 90px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--tx-1);
+  font-family: var(--font-mono);
+  font-size: var(--t-tiny);
+  padding: 0 8px;
+}
+
+.osm-cmd-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.osm-cmd-input::placeholder {
+  color: var(--tx-4);
+}
+
+.osm-cmd .btn {
+  height: 28px;
+  padding: 0 11px;
+  font-size: var(--t-tiny);
+}
+
+/* ---------------------------------------------
+   12 · Notes — quiet inline asides
+   --------------------------------------------- */
+.osm-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: var(--t-tiny);
+  line-height: 1.6;
+  color: var(--tx-3);
+  background: var(--sf-2);
+  border-radius: var(--r-sm);
+}
+
+.osm-note svg {
+  width: 14px;
+  height: 14px;
+  color: var(--tx-4);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.osm-note strong {
+  color: var(--tx-2);
+  font-weight: 600;
+}
+
+.osm-note-brand {
+  background: var(--brand-wash);
+  color: var(--tx-2);
+}
+
+.osm-note-brand svg {
+  color: var(--brand);
+}
+
+.osm-note-danger {
+  background: var(--danger-wash);
+  color: var(--tx-2);
+}
+
+.osm-note-danger svg {
+  color: var(--danger);
+}
+
+/* ---------------------------------------------
+   13 · Empty / blocked states
+
+   Deliberately not a centred icon in a void. An empty state is a *status
+   report*: what the tool knows, why it stopped, what unblocks it. So it is
+   bounded, left-aligned, capped at reading width, and sits directly under the
+   masthead instead of floating in the middle of the viewport. The mono kicker
+   does the job the generic 64px warning triangle used to do, more precisely.
+   --------------------------------------------- */
+.osm-empty {
+  max-width: 560px;
+  padding: var(--s5);
+  background: var(--sf-1);
+  border: 1px solid var(--ln-1);
+  border-radius: var(--r-lg);
+  box-shadow: var(--bevel);
+  text-align: left;
+}
+
+.osm-empty-title {
+  margin: var(--s3) 0 0;
+  font-size: var(--t-body);
+  font-weight: 600;
+  letter-spacing: var(--tr-tight);
+  color: var(--tx-1);
+}
+
+.osm-empty-msg {
+  margin: 6px 0 0;
+  max-width: 52ch;
+  font-size: var(--t-small);
+  line-height: 1.65;
+  color: var(--tx-3);
+}
+
+.osm-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+
+/* ---------------------------------------------
+   14 · Layout helpers
+   --------------------------------------------- */
+.osm-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 304px;
+  gap: var(--s7);
+  align-items: start;
+}
+
+.osm-rail {
+  position: sticky;
+  top: calc(var(--header-h) + var(--s6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+}
+
+.osm-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.osm-stack-tight {
+  gap: var(--s2);
+}
+
+@media (max-width: 1080px) {
+  .osm-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s6);
+  }
+
+  .osm-rail {
+    position: static;
+  }
+}
+
+/* ---------------------------------------------
+   15 · Skeletons
+   --------------------------------------------- */
+.osm-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-xs);
+  background: var(--sf-2);
+}
+
+.osm-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ln-2) 50%,
+    transparent 100%
+  );
+  animation: osmSweep 1.5s ease-in-out infinite;
+}
+
+@keyframes osmSweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes osmBlink {
+  50% {
+    opacity: 0;
+  }
+}

@@ -8,6 +8,8 @@ export interface AiPageErrorProps {
   retryLabel?: string
   showSettingsLink?: boolean
   className?: string
+  /** Mono status label above the title, e.g. `AUTH REQUIRED` */
+  kicker?: string
 }
 
 /**
@@ -21,11 +23,16 @@ export function AiPageError({
   retryLabel = '重试',
   showSettingsLink = true,
   className,
+  kicker = 'BLOCKED',
 }: AiPageErrorProps) {
   const navigate = useNavigate()
 
   return (
     <div className={className ? `ai-page-error ${className}` : 'ai-page-error'}>
+      <span className="osm-kicker">
+        <span className="osm-kicker-dot" />
+        {kicker}
+      </span>
       <h3 className="ai-page-error-title">{title}</h3>
       <p className="ai-page-error-message">{message || '请稍后重试'}</p>
       <div className="ai-page-error-actions">

@@ -226,9 +226,10 @@ function WelcomeState({
 
   return (
     <div className="chat-welcome">
-      <div className="chat-welcome__icon">
-        <SparklesIcon />
-      </div>
+      <span className="osm-kicker">
+        <span className="osm-kicker-dot" />
+        {summary ? 'GUIDE CONTEXT LOADED' : 'CONTEXT READY'}
+      </span>
       <h2>你好，我是 AI 导师</h2>
       {summary ? (
         <p>
@@ -247,7 +248,10 @@ function WelcomeState({
         </p>
       )}
       <div className="chat-welcome__quick">
-        <div className="chat-welcome__quick-title">快速提问</div>
+        <div className="osm-section-head">
+          <span className="osm-section-label">从这里开始问</span>
+          <span className="osm-section-rule" />
+        </div>
         <div className="chat-welcome__quick-list">
           {(summary
             ? [
@@ -263,6 +267,9 @@ function WelcomeState({
               className="quick-question-btn"
               onClick={() => onQuickAsk(q)}
             >
+              <span className="quick-question-mark" aria-hidden="true">
+                ?
+              </span>
               {q}
             </button>
           ))}
@@ -428,6 +435,10 @@ const AiMentor = () => {
         <div className="page-header">
           <div className="page-title-row">
             <div>
+              <span className="osm-kicker">
+                <span className="osm-kicker-dot" />
+                AI MENTOR
+              </span>
               <h1 className="page-title">
                 AI 导师
                 <span className="badge badge-info" style={{ marginLeft: 8 }}>
@@ -487,6 +498,7 @@ const AiMentor = () => {
             {error && (
               <AiPageError
                 className="chat-error-panel"
+                kicker="SEND FAILED"
                 title="发送失败"
                 message={error}
                 onRetry={() => useChatStore.setState({ error: null })}

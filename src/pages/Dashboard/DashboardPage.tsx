@@ -1,32 +1,42 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
-import { Button, Card } from '@/components/ui'
+import { Button } from '@/components/ui'
 import { useToastStore, useRepositoryStore } from '@/store'
-import {
-  NextStepCard,
-  JourneyActions,
-  AiPageError,
-} from '@/components/business'
+import { NextStepCard, JourneyActions, AiPageError } from '@/components/business'
 import {
   AlertIcon,
-  BotIcon,
-  CheckIcon,
+  ArrowRightIcon,
+  BranchIcon,
   CodeIcon,
+  ExternalIcon,
   GitForkIcon,
   InfoIcon,
   IssueIcon,
+  LogLine,
+  Meter,
+  PulseIcon,
   RefreshIcon,
-  SparklesIcon,
+  RepoStat,
+  SectionRule,
   StarIcon,
-  StatCard,
   ZapIcon,
   deriveDifficulty,
+  formatCount,
+  getActivityLabel,
+  getAreaDifficultyLabel,
   getFriendlyLabel,
   isBeginnerFriendly,
   parseRepoInput,
+  type LogState,
 } from './components'
+
+const ONBOARDING_FLOW = [
+  { title: '选择仓库', desc: '输入 GitHub 地址并分析' },
+  { title: '找适合的 Issue', desc: '匹配适合你的入门任务' },
+  { title: '按指南推进', desc: '贡献指南 + AI 导师陪跑' },
+  { title: '审查并提交 PR', desc: '审查代码并生成 PR 草稿' },
+]
 
 function localizeIssueDifficulty(raw?: string | null): string | null {
   if (!raw?.trim()) return null
@@ -125,10 +135,11 @@ const Dashboard = () => {
   const hasError = analysisStatus === 'error' || issuesStatus === 'error'
   const errorMessage = analysisError || issuesError || ''
 
-  // 推荐 Issue 列表（取前 4 个用于展示）
-  const displayIssues = useMemo(() => {
-    return recommendedIssues.slice(0, 4).map((issue) => issue.title)
-  }, [recommendedIssues])
+  // 推荐 Issue 列表（取前 5 个用于展示）
+  const displayIssues = useMemo(
+    () => recommendedIssues.slice(0, 5),
+    [recommendedIssues],
+  )
 
   // 页面加载时：如果还没分析过，自动触发当前仓库分析
   // 如果已有分析结果（用户切换页面后回来），则保留现有状态不重新加载
@@ -199,6 +210,13 @@ const Dashboard = () => {
     handleAnalyze()
   }
 
+  // 输入框前缀恒为 github.com/，粘贴完整链接时把它剥掉，保证前缀名副其实
+  const handleRepoInputChange = (raw: string) => {
+    setRepoInput(
+      raw.replace(/^\s*(?:https?:\/\/)?(?:www\.)?github\.com\//i, '').trimStart(),
+    )
+  }
+
   // 仓库显示名称（优先用 store 中的 currentRepo，回退到输入值）
   const displayRepoName =
     currentRepo?.name || (parseRepoInput(repoInput)?.name ?? '')
@@ -216,7 +234,6 @@ const Dashboard = () => {
   const issueMetaParts = [
     localizeIssueDifficulty(issueAnalysis?.difficulty),
     localizeEstimatedTime(issueAnalysis?.estimatedTime),
-    issueTechParts.length > 0 ? issueTechParts.slice(0, 5).join(' / ') : null,
   ].filter((part): part is string => Boolean(part))
   const confirmedContext = currentExplain?.confirmedContext?.length
     ? currentExplain.confirmedContext
@@ -241,684 +258,635 @@ const Dashboard = () => {
     navigate('/roadmap')
   }
 
+  // 新手友好度：分段仪表的取值与语气
+  const friendliness = analysis?.beginnerFriendliness
+  const friendlinessTone = analysis
+    ? deriveDifficulty(analysis) === 'easy'
+      ? 'good'
+      : deriveDifficulty(analysis) === 'medium'
+        ? 'brand'
+        : 'hard'
+    : 'brand'
+  const contributionAreas = analysis?.contributionAreas ?? []
+  const coreTech = analysis?.techStack?.coreTechnologies ?? []
+
+  // 分析过程的三条日志：真实反映两个请求的状态
+  const metadataState: LogState = analysisStatus === 'loading' ? 'running' : 'done'
+  const architectureState: LogState =
+    analysisStatus === 'success'
+      ? 'done'
+      : analysisStatus === 'error'
+        ? 'failed'
+        : analysisStatus === 'loading'
+          ? 'running'
+          : 'pending'
+  const thirdStatus = isIssueMode ? explainStatus : issuesStatus
+  const thirdState: LogState =
+    thirdStatus === 'success'
+      ? 'done'
+      : thirdStatus === 'error'
+        ? 'failed'
+        : thirdStatus === 'loading'
+          ? 'running'
+          : 'pending'
+
+  const analysisSectionIndex = isIssueMode ? '02' : '01'
+
   return (
     <AppLayout breadcrumbs={[{ label: '仓库分析' }]}>
-      <div className="app-page active">
-        {/* 页面标题区 */}
-        <div className="page-header">
-          <div className="page-title-row">
-            <div>
-              <h1 className="page-title">仓库分析</h1>
-              <p className="page-subtitle">
-                {activeContributionIssue
-                  ? '围绕你选择的 Issue 理解仓库、任务背景和下一步思路'
-                  : '输入 GitHub 仓库地址，AI 智能分析项目结构与难度'}
-              </p>
-            </div>
-            <div className="repo-pill">
-              <CodeIcon />
-              {displayFullName}
-            </div>
+      <div className="app-page active dash">
+        {/* ---------- 页头：页面身份 + 仓库输入 ---------- */}
+        <header className="dash-masthead">
+          <div className="dash-masthead-text">
+            <span className="osm-kicker">
+              <span className="osm-kicker-dot" />
+              Repository Analysis
+            </span>
+            <h1 className="dash-title">仓库分析</h1>
+            <p className="dash-lede">
+              {isIssueMode
+                ? '围绕你选择的 Issue 理解仓库、任务背景和下一步思路。'
+                : '输入一个 GitHub 仓库，先把它读懂，再决定从哪里下手。'}
+            </p>
           </div>
-        </div>
 
-        {activeContributionIssue && (
-          <section className="selected-issue-panel">
-            <div className="selected-issue-header">
-              <div>
-                <h3>当前 Issue</h3>
-                <h2 className="selected-issue-title">
-                  {activeContributionIssue.repository.fullName}#
-                  {activeContributionIssue.issueNumber} ·{' '}
-                  {activeContributionIssue.title}
-                </h2>
-                <p className="selected-issue-meta">
-                  {issueMetaParts.length > 0
-                    ? issueMetaParts.join(' · ')
-                    : '难度与技术栈分析中…'}
+          <div className="dash-masthead-tools">
+            {isIssueMode ? (
+              <div className="osm-note osm-note-brand">
+                <InfoIcon />
+                <span>
+                  已按当前 Issue 锁定仓库 <code>{displayFullName}</code>
+                  ，切换 Issue 即可分析其它仓库。
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="osm-cmd">
+                  <span className="osm-cmd-prefix">github.com/</span>
+                  <input
+                    className="osm-cmd-input"
+                    type="text"
+                    value={repoInput}
+                    onChange={(e) => handleRepoInputChange(e.target.value)}
+                    placeholder="owner/repo"
+                    spellCheck={false}
+                    aria-label="GitHub 仓库"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAnalyze()
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    loading={isLoading}
+                    onClick={hasAnalyzed ? handleReanalyze : handleAnalyze}
+                    icon={hasAnalyzed ? <RefreshIcon /> : <ZapIcon />}
+                  >
+                    {hasAnalyzed ? '重新分析' : '分析'}
+                  </Button>
+                </div>
+                <p className="dash-tool-hint">
+                  支持完整链接或 <code>owner/repo</code>，回车即可开始
                 </p>
-                <p className="selected-issue-submeta">
-                  开放中 · 评论 {activeContributionIssue.comments} · 更新于{' '}
-                  {new Date(activeContributionIssue.updatedAt).toLocaleDateString(
-                    'zh-CN',
+              </>
+            )}
+          </div>
+        </header>
+
+        {/* ---------- 分析对象：仓库本体 ---------- */}
+        <div className="dash-subject osm-panel">
+          {currentRepo ? (
+            <div className="osm-repo">
+              <span className="osm-repo-mark">
+                <CodeIcon />
+              </span>
+              <div className="osm-repo-main">
+                <div className="osm-repo-path">
+                  <span className="osm-repo-owner">{displayRepoOwner}</span>
+                  <span className="osm-repo-sep">/</span>
+                  <span className="osm-repo-name">{displayRepoName}</span>
+                </div>
+                {currentRepo.description && (
+                  <p className="osm-repo-desc">{currentRepo.description}</p>
+                )}
+                <div className="osm-repo-stats">
+                  <RepoStat
+                    icon={<StarIcon />}
+                    value={formatCount(currentRepo.stars)}
+                    label="stars"
+                  />
+                  <RepoStat
+                    icon={<GitForkIcon />}
+                    value={formatCount(currentRepo.forks)}
+                    label="forks"
+                  />
+                  <RepoStat
+                    icon={<IssueIcon />}
+                    value={formatCount(currentRepo.issuesCount)}
+                    label="open issues"
+                  />
+                  {currentRepo.language && (
+                    <RepoStat icon={<CodeIcon />} value={currentRepo.language} />
                   )}
+                  {currentRepo.defaultBranch && (
+                    <RepoStat
+                      icon={<BranchIcon />}
+                      value={currentRepo.defaultBranch}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="osm-repo-side">
+                <Button
+                  variant="secondary"
+                  icon={<ExternalIcon />}
+                  onClick={() =>
+                    window.open(
+                      currentRepo.htmlUrl ||
+                        `https://github.com/${currentRepo.fullName}`,
+                      '_blank',
+                      'noopener,noreferrer',
+                    )
+                  }
+                >
+                  在 GitHub 查看
+                </Button>
+              </div>
+            </div>
+          ) : hasError ? (
+            <div className="osm-repo dash-subject-error">
+              <span className="osm-repo-mark">
+                <AlertIcon />
+              </span>
+              <div className="osm-repo-main">
+                <div className="dash-subject-error-title">仓库信息加载失败</div>
+                <p className="osm-repo-desc">
+                  {errorMessage || '请确认仓库地址是否正确，然后重新分析。'}
                 </p>
               </div>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  window.open(
-                    activeContributionIssue.issueUrl,
-                    '_blank',
-                    'noopener,noreferrer',
-                  )
-                }
-              >
-                在 GitHub 查看
-              </Button>
             </div>
+          ) : (
+            <div className="osm-repo" aria-busy="true">
+              <span className="osm-skeleton dash-sk-mark" />
+              <div className="osm-repo-main">
+                <span className="osm-skeleton dash-sk-line dash-sk-w40" />
+                <span className="osm-skeleton dash-sk-line dash-sk-w70" />
+                <div className="osm-repo-stats">
+                  <span className="osm-skeleton dash-sk-chip" />
+                  <span className="osm-skeleton dash-sk-chip" />
+                  <span className="osm-skeleton dash-sk-chip" />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ---------- 首次使用：上手路径 ---------- */}
+        {showOnboarding && !isIssueMode && (
+          <section className="dash-flow">
+            <SectionRule
+              index="00"
+              label="上手路径"
+              aside={
+                <button
+                  type="button"
+                  className="dash-dismiss"
+                  onClick={handleDismissOnboarding}
+                >
+                  不再显示
+                </button>
+              }
+            />
+            <ol className="dash-flow-list">
+              {ONBOARDING_FLOW.map((step, index) => (
+                <li
+                  key={step.title}
+                  className={index === 0 ? 'dash-flow-item current' : 'dash-flow-item'}
+                >
+                  <span className="dash-flow-num">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <strong>{step.title}</strong>
+                  <span className="dash-flow-desc">{step.desc}</span>
+                </li>
+              ))}
+            </ol>
           </section>
         )}
 
-        {/* 首次使用引导 */}
-        {showOnboarding && !activeContributionIssue && (
-          <div className="onboarding-card">
-            <div className="onboarding-header">
-              <div className="onboarding-title">
-                <SparklesIcon />
-                欢迎使用 Open Source Mentor！
-              </div>
-              <button
-                className="onboarding-close"
-                onClick={handleDismissOnboarding}
-                title="关闭引导"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <p className="onboarding-desc">
-              从理解一个陌生仓库，到完成你的第一次 Open Source Contribution：
-            </p>
-            <div className="onboarding-steps">
-              <div className="onboarding-step active">
-                <div className="step-number">1</div>
-                <div className="step-info">
-                  <div className="step-title">选择仓库</div>
-                  <div className="step-desc">输入 GitHub 地址并分析</div>
-                </div>
-              </div>
-              <div className="step-arrow">→</div>
-              <div className="onboarding-step">
-                <div className="step-number">2</div>
-                <div className="step-info">
-                  <div className="step-title">找适合 Issue</div>
-                  <div className="step-desc">匹配适合你的入门任务</div>
-                </div>
-              </div>
-              <div className="step-arrow">→</div>
-              <div className="onboarding-step">
-                <div className="step-number">3</div>
-                <div className="step-info">
-                  <div className="step-title">学习与 Mentoring</div>
-                  <div className="step-desc">路线图 + AI 导师陪跑</div>
-                </div>
-              </div>
-              <div className="step-arrow">→</div>
-              <div className="onboarding-step">
-                <div className="step-number">4</div>
-                <div className="step-info">
-                  <div className="step-title">Review 与 PR</div>
-                  <div className="step-desc">审查代码并生成 PR 草稿</div>
-                </div>
-              </div>
-            </div>
-            <div className="onboarding-tip">
-              <InfoIcon />
-              <span>
-                无需登录即可开始。当前示例仓库为{' '}
-                <strong>{displayFullName}</strong>
-                ，也可在下方换成你感兴趣的仓库。
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* 无选中 Issue 时展示仓库级统计；有 Issue 时关键信息已压入标题下方 metadata */}
-        {!activeContributionIssue && (
-          <div className="stat-row">
-            <StatCard
-              icon={<StarIcon />}
-              iconClass="yellow"
-              label="GitHub Stars"
-              value={currentRepo ? currentRepo.stars.toLocaleString() : '--'}
-              change={
-                currentRepo
-                  ? `Forks ${currentRepo.forks.toLocaleString()}`
-                  : '等待分析'
-              }
-              changeUp={true}
-            />
-            <StatCard
-              icon={<IssueIcon />}
-              iconClass="green"
-              label="推荐 Issue"
-              value={
-                recommendedIssues.length > 0
-                  ? String(recommendedIssues.length)
-                  : '--'
-              }
-              change={
-                analysis
-                  ? `匹配度 ${Math.round((analysis.confidence || 0) * 100)}%`
-                  : 'AI 智能匹配'
-              }
-              changeUp={true}
-            />
-            <StatCard
-              icon={<SparklesIcon />}
-              iconClass="purple"
-              label="新手友好度"
-              value={
-                analysis
-                  ? getFriendlyLabel(analysis.beginnerFriendliness?.level)
-                  : '--'
-              }
-              change={
-                analysis
-                  ? `评分 ${analysis.beginnerFriendliness?.score || 0}/10`
-                  : 'AI 评估中'
-              }
-              changeUp={true}
-            />
-            <StatCard
-              icon={<ZapIcon />}
-              iconClass="blue"
-              label="贡献领域"
-              value={
-                analysis?.contributionAreas?.length
-                  ? String(analysis.contributionAreas.length)
-                  : '--'
-              }
-              change={
-                analysis?.domains?.length
-                  ? `${analysis.domains.slice(0, 2).join('、')}${analysis.domains.length > 2 ? '等' : ''}`
-                  : '分析中...'
-              }
-              changeUp={true}
-            />
-          </div>
-        )}
-
-        {/* 分析网格 */}
-        <div className="analysis-grid">
-          {/* 左侧：仓库信息卡 */}
-          <Card title="仓库信息" icon={<CodeIcon />} className="repo-info-card">
-            {/* 加载骨架屏 */}
-            {isLoading && !currentRepo && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '16px',
-                }}
-              >
-                <div
-                  style={{ display: 'flex', gap: '12px', alignItems: 'center' }}
-                >
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '12px',
-                      background: 'var(--border)',
-                    }}
-                  />
-                  <div
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '60%',
-                        height: '16px',
-                        borderRadius: '4px',
-                        background: 'var(--border)',
-                      }}
-                    />
-                    <div
-                      style={{
-                        width: '40%',
-                        height: '12px',
-                        borderRadius: '4px',
-                        background: 'var(--border)',
-                      }}
-                    />
-                  </div>
-                </div>
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    style={{ display: 'flex', justifyContent: 'space-between' }}
-                  >
-                    <div
-                      style={{
-                        width: '80px',
-                        height: '14px',
-                        borderRadius: '4px',
-                        background: 'var(--border)',
-                      }}
-                    />
-                    <div
-                      style={{
-                        width: '60px',
-                        height: '14px',
-                        borderRadius: '4px',
-                        background: 'var(--border)',
-                      }}
-                    />
-                  </div>
-                ))}
-                <div
-                  style={{
-                    height: '40px',
-                    borderRadius: '8px',
-                    background: 'var(--border)',
-                    marginTop: '8px',
-                  }}
+        <div className="osm-split">
+          {/* ================= 主列 ================= */}
+          <div className="dash-main">
+            {/* 当前锁定的 Issue */}
+            {activeContributionIssue && (
+              <section className="osm-section">
+                <SectionRule
+                  index="01"
+                  label="当前任务"
+                  aside={`#${activeContributionIssue.issueNumber}`}
                 />
-              </div>
-            )}
-
-            {/* 错误状态 */}
-            {hasError && !currentRepo && (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '24px 0',
-                  color: 'var(--muted)',
-                }}
-              >
-                <AlertIcon />
-                <div
-                  style={{
-                    marginTop: '8px',
-                    fontWeight: 500,
-                    color: 'var(--red)',
-                  }}
-                >
-                  加载失败
-                </div>
-                <div style={{ fontSize: '13px', marginTop: '4px' }}>
-                  {errorMessage}
-                </div>
-              </div>
-            )}
-
-            {/* 仓库信息内容 */}
-            {currentRepo && (
-              <>
-                <div className="repo-info-header">
-                  <div className="repo-icon">
-                    <CodeIcon />
-                  </div>
-                  <div>
-                    <div className="repo-name">{displayRepoName}</div>
-                    <div className="repo-owner">{displayRepoOwner}</div>
-                  </div>
-                </div>
-
-                <div className="repo-stats">
-                  <div className="repo-stat-row">
-                    <span className="repo-stat-label">
-                      <StarIcon />
-                      Stars
-                    </span>
-                    <span className="repo-stat-value">
-                      {currentRepo.stars.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="repo-stat-row">
-                    <span className="repo-stat-label">
-                      <GitForkIcon />
-                      Forks
-                    </span>
-                    <span className="repo-stat-value">
-                      {currentRepo.forks.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="repo-stat-row">
-                    <span className="repo-stat-label">
-                      <IssueIcon />
-                      Issues
-                    </span>
-                    <span className="repo-stat-value">
-                      {currentRepo.issuesCount.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="repo-stat-row">
-                    <span className="repo-stat-label">
-                      <CodeIcon />
-                      语言
-                    </span>
-                    <span className="repo-stat-value">
-                      {currentRepo.language}
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* 仓库输入框 + 分析按钮 */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                marginTop: currentRepo ? '0' : '16px',
-              }}
-            >
-              {activeContributionIssue ? (
-                <div className="profile-default-notice">
-                  已根据当前 Issue 自动选择仓库：{activeContributionIssue.repository.fullName}
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={repoInput}
-                    onChange={(e) => setRepoInput(e.target.value)}
-                    placeholder="https://github.com/owner/repo"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAnalyze()
+                <div className="osm-panel dash-issue">
+                  <div className="dash-issue-head">
+                    <div>
+                      <h2 className="dash-issue-title">
+                        {activeContributionIssue.title}
+                      </h2>
+                      <div className="dash-issue-meta">
+                        <span className="osm-tag osm-tag-brand">
+                          {activeContributionIssue.repository.fullName}#
+                          {activeContributionIssue.issueNumber}
+                        </span>
+                        {issueMetaParts.map((part) => (
+                          <span key={part} className="osm-tag">
+                            {part}
+                          </span>
+                        ))}
+                        {issueTechParts.slice(0, 4).map((tech) => (
+                          <span key={tech} className="osm-tag">
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      icon={<ExternalIcon />}
+                      onClick={() =>
+                        window.open(
+                          activeContributionIssue.issueUrl,
+                          '_blank',
+                          'noopener,noreferrer',
+                        )
                       }
-                    }}
-                  />
-                  <button
-                    className="analyze-btn"
-                    onClick={hasAnalyzed ? handleReanalyze : handleAnalyze}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <span className="btn-spinner" />
-                        分析中...
-                      </>
-                    ) : hasAnalyzed ? (
-                      <>
-                        <RefreshIcon />
-                        重新分析
-                      </>
-                    ) : (
-                      <>
-                        <ZapIcon />
-                        开始分析
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-            </div>
-          </Card>
+                    >
+                      在 GitHub 查看
+                    </Button>
+                  </div>
+                  <div className="dash-issue-foot">
+                    开放中 · 评论 {activeContributionIssue.comments} · 更新于{' '}
+                    {new Date(
+                      activeContributionIssue.updatedAt,
+                    ).toLocaleDateString('zh-CN')}
+                  </div>
+                </div>
+              </section>
+            )}
 
-          {/* 右侧：AI 摘要卡 */}
-          <Card
-            title="AI 分析摘要"
-            icon={<BotIcon />}
-            className="ai-summary-card"
-          >
-            {isLoading && !hasAnalyzed ? (
-              <div className="ai-loading active">
-                <div className="ai-loading-spinner" />
-                <div className="ai-loading-title">正在分析仓库...</div>
-                <div className="ai-loading-desc">
-                  AI 正在深入分析项目结构和代码
-                </div>
-                <div className="ai-loading-steps">
-                  <div
-                    className={clsx(
-                      'ai-loading-step',
-                      analysisStatus !== 'loading' ? 'done' : 'active',
-                    )}
-                  >
-                    {analysisStatus !== 'loading' ? (
-                      <CheckIcon />
-                    ) : (
-                      <span className="step-spinner" />
-                    )}
-                    获取仓库基本信息
-                  </div>
-                  <div
-                    className={clsx(
-                      'ai-loading-step',
-                      analysisStatus === 'success'
-                        ? 'done'
-                        : analysisStatus === 'loading'
-                          ? 'active'
-                          : '',
-                    )}
-                  >
-                    {analysisStatus === 'success' ? (
-                      <CheckIcon />
-                    ) : analysisStatus === 'loading' ? (
-                      <span className="step-spinner" />
-                    ) : (
-                      <InfoIcon />
-                    )}
-                    分析项目架构与技术栈
-                  </div>
-                  <div
-                    className={clsx(
-                      'ai-loading-step',
-                      issuesStatus === 'success'
-                        ? 'done'
-                        : issuesStatus === 'loading'
-                          ? 'active'
-                          : '',
-                    )}
-                  >
-                    {issuesStatus === 'success' ? (
-                      <CheckIcon />
-                    ) : issuesStatus === 'loading' ? (
-                      <span className="step-spinner" />
-                    ) : (
-                      <InfoIcon />
-                    )}
-                    评估难度与推荐 Issue
-                  </div>
-                </div>
-              </div>
-            ) : hasError && !analysis ? (
-              <AiPageError
-                className="ai-loading active"
-                title="分析失败"
-                message={errorMessage || '仓库分析失败，请稍后重试'}
-                onRetry={handleReanalyze}
+            {/* AI 分析 */}
+            <section className="osm-section">
+              <SectionRule
+                index={analysisSectionIndex}
+                label={isIssueMode ? '任务分析' : '项目理解'}
+                aside={
+                  analysis
+                    ? `置信度 ${Math.round((analysis.confidence || 0) * 100)}%`
+                    : undefined
+                }
               />
-            ) : hasAnalyzed && analysis ? (
-              <div className="ai-content active">
-                <div className="ai-summary-text">
-                  <strong>AI 摘要：</strong> {analysis.overview}
-                </div>
 
-                <div className="ai-metrics-row">
-                  <div className="ai-metric">
-                    <div className="ai-metric-label">项目难度</div>
-                    <div
-                      className="ai-metric-value"
-                      style={{
-                        color:
-                          deriveDifficulty(analysis) === 'easy'
-                            ? 'var(--green)'
-                            : deriveDifficulty(analysis) === 'medium'
-                              ? 'var(--yellow)'
-                              : 'var(--red)',
-                      }}
-                    >
-                      {deriveDifficulty(analysis) === 'easy'
-                        ? '简单'
-                        : deriveDifficulty(analysis) === 'medium'
-                          ? '中等'
-                          : '困难'}
-                    </div>
-                  </div>
-                  <div className="ai-metric">
-                    <div className="ai-metric-label">新手友好</div>
-                    <div
-                      className="ai-metric-value"
-                      style={{
-                        color: isBeginnerFriendly(analysis)
-                          ? 'var(--green)'
-                          : 'var(--red)',
-                      }}
-                    >
-                      {isBeginnerFriendly(analysis) ? '是' : '否'}
-                    </div>
-                  </div>
-                  <div className="ai-metric">
-                    <div className="ai-metric-label">推荐 Issue</div>
-                    <div
-                      className="ai-metric-value"
-                      style={{ color: 'var(--accent)' }}
-                    >
-                      {recommendedIssues.length} 个
-                    </div>
-                  </div>
+              {isLoading && !hasAnalyzed ? (
+                <div className="osm-log">
+                  <LogLine state={metadataState}>读取仓库元数据</LogLine>
+                  <LogLine state={architectureState}>分析项目架构与技术栈</LogLine>
+                  <LogLine state={thirdState}>
+                    {isIssueMode ? '生成当前 Issue 的上下文分析' : '评估难度并筛选推荐 Issue'}
+                  </LogLine>
                 </div>
+              ) : hasError && !analysis ? (
+                <AiPageError
+                  kicker="ANALYSIS FAILED"
+                  title="分析失败"
+                  message={errorMessage || '仓库分析失败，请稍后重试'}
+                  onRetry={handleReanalyze}
+                />
+              ) : hasAnalyzed && analysis ? (
+                <div className="dash-analysis">
+                  <div className="osm-ai">
+                    <span className="osm-ai-mark">
+                      <PulseIcon />
+                      AI 摘要
+                    </span>
+                    <p className="osm-prose">
+                      {isIssueMode && currentExplain
+                        ? currentExplain.summary
+                        : analysis.overview}
+                    </p>
+                  </div>
 
-                <div className="suggested-issues-list">
-                  {activeContributionIssue ? (
+                  {!isIssueMode && coreTech.length > 0 && (
+                    <div className="dash-subblock">
+                      <h3 className="dash-subtitle">技术栈</h3>
+                      <div className="osm-tags">
+                        {coreTech.slice(0, 10).map((tech) => (
+                          <span key={tech} className="osm-tag">
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {isIssueMode && (
                     <>
                       {explainStatus === 'loading' && (
-                        <div className="suggested-issue">
-                          <div className="suggested-issue-icon">
-                            <span className="step-spinner" />
-                          </div>
-                          <span className="suggested-issue-text">
-                            正在生成当前 Issue 简要分析…
-                          </span>
+                        <div className="osm-log">
+                          <LogLine state="running">
+                            正在生成当前 Issue 的分析
+                          </LogLine>
                         </div>
                       )}
+
                       {currentExplain && (
                         <>
-                          <section className="issue-analysis-section">
-                            <h3>Issue Summary</h3>
-                            <p>{currentExplain.summary}</p>
-                          </section>
-                          <section className="issue-analysis-section">
-                            <h3>Confirmed Context</h3>
-                            <ul className="issue-fit-list">
+                          <div className="dash-subblock">
+                            <h3 className="dash-subtitle">已确认的上下文</h3>
+                            <ul className="osm-list osm-list-check">
                               {confirmedContext.map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
-                          </section>
-                          <section className="issue-analysis-section">
-                            <h3>Suggested Approach</h3>
-                            <ol className="suggested-approach-list">
+                          </div>
+
+                          <div className="dash-subblock">
+                            <h3 className="dash-subtitle">建议的推进步骤</h3>
+                            <ol className="osm-list osm-list-ordered">
                               {currentExplain.steps.slice(0, 6).map((step) => (
                                 <li key={step}>{step}</li>
                               ))}
                             </ol>
-                          </section>
-                          <section className="issue-analysis-section">
-                            <h3>Possible Areas to Inspect</h3>
-                            <ul className="issue-fit-list">
+                          </div>
+
+                          <div className="dash-subblock">
+                            <h3 className="dash-subtitle">值得排查的位置</h3>
+                            <ul className="osm-list osm-list-dash">
                               {possibleAreasToInspect.map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
-                          </section>
+                          </div>
                         </>
                       )}
+
                       {explainStatus === 'error' && (
-                        <div className="profile-default-notice">
-                          {explainError || '当前 Issue 简要分析暂时不可用'}
+                        <div className="osm-note osm-note-danger">
+                          <AlertIcon />
+                          <span>{explainError || '当前 Issue 分析暂时不可用'}</span>
                         </div>
                       )}
                     </>
-                  ) : displayIssues.length > 0 ? (
-                    displayIssues.map((issue, i) => (
-                      <div key={i} className="suggested-issue">
-                        <div className="suggested-issue-icon">
-                          <CheckIcon />
-                        </div>
-                        <span className="suggested-issue-text">{issue}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div
-                      style={{
-                        color: 'var(--muted)',
-                        fontSize: '13px',
-                        padding: '8px 0',
-                      }}
-                    >
-                      暂无推荐 Issue
-                    </div>
                   )}
                 </div>
+              ) : (
+                <div className="osm-log">
+                  <LogLine state="pending">
+                    等待开始 — 在上方填入仓库后按回车
+                  </LogLine>
+                </div>
+              )}
+            </section>
+
+            {/* 贡献领域 */}
+            {!isIssueMode && hasAnalyzed && contributionAreas.length > 0 && (
+              <section className="osm-section">
+                <SectionRule
+                  index="02"
+                  label="可以切入的贡献领域"
+                  aside={`${contributionAreas.length} 个`}
+                />
+                <div className="dash-areas">
+                  {contributionAreas.slice(0, 6).map((area, index) => (
+                    <article key={area.name} className="dash-area">
+                      <span className="dash-area-index">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <div className="dash-area-body">
+                        <div className="dash-area-head">
+                          <h3>{area.name}</h3>
+                          <span
+                            className={`ai-tag difficulty-${area.difficulty}`}
+                          >
+                            {getAreaDifficultyLabel(area.difficulty)}
+                          </span>
+                        </div>
+                        {area.description && (
+                          <p className="dash-area-desc">{area.description}</p>
+                        )}
+                        {area.whyGoodForBeginners && (
+                          <p className="dash-area-why">
+                            {area.whyGoodForBeginners}
+                          </p>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* 推荐 Issue */}
+            {!isIssueMode && hasAnalyzed && (
+              <section className="osm-section">
+                <SectionRule
+                  index={contributionAreas.length > 0 ? '03' : '02'}
+                  label="推荐的入门 Issue"
+                  aside={`${recommendedIssues.length} 个候选`}
+                />
+                {displayIssues.length > 0 ? (
+                  <>
+                    <div className="dash-issue-list">
+                      {displayIssues.map((issue) => (
+                        <button
+                          key={issue.id}
+                          type="button"
+                          className="dash-issue-row"
+                          onClick={() => navigate('/issues')}
+                        >
+                          <span className="dash-issue-num">#{issue.number}</span>
+                          <span className="dash-issue-label">{issue.title}</span>
+                          <ArrowRightIcon />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="dash-more"
+                      onClick={() => navigate('/issues')}
+                    >
+                      查看全部候选 Issue
+                      <ArrowRightIcon />
+                    </button>
+                  </>
+                ) : (
+                  <div className="osm-note">
+                    <InfoIcon />
+                    <span>这个仓库暂时没有筛出适合入门的 Issue，可以换一个仓库再试。</span>
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+
+          {/* ================= 侧栏 ================= */}
+          <aside className="osm-rail">
+            <div className="osm-panel">
+              <div className="osm-panel-head">
+                <span className="osm-panel-title">新手友好度</span>
+                <span className="osm-panel-aside">AI 评估</span>
               </div>
-            ) : (
-              <div className="ai-loading active">
-                <div className="ai-loading-spinner" />
-                <div className="ai-loading-title">准备开始分析</div>
-                <div className="ai-loading-desc">
-                  输入仓库地址，点击开始分析
+              <div className="osm-panel-body">
+                {analysis && friendliness ? (
+                  <Meter
+                    score={friendliness.score || 0}
+                    verdict={getFriendlyLabel(friendliness.level)}
+                    verdictTone={friendlinessTone}
+                    foot={
+                      <>
+                        {isBeginnerFriendly(analysis)
+                          ? '适合作为第一个贡献目标'
+                          : '上手门槛偏高，建议先熟悉相近项目'}
+                        {recommendedIssues.length > 0 && (
+                          <>
+                            <span className="osm-meter-foot-sep">·</span>
+                            {recommendedIssues.length} 个候选 Issue
+                          </>
+                        )}
+                      </>
+                    }
+                  />
+                ) : (
+                  <div className="dash-rail-empty">
+                    <span className="osm-skeleton dash-sk-line dash-sk-w40" />
+                    <span className="osm-skeleton dash-sk-bar" />
+                    <span className="osm-skeleton dash-sk-line dash-sk-w70" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="osm-panel">
+              <div className="osm-panel-head">
+                <span className="osm-panel-title">项目概况</span>
+              </div>
+              <div className="osm-panel-body">
+                <div className="osm-facts">
+                  <div className="osm-fact">
+                    <span className="osm-fact-key">
+                      <CodeIcon />
+                      主要语言
+                    </span>
+                    <span className="osm-fact-val">
+                      {currentRepo?.language || '--'}
+                    </span>
+                  </div>
+                  <div className="osm-fact">
+                    <span className="osm-fact-key">
+                      <PulseIcon />
+                      项目活跃度
+                    </span>
+                    <span className="osm-fact-val">
+                      {analysis ? getActivityLabel(analysis.activity?.level) : '--'}
+                    </span>
+                  </div>
+                  <div className="osm-fact">
+                    <span className="osm-fact-key">
+                      <BranchIcon />
+                      默认分支
+                    </span>
+                    <span className="osm-fact-val">
+                      {currentRepo?.defaultBranch || '--'}
+                    </span>
+                  </div>
+                  <div className="osm-fact">
+                    <span className="osm-fact-key">
+                      <IssueIcon />
+                      开放 Issue
+                    </span>
+                    <span className="osm-fact-val">
+                      {currentRepo ? currentRepo.issuesCount.toLocaleString() : '--'}
+                    </span>
+                  </div>
+                  <div className="osm-fact">
+                    <span className="osm-fact-key">
+                      <InfoIcon />
+                      许可证
+                    </span>
+                    <span className="osm-fact-val">
+                      {currentRepo?.license || '--'}
+                    </span>
+                  </div>
+                </div>
+
+                {analysis?.domains?.length ? (
+                  <div className="dash-rail-tags">
+                    <span className="osm-kicker">Domains</span>
+                    <div className="osm-tags">
+                      {analysis.domains.slice(0, 6).map((domain) => (
+                        <span key={domain} className="osm-tag">
+                          {domain}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {hasAnalyzed && !isIssueMode && (
+              <div className="osm-panel">
+                <div className="osm-panel-body">
+                  <JourneyActions
+                    title="仓库已读懂，选择下一步"
+                    description="推荐先从合适的 Issue 开始。"
+                    paths={[
+                      {
+                        title: '查看推荐 Issue',
+                        description: '找到适合你当前水平的入门任务',
+                        path: '/issues',
+                        primary: true,
+                      },
+                      {
+                        title: '打开贡献指南',
+                        description: '围绕当前 Issue 阅读贡献指南',
+                        path: '/roadmap',
+                      },
+                      {
+                        title: '询问 AI 导师',
+                        description: '针对仓库结构与贡献流程提问',
+                        path: '/ai-mentor',
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             )}
-          </Card>
+          </aside>
         </div>
 
+        {/* ---------- 页脚：下一步 ---------- */}
         {hasAnalyzed && activeContributionIssue && (
-          <section className="issue-learning-cta">
-            <div>
-              <span className="hero-badge" style={{ marginBottom: 10 }}>
-                <span className="hero-badge-dot" />
-                下一步
-              </span>
-              <h2>开始学习并解决这个 Issue</h2>
-              <p>
-                路线图会围绕当前 Issue 生成：先理解任务背景，再确认要查看的仓库信息，
-                最后拆成可以逐步完成的小任务。
-              </p>
+          <div className="next-step-card">
+            <div className="next-step-content">
+              <div className="next-step-badge">下一步</div>
+              <div className="next-step-title">开始解决这个 Issue</div>
+              <div className="next-step-desc">
+                贡献指南会围绕当前 Issue 生成：先理解背景，再拆成可以逐步完成的小任务。
+              </div>
             </div>
-            <Button variant="primary" onClick={handleStartLearning}>
-              开始学习并解决这个 Issue →
-            </Button>
-          </section>
+            <button className="next-step-btn" onClick={handleStartLearning}>
+              打开贡献指南
+              <ArrowRightIcon />
+            </button>
+          </div>
         )}
 
-        {/* 分析完成后的连续路径引导 */}
         {hasAnalyzed && !activeContributionIssue && (
-          <>
-            <JourneyActions
-              title="仓库已理解，选择下一步"
-              description="推荐先从适合的 Issue 开始，也可以先看贡献指南或直接问 AI Mentor。"
-              paths={[
-                {
-                  title: '查看推荐 Issue',
-                  description: '找到适合你当前水平的入门任务',
-                  path: '/issues',
-                  primary: true,
-                },
-                {
-                  title: '打开贡献指南',
-                  description: '围绕当前 Issue 阅读贡献指南',
-                  path: '/roadmap',
-                },
-                {
-                  title: '询问 AI Mentor',
-                  description: '针对仓库结构与贡献流程提问',
-                  path: '/ai-mentor',
-                },
-              ]}
-            />
-            <NextStepCard
-              currentStep={1}
-              totalSteps={6}
-              title="仓库分析完成！"
-              description="下一步查看 AI 为你推荐的适合 Issue"
-              buttonText="查看推荐 Issue"
-              nextPath="/issues"
-            />
-          </>
+          <NextStepCard
+            currentStep={1}
+            totalSteps={6}
+            title="仓库分析完成"
+            description="下一步查看 AI 为你推荐的适合 Issue"
+            buttonText="查看推荐 Issue"
+            nextPath="/issues"
+          />
         )}
       </div>
     </AppLayout>

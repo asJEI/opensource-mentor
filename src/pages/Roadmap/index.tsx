@@ -57,6 +57,22 @@ const CopyIcon = () => (
   </svg>
 )
 
+/** Masthead for the gated states, so the page never opens without a title */
+function GuideMasthead() {
+  return (
+    <header className="guide-header">
+      <div>
+        <span className="osm-kicker">
+          <span className="osm-kicker-dot" />
+          CONTRIBUTION GUIDE
+        </span>
+        <h1>贡献指南</h1>
+        <p>把一个 Issue 拆成可执行的章节：定位、修改、验证、提交。</p>
+      </div>
+    </header>
+  )
+}
+
 function normalizeSections(phases: RoadmapPhase[]) {
   return GUIDE_SECTIONS.map((section, index) => ({
     ...section,
@@ -66,26 +82,6 @@ function normalizeSections(phases: RoadmapPhase[]) {
       phases.find((item) => item.title.includes(section.title)) ||
       null,
   }))
-}
-
-function generationLabel(phase: RoadmapPhase | null) {
-  if (!phase) return '排队中'
-  const ready =
-    phase.generationStatus === 'ready' &&
-    ((phase.actionSteps?.length || 0) > 0 ||
-      (phase.learningItems?.length || 0) > 0 ||
-      (phase.fileRefs?.length || 0) > 0)
-  if (ready) return '已生成'
-  switch (phase.generationStatus) {
-    case 'generating':
-      return '生成中'
-    case 'failed':
-      return '失败'
-    case 'ready':
-      return '内容不完整'
-    default:
-      return '排队中'
-  }
 }
 
 async function copyText(text: string) {
@@ -134,27 +130,25 @@ function ActionStepCard({
   onToggle: () => void
 }) {
   const showToast = useToastStore((s) => s.showToast)
+  const stepTitle = step.title?.replace(/^Step\s*\d+\s*[·.\-:：]\s*/i, '').trim() || step.title
   return (
-    <section className={clsx('guide-action-step', step.completed && 'completed')}>
-      <div className="guide-action-step-header">
-        <span className="guide-action-step-index">
-          {step.title?.startsWith('Step') ? step.title : `Step ${index + 1} · ${step.title}`}
-        </span>
-      </div>
-      {step.description && <p className="guide-action-step-desc">{step.description}</p>}
+    <section className={clsx('guide-step', step.completed && 'completed')}>
+      <p className="guide-step-kicker">Step {index + 1}</p>
+      {stepTitle && <h3 className="guide-step-title">{stepTitle}</h3>}
+      {step.description && <p className="guide-step-desc">{step.description}</p>}
       <CommandBlock
         commands={step.commands || []}
         onCopied={() => showToast('success', '已复制', '命令已复制到剪贴板')}
       />
       {step.expectedResult && (
-        <div className="guide-expected">
-          <strong>完成后，你应该看到：</strong>
+        <aside className="guide-callout">
+          <strong>完成标准</strong>
           <p>{step.expectedResult}</p>
-        </div>
+        </aside>
       )}
       <label className="guide-checkbox">
         <input type="checkbox" checked={Boolean(step.completed)} onChange={onToggle} />
-        <span>{step.checkboxLabel || '我已经完成'}</span>
+        <span>{step.checkboxLabel || '标记为完成'}</span>
       </label>
     </section>
   )
@@ -181,11 +175,11 @@ function FileRefsBlock({
             file.githubUrl ||
             buildGithubBlobUrl({ owner, repo, path: file.path, branch })
           return (
-            <article key={file.path} className="guide-file-card">
+            <article key={file.path} className="guide-file-row">
               <code>{file.path}</code>
               <p>{file.reason}</p>
               <a href={url} target="_blank" rel="noreferrer">
-                查看 GitHub 文件
+                在 GitHub 查看
               </a>
             </article>
           )
@@ -213,12 +207,12 @@ function ReproduceBlock({
         ))}
       </ol>
       {block.constructExample && (
-        <div className="guide-expected">
-          <strong>然后构造：</strong>
+        <aside className="guide-callout">
+          <strong>然后构造</strong>
           <pre>
             <code>{block.constructExample}</code>
           </pre>
-        </div>
+        </aside>
       )}
       {(block.expectedBehavior || block.actualBehavior) && (
         <div className="guide-behavior-grid">
@@ -462,7 +456,6 @@ function buildMentorContext(params: {
 const Roadmap = () => {
   const roadmap = useRoadmapStore((s) => s.roadmap)
   const steps = useRoadmapStore((s) => s.steps)
-  const progress = useRoadmapStore((s) => s.progress)
   const isLoading = useRoadmapStore((s) => s.isLoading)
   const isGeneratingMore = useRoadmapStore((s) => s.isGeneratingMore)
   const error = useRoadmapStore((s) => s.error)
@@ -519,6 +512,15 @@ const Roadmap = () => {
     )
   }).length
   const failedCount = sections.filter((section) => section.phase?.generationStatus === 'failed').length
+  const generatingIndex = sections.findIndex(
+    (section) => section.phase?.generationStatus === 'generating',
+  )
+  const generatingLabel =
+    generatingIndex >= 0
+      ? `${generatingIndex + 1} / ${sections.length || 7} · 生成中`
+      : isGeneratingMore
+        ? `${readyCount} / ${sections.length || 7} · 生成中`
+        : null
   const hasShell = steps.length > 0
   const issueTitle = activeContributionIssue
     ? `#${activeContributionIssue.issueNumber} ${activeContributionIssue.title}`
@@ -562,7 +564,9 @@ const Roadmap = () => {
     return (
       <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
         <div className="app-page active roadmap-shell">
+          <GuideMasthead />
           <AiPageError
+            kicker="NO ISSUE SELECTED"
             title="请先选择一个 Issue"
             message="贡献指南必须围绕你当前选择的 Issue 生成。"
             onRetry={() => navigate('/issues')}
@@ -578,8 +582,10 @@ const Roadmap = () => {
     return (
       <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
         <div className="app-page active roadmap-shell">
+          <GuideMasthead />
           <AiPageError
             className="roadmap-error"
+            kicker="LOAD FAILED"
             title="贡献指南加载失败"
             message={error}
             onRetry={handleRetryAll}
@@ -595,17 +601,20 @@ const Roadmap = () => {
       <div className="app-page active roadmap-shell">
         <header className="guide-header">
           <div>
-            <span className="guide-eyebrow">贡献指南</span>
+            <span className="osm-kicker">
+              <span className="osm-kicker-dot" />
+              CONTRIBUTION GUIDE
+            </span>
             <h1>{roadmap?.title || `围绕 ${issueTitle} 的贡献指南`}</h1>
             <p>
               围绕「{issueTitle}」按可执行步骤推进。第一章就绪即可先做，后续章节后台继续生成。
             </p>
           </div>
           <div className="guide-header-actions">
-            <span className="guide-progress-pill">
-              已生成 {readyCount}/{sections.length || 7}
-              {failedCount > 0 ? ` · 失败 ${failedCount}` : ''}
-              {completedCount > 0 ? ` · 已读完 ${completedCount}` : ''}
+            <span className="guide-progress-meta">
+              {readyCount}/{sections.length || 7} 已就绪
+              {failedCount > 0 ? ` · ${failedCount} 失败` : ''}
+              {completedCount > 0 ? ` · ${completedCount} 已完成` : ''}
             </span>
             {failedCount > 0 && (
               <Button variant="primary" onClick={() => retryFailedPhases()} loading={isGeneratingMore}>
@@ -619,41 +628,39 @@ const Roadmap = () => {
         </header>
 
         {(isLoading || isGeneratingMore) && (
-          <div className="guide-stream-banner">
+          <div className="guide-stream-status">
             {isLoading
               ? '正在读取仓库文档与 Issue 上下文…'
-              : `后台继续生成后续章节（${progress.percentage}%）`}
+              : generatingLabel || '生成中'}
           </div>
         )}
 
-        <div className="guide-step-cards">
+        <nav className="guide-stepper" aria-label="章节进度">
           {sections.map((section, index) => {
             const status = section.phase?.generationStatus || 'queued'
+            const completed = section.phase?.status === 'completed'
             return (
               <button
                 key={section.id}
                 type="button"
                 className={clsx(
-                  'guide-step-card',
+                  'guide-stepper-item',
                   index === activeIndex && 'active',
                   status === 'ready' && 'ready',
                   status === 'generating' && 'generating',
                   status === 'failed' && 'failed',
-                  section.phase?.status === 'completed' && 'completed',
+                  completed && 'completed',
                 )}
                 onClick={() => setActiveIndex(index)}
               >
-                <span className="guide-step-card-number">{section.number}</span>
-                <span className="guide-step-card-body">
-                  <strong>{section.title}</strong>
-                  <em>{generationLabel(section.phase)}</em>
-                </span>
-                {status === 'generating' && <span className="guide-step-card-spinner" />}
-                {status === 'ready' && section.phase?.status === 'completed' && <CheckIcon />}
+                <span className="guide-stepper-num">{section.number}</span>
+                <span className="guide-stepper-title">{section.title}</span>
+                {status === 'generating' && <span className="guide-status-dot" />}
+                {completed && <CheckIcon />}
               </button>
             )
           })}
-        </div>
+        </nav>
 
         <div className="guide-layout">
           <aside className="guide-sidebar">

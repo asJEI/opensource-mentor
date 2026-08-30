@@ -153,6 +153,6 @@
     box-shadow: 0 0 0 8px var(--accent-soft);
   }
   50% {
-    box-shadow: 0 0 0 14px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 0 0 14px rgba(226, 168, 60, 0.15);
   }
 }

@@ -10,12 +10,6 @@ export interface AppHeaderProps {
   breadcrumbs?: BreadcrumbItem[]
 }
 
-const ChevronRight = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-)
-
 const AppHeader = ({ breadcrumbs = [] }: AppHeaderProps) => {
   return (
     <header className="app-header">
@@ -30,7 +24,7 @@ const AppHeader = ({ breadcrumbs = [] }: AppHeaderProps) => {
                 ) : (
                   <span className={clsx(isLast && 'current')}>{item.label}</span>
                 )}
-                {!isLast && <ChevronRight />}
+                {!isLast && <span className="breadcrumb-sep">/</span>}
               </span>
             )
           })}

@@ -46,7 +46,7 @@
 }
 
 .review-issue-card__severity-bar--high {
-  background: #f97316;
+  background: #e9612f;
 }
 
 .review-issue-card__severity-bar--medium {
@@ -191,7 +191,7 @@
 
 /* 代码块 */
 .review-issue-code {
-  background: #1e293b;
+  background: #21201c;
   border-radius: var(--radius-sm);
   overflow: hidden;
   margin-left: 22px;
@@ -231,14 +231,14 @@
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12.5px;
   line-height: 1.6;
-  color: #e2e8f0;
+  color: #c5c0b5;
   white-space: pre;
 }
 
 /* 导师小课堂 */
 .review-issue-lesson {
   background: var(--accent-soft-2);
-  border: 1px solid rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(226, 168, 60, 0.15);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   margin-left: 22px;

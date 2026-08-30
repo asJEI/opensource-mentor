@@ -471,7 +471,11 @@ const Issues = () => {
         <div className="page-header">
           <div className="page-title-row">
             <div>
-              <h1 className="page-title">Issue 推荐首页</h1>
+              <span className="osm-kicker">
+                <span className="osm-kicker-dot" />
+                ISSUE FEED
+              </span>
+              <h1 className="page-title">Issue 推荐</h1>
               <p className="page-subtitle">
                 根据你的 GitHub 画像和 onboarding 偏好，从 GitHub 拉取候选 Issue。
                 也可以粘贴仓库或 Issue 链接进行定向筛选与评估。
@@ -486,6 +490,7 @@ const Issues = () => {
 
         {!isAuthenticated ? (
           <AiPageError
+            kicker="AUTH REQUIRED"
             title="需要先登录 GitHub"
             message="候选 Issue 会基于你的 Developer Profile 生成，请先回到首页完成 GitHub 登录。"
             onRetry={() => navigate('/')}
@@ -554,6 +559,7 @@ const Issues = () => {
               </div>
             ) : status === 'error' ? (
               <AiPageError
+                kicker="LOAD FAILED"
                 title="加载候选 Issue 失败"
                 message={error || '请稍后重试'}
                 onRetry={() => {

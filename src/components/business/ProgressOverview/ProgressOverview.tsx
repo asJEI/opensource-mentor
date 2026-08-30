@@ -84,8 +84,8 @@ export const ProgressOverview: React.FC<ProgressOverviewProps> = ({
         <svg viewBox="0 0 84 84">
           <defs>
             <linearGradient id="roadmapGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#a855f7" />
+              <stop offset="0%" stopColor="#f2c063" />
+              <stop offset="100%" stopColor="#b0791a" />
             </linearGradient>
           </defs>
           <circle
