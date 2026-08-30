@@ -19,16 +19,7 @@ import type {
   RoadmapPhase,
 } from '@/types'
 import { buildGithubBlobUrl } from '@/utils/githubUrl'
-
-const GUIDE_SECTIONS = [
-  { number: '01', title: '大致了解' },
-  { number: '02', title: '环境准备' },
-  { number: '03', title: '理解项目' },
-  { number: '04', title: '复现问题' },
-  { number: '05', title: '修正方案' },
-  { number: '06', title: '实现与验证' },
-  { number: '07', title: 'PR 提交' },
-] as const
+import { GUIDE_SECTIONS } from '@/constants/guidePhases'
 
 const ArrowRightIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +58,7 @@ function GuideMasthead() {
           CONTRIBUTION GUIDE
         </span>
         <h1>贡献指南</h1>
-        <p>把一个 Issue 拆成可执行的章节：定位、修改、验证、提交。</p>
+        <p>获取代码、搭好环境、理解 Issue、修改验证，直到提交 PR。</p>
       </div>
     </header>
   )
@@ -200,7 +191,7 @@ function ReproduceBlock({
 }) {
   return (
     <section className={clsx('guide-reproduce', block.completed && 'completed')}>
-      <h3>{block.title || '复现问题'}</h3>
+      <h3>{block.title || '复现 Issue'}</h3>
       <ol className="guide-reproduce-steps">
         {block.steps.map((step, index) => (
           <li key={`${step}-${index}`}>{step}</li>
@@ -359,7 +350,7 @@ function GuideArticle({
         <ReproduceBlock
           block={reproduce}
           onToggle={onToggleReproduce}
-          onMentor={() => onMentor('我在复现问题上卡住了，请根据当前章节帮我排查。')}
+          onMentor={() => onMentor('我在复现 Issue 上卡住了，请根据当前章节帮我排查。')}
         />
       )}
 

@@ -10,16 +10,9 @@ import { aiService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
 import { useRepositoryStore } from './repository'
+import { GUIDE_PHASE_TITLES } from '@/constants/guidePhases'
 
-const DEFAULT_PHASE_TITLES = [
-  '大致了解',
-  '环境准备',
-  '理解项目',
-  '复现问题',
-  '修正方案',
-  '实现与验证',
-  'PR 提交',
-]
+const DEFAULT_PHASE_TITLES = [...GUIDE_PHASE_TITLES]
 
 const STORAGE_PREFIX = 'osm.contribution-guide.v1:'
 
