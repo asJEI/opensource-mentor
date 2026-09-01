@@ -158,6 +158,65 @@ type StructuredDeveloperProfile = {
   github_summary: string
 }
 
+type OAuthPerformanceDiagnostics = {
+  requestId: string
+  measure: <T>(
+    stage: string,
+    operation: () => Promise<T>,
+    metadata?: Record<string, unknown>,
+  ) => Promise<T>
+  log: (stage: string, durationMs: number, metadata?: Record<string, unknown>) => void
+}
+
+function nowMs(): number {
+  return performance.now()
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.round((nowMs() - startedAt) * 100) / 100
+}
+
+function createRequestId(): string {
+  return typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : base64Url(crypto.getRandomValues(new Uint8Array(16)))
+}
+
+function createOAuthDiagnostics(requestId: string): OAuthPerformanceDiagnostics {
+  const log = (
+    stage: string,
+    durationMs: number,
+    metadata: Record<string, unknown> = {},
+  ) => {
+    console.info('[github-oauth][perf]', {
+      request_id: requestId,
+      stage,
+      duration_ms: durationMs,
+      ...metadata,
+    })
+  }
+
+  return {
+    requestId,
+    log,
+    async measure(stage, operation, metadata = {}) {
+      const startedAt = nowMs()
+      try {
+        const result = await operation()
+        log(stage, elapsedMs(startedAt), { ...metadata, ok: true })
+        return result
+      } catch (error) {
+        log(stage, elapsedMs(startedAt), {
+          ...metadata,
+          ok: false,
+          error: redactSecrets(error instanceof Error ? error.message : 'unknown error'),
+        })
+        throw error
+      }
+    },
+  }
+}
+
 function getOAuthClient(env: PlatformEnv) {
   return {
     clientId: env.GITHUB_OAUTH_CLIENT_ID?.trim() || '',
@@ -532,8 +591,12 @@ function inferProjectTypes(repos: GitHubRepoResponse[]) {
 
 async function buildDeveloperProfile(
   accessToken: string,
+  diagnostics?: OAuthPerformanceDiagnostics,
 ): Promise<DeveloperProfile> {
-  const user = await fetchGitHubJson<GitHubUserResponse>(accessToken, '/user')
+  const user = await (diagnostics?.measure ?? ((_, operation) => operation()))(
+    'github.user',
+    () => fetchGitHubJson<GitHubUserResponse>(accessToken, '/user'),
+  )
 
   const [repos, events, prSearch, issueSearch] = await Promise.all([
     fetchGitHubJson<GitHubRepoResponse[]>(
@@ -773,9 +836,28 @@ export async function handleGitHubOAuthCallback(
   request: Request,
   env: PlatformEnv,
 ): Promise<Response> {
+  const requestId = createRequestId()
+  const diagnostics = createOAuthDiagnostics(requestId)
+  const callbackStartedAt = nowMs()
+
+  const finish = (response: Response, outcome: string): Response => {
+    diagnostics.log('oauth_callback.total', elapsedMs(callbackStartedAt), {
+      outcome,
+      status: response.status,
+    })
+    return response
+  }
+
   const { clientId, clientSecret } = getOAuthClient(env)
   if (!clientId || !clientSecret) {
-    return redirectWithError(request, 'github_oauth_not_configured')
+    const startedAt = nowMs()
+    const response = redirectWithError(request, 'github_oauth_not_configured')
+    diagnostics.log('redirect', elapsedMs(startedAt), {
+      ok: true,
+      outcome: 'github_oauth_not_configured',
+      status: response.status,
+    })
+    return finish(response, 'github_oauth_not_configured')
   }
 
   const url = new URL(request.url)
@@ -784,28 +866,47 @@ export async function handleGitHubOAuthCallback(
   const expectedState = getCookie(request, OAUTH_STATE_COOKIE)
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    return redirectWithError(request, 'invalid_oauth_state')
+    const startedAt = nowMs()
+    const response = redirectWithError(request, 'invalid_oauth_state')
+    diagnostics.log('redirect', elapsedMs(startedAt), {
+      ok: true,
+      outcome: 'invalid_oauth_state',
+      status: response.status,
+    })
+    return finish(response, 'invalid_oauth_state')
   }
 
   try {
-    const tokenResponse = await fetch(GITHUB_ACCESS_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'opensource-mentor',
-      },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-        redirect_uri: toCallbackUrl(request),
-      }),
-      signal: AbortSignal.timeout(12_000),
-    })
+    const tokenResponse = await diagnostics.measure(
+      'github.token_exchange',
+      () =>
+        fetch(GITHUB_ACCESS_TOKEN_URL, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'opensource-mentor',
+          },
+          body: JSON.stringify({
+            client_id: clientId,
+            client_secret: clientSecret,
+            code,
+            redirect_uri: toCallbackUrl(request),
+          }),
+          signal: AbortSignal.timeout(12_000),
+        }),
+    )
 
     if (!tokenResponse.ok) {
-      return redirectWithError(request, 'token_exchange_failed')
+      const startedAt = nowMs()
+      const response = redirectWithError(request, 'token_exchange_failed')
+      diagnostics.log('redirect', elapsedMs(startedAt), {
+        ok: true,
+        outcome: 'token_exchange_failed',
+        status: response.status,
+        upstream_status: tokenResponse.status,
+      })
+      return finish(response, 'token_exchange_failed')
     }
 
     const tokenJson = (await tokenResponse.json()) as OAuthTokenResponse
@@ -814,10 +915,18 @@ export async function handleGitHubOAuthCallback(
         '[github-oauth] token exchange failed:',
         redactSecrets(tokenJson.error_description || tokenJson.error || 'unknown error'),
       )
-      return redirectWithError(request, tokenJson.error || 'token_exchange_failed')
+      const outcome = tokenJson.error || 'token_exchange_failed'
+      const startedAt = nowMs()
+      const response = redirectWithError(request, outcome)
+      diagnostics.log('redirect', elapsedMs(startedAt), {
+        ok: true,
+        outcome,
+        status: response.status,
+      })
+      return finish(response, outcome)
     }
 
-    const profile = await buildDeveloperProfile(tokenJson.access_token)
+    const profile = await buildDeveloperProfile(tokenJson.access_token, diagnostics)
     try {
       const { client } = await resolveAIClient(env, request, {}, {
         allowUnauthenticatedPlatform: true,
@@ -840,13 +949,21 @@ export async function handleGitHubOAuthCallback(
         },
         profile,
         profile.developerProfile,
+        diagnostics,
       )
     } catch (error) {
       console.error(
         '[github-oauth] supabase persistence failed:',
         redactSecrets(error instanceof Error ? error.message : 'unknown error'),
       )
-      return redirectWithError(request, 'supabase_persistence_failed')
+      const startedAt = nowMs()
+      const response = redirectWithError(request, 'supabase_persistence_failed')
+      diagnostics.log('redirect', elapsedMs(startedAt), {
+        ok: true,
+        outcome: 'supabase_persistence_failed',
+        status: response.status,
+      })
+      return finish(response, 'supabase_persistence_failed')
     }
     profile.appUserId = persisted.appUser.id
     profile.profileSetupStatus =
@@ -855,23 +972,46 @@ export async function handleGitHubOAuthCallback(
 
     let sessionCookie: string
     try {
-      sessionCookie = await createSessionCookie(request, env, {
-        userId: persisted.appUser.id,
-        githubId: profile.profile.githubId,
-      })
+      sessionCookie = await diagnostics.measure('session.create', () =>
+        createSessionCookie(request, env, {
+          userId: persisted.appUser.id,
+          githubId: profile.profile.githubId,
+        }),
+      )
     } catch (error) {
       console.error(
         '[github-oauth] session cookie failed:',
         redactSecrets(error instanceof Error ? error.message : 'unknown error'),
       )
-      return redirectWithError(request, 'session_cookie_failed')
+      const startedAt = nowMs()
+      const response = redirectWithError(request, 'session_cookie_failed')
+      diagnostics.log('redirect', elapsedMs(startedAt), {
+        ok: true,
+        outcome: 'session_cookie_failed',
+        status: response.status,
+      })
+      return finish(response, 'session_cookie_failed')
     }
-    return renderOAuthSuccessPage(request, sessionCookie)
+    const redirectStartedAt = nowMs()
+    const response = renderOAuthSuccessPage(request, sessionCookie)
+    diagnostics.log('redirect', elapsedMs(redirectStartedAt), {
+      ok: true,
+      outcome: 'success',
+      status: response.status,
+    })
+    return finish(response, 'success')
   } catch (error) {
     console.error(
       '[github-oauth] callback failed:',
       redactSecrets(error instanceof Error ? error.message : 'unknown error'),
     )
-    return redirectWithError(request, 'profile_fetch_failed')
+    const startedAt = nowMs()
+    const response = redirectWithError(request, 'profile_fetch_failed')
+    diagnostics.log('redirect', elapsedMs(startedAt), {
+      ok: true,
+      outcome: 'profile_fetch_failed',
+      status: response.status,
+    })
+    return finish(response, 'profile_fetch_failed')
   }
 }
