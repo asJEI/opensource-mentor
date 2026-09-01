@@ -287,18 +287,21 @@ interface UserState {
   /** 应用 GitHub OAuth 回调返回的公开画像 */
   applyGitHubOAuthProfile: (profile: GitHubDeveloperProfile) => void
   /** 应用服务端 /api/me 返回的持久化状态 */
-  applyServerUserState: (input: {
-    githubProfile: GitHubDeveloperProfile | null
-    githubUsername: string
-    githubAvatar: string
-    profileSetupStatus: ProfileSetupStatus
-    profileConfirmed: boolean
-    profileStatus?: DeveloperProfileStatus | null
-    openSourceGoal?: string | null
-    preferredTechStack?: string[] | null
-    contributionTimeBudget?: string | null
-    guidancePreference?: string | null
-  }) => void
+  applyServerUserState: (
+    input: {
+      githubProfile: GitHubDeveloperProfile | null
+      githubUsername: string
+      githubAvatar: string
+      profileSetupStatus: ProfileSetupStatus
+      profileConfirmed: boolean
+      profileStatus?: DeveloperProfileStatus | null
+      openSourceGoal?: string | null
+      preferredTechStack?: string[] | null
+      contributionTimeBudget?: string | null
+      guidancePreference?: string | null
+    },
+    options?: { mode?: 'full' | 'generation' },
+  ) => void
   /** 退出当前设备上的 GitHub 登录态 */
   logout: () => void
 }
@@ -429,8 +432,9 @@ export const useUserStore = create<UserState>()(
             bio: githubProfile.profile.bio,
             githubUrl: githubProfile.profile.htmlUrl,
             profileSetupStatus:
-              state.profile.profileSetupStatus === 'completed'
-                ? 'completed'
+              state.profile.profileSetupStatus === 'completed' ||
+              state.profile.profileSetupStatus === 'skipped'
+                ? state.profile.profileSetupStatus
                 : 'not_started',
             preferredTechStack:
               state.profile.preferredTechStack.length > 0
@@ -449,9 +453,17 @@ export const useUserStore = create<UserState>()(
           }),
         })),
 
-      applyServerUserState: (input) =>
+      applyServerUserState: (input, options) =>
         set((state) => {
-          const githubProfile = input.githubProfile
+          const generationOnly = options?.mode === 'generation'
+          const githubProfile = input.githubProfile ?? state.githubProfile
+          const localSetup = state.profile.profileSetupStatus
+          const nextSetupStatus = generationOnly
+            ? localSetup
+            : input.profileSetupStatus === 'not_started' &&
+                (localSetup === 'completed' || localSetup === 'skipped')
+              ? localSetup
+              : input.profileSetupStatus
           return {
             isAuthenticated: true,
             githubProfile,
@@ -466,11 +478,19 @@ export const useUserStore = create<UserState>()(
               bio: githubProfile?.profile.bio || state.profile.bio,
               githubUrl:
                 githubProfile?.profile.htmlUrl || state.profile.githubUrl,
-              profileSetupStatus: input.profileSetupStatus,
-              openSourceGoal: input.openSourceGoal,
-              preferredTechStack: input.preferredTechStack,
-              contributionTimeBudget: input.contributionTimeBudget,
-              guidancePreference: input.guidancePreference,
+              profileSetupStatus: nextSetupStatus,
+              openSourceGoal: generationOnly
+                ? state.profile.openSourceGoal
+                : input.openSourceGoal,
+              preferredTechStack: generationOnly
+                ? state.profile.preferredTechStack
+                : input.preferredTechStack,
+              contributionTimeBudget: generationOnly
+                ? state.profile.contributionTimeBudget
+                : input.contributionTimeBudget,
+              guidancePreference: generationOnly
+                ? state.profile.guidancePreference
+                : input.guidancePreference,
               contributionLevel:
                 githubProfile?.inferredContributionLevel ??
                 state.profile.contributionLevel,

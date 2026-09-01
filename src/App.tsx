@@ -80,7 +80,9 @@ function App() {
       try {
         const me = await authService.getMe()
         if (cancelled) return
-        applyServerUserState(toServerUserState(me, githubProfile))
+        const fallbackGithub =
+          githubProfile ?? useUserStore.getState().githubProfile
+        applyServerUserState(toServerUserState(me, fallbackGithub))
 
         let status = me.developerProfile.profile_status ?? 'pending'
         const startedAt = Date.now()
@@ -93,7 +95,10 @@ function App() {
           if (cancelled) return
           const next = await authService.getMe()
           if (cancelled) return
-          applyServerUserState(toServerUserState(next, githubProfile))
+          applyServerUserState(
+            toServerUserState(next, useUserStore.getState().githubProfile),
+            { mode: 'generation' },
+          )
           status = next.developerProfile.profile_status ?? 'pending'
         }
 

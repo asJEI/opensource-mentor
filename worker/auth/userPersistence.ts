@@ -430,7 +430,7 @@ async function patchDeveloperProfile(
 
   if (Object.keys(knownPatch).length === 0) return existing
 
-  const updated = await supabase.request<DeveloperProfileRow[]>(
+  const updated = await supabase.request<DeveloperProfileRow[] | DeveloperProfileRow>(
     `/developer_profiles?${relationColumn}=eq.${encodeQuery(appUserId)}&select=${DEVELOPER_PROFILE_SELECT}`,
     {
       method: 'PATCH',
@@ -438,7 +438,7 @@ async function patchDeveloperProfile(
       body: JSON.stringify(knownPatch),
     },
   )
-  return updated[0] ?? existing
+  return firstRow(updated) ?? existing
 }
 
 async function patchProfileSnapshot(
@@ -648,7 +648,7 @@ export async function updateDeveloperProfile(
   if (!existing) {
     throw new ApiError('Developer Profile 不存在', 404)
   }
-  const cleanPatch = pickKnownProfilePatch(existing, {
+  const explicitPatch = compactPatch({
     ...patch,
     updated_at: new Date().toISOString(),
   })
@@ -656,19 +656,26 @@ export async function updateDeveloperProfile(
     env,
     existing,
     appUserId,
-    cleanPatch,
+    explicitPatch,
+    { filterUnknown: false },
   ).catch(async (error) => {
-    const fallbackPatch = {
-      profile_setup_status: patch.profile_setup_status,
-      profile_confirmed: patch.profile_confirmed,
-      updated_at: new Date().toISOString(),
-    }
+    if (!isMissingColumnError(error)) throw error
     return patchDeveloperProfile(
       env,
       existing,
       appUserId,
-      Object.fromEntries(
-        Object.entries(fallbackPatch).filter(([, value]) => value !== undefined),
+      pickKnownProfilePatch(existing, explicitPatch),
+    ).catch(async () =>
+      patchDeveloperProfile(
+        env,
+        existing,
+        appUserId,
+        compactPatch({
+          profile_setup_status: patch.profile_setup_status,
+          profile_confirmed: patch.profile_confirmed,
+          updated_at: new Date().toISOString(),
+        }),
+        { filterUnknown: false },
       ),
     )
   })

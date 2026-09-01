@@ -73,6 +73,7 @@ function normalizeTechStack(values: string[]): string[] {
 const ProfileOnboarding = () => {
   const profile = useUserStore((state) => state.profile)
   const githubProfile = useUserStore((state) => state.githubProfile)
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated)
   const completeProfileSetup = useUserStore((state) => state.completeProfileSetup)
   const applyServerUserState = useUserStore((state) => state.applyServerUserState)
   const skipProfileSetup = useUserStore((state) => state.skipProfileSetup)
@@ -110,6 +111,16 @@ const ProfileOnboarding = () => {
     )
   }, [detectedTechStack, profile.preferredTechStack])
 
+  const persistSetupStatus = async (
+    payload: Parameters<typeof authService.updateDeveloperProfile>[0],
+  ) => {
+    if (!isAuthenticated) return
+    const me = await authService.updateDeveloperProfile(payload)
+    applyServerUserState(
+      toServerUserState(me, useUserStore.getState().githubProfile),
+    )
+  }
+
   const handleSkip = () => {
     skipProfileSetup()
     showToast(
@@ -117,6 +128,9 @@ const ProfileOnboarding = () => {
       '已跳过偏好补充',
       '推荐将只依据 GitHub 公开画像，准确度会低一些；随时可在偏好设置补充',
     )
+    void persistSetupStatus({ profileSetupStatus: 'skipped' }).catch(() => {
+      showToast('error', '同步失败', '已在本地跳过，稍后可在偏好设置再保存一次')
+    })
   }
 
   const addCustomTech = () => {
@@ -145,29 +159,29 @@ const ProfileOnboarding = () => {
       guidancePreference,
     }
 
-    if (githubProfile) {
-      setSaving(true)
-      try {
-        const me = await authService.updateDeveloperProfile({
-          profileSetupStatus: 'completed',
-          profileConfirmed: true,
-          openSourceGoal,
-          preferredTechStack: formData.preferredTechStack,
-          contributionTimeBudget: timeBudget,
-          guidancePreference,
-        })
-        applyServerUserState(toServerUserState(me, githubProfile))
-        showToast('success', '偏好已保存', '已同步到服务端 Developer Profile')
-      } catch {
-        showToast('error', '保存失败', '服务端暂时无法保存偏好，请稍后重试')
-      } finally {
-        setSaving(false)
-      }
+    completeProfileSetup(formData)
+
+    if (!isAuthenticated) {
+      showToast('success', '偏好已保存', '访客偏好已保存在当前浏览器')
       return
     }
 
-    completeProfileSetup(formData)
-    showToast('success', '偏好已保存', '访客偏好已保存在当前浏览器')
+    setSaving(true)
+    try {
+      await persistSetupStatus({
+        profileSetupStatus: 'completed',
+        profileConfirmed: true,
+        openSourceGoal,
+        preferredTechStack: formData.preferredTechStack,
+        contributionTimeBudget: timeBudget,
+        guidancePreference,
+      })
+      showToast('success', '偏好已保存', '已同步到服务端 Developer Profile')
+    } catch {
+      showToast('error', '同步失败', '偏好已保存在当前浏览器，稍后可在设置页再同步')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
