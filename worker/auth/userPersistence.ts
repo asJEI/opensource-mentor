@@ -109,6 +109,22 @@ function isMissingColumnError(error: unknown): boolean {
   )
 }
 
+function isConflictError(error: unknown): boolean {
+  if (error instanceof ApiError && error.status === 409) return true
+  const message = error instanceof Error ? error.message : String(error)
+  return (
+    message.includes('duplicate key') ||
+    message.includes('already exists') ||
+    /\b23505\b/.test(message)
+  )
+}
+
+function firstRow<T>(value: T[] | T | null | undefined): T | undefined {
+  if (Array.isArray(value)) return value[0]
+  if (value && typeof value === 'object') return value
+  return undefined
+}
+
 async function findAppUserByGitHubId(
   env: PlatformEnv,
   githubId: number,
@@ -118,11 +134,11 @@ async function findAppUserByGitHubId(
   const users = await (diagnostics?.measure ?? ((_, operation) => operation()))(
     'supabase.app_user.query',
     () =>
-      supabase.request<AppUserRow[]>(
+      supabase.request<AppUserRow[] | AppUserRow>(
         `/app_users?github_id=eq.${encodeQuery(githubId)}&select=${APP_USER_SELECT}&limit=1`,
       ),
   )
-  return users[0] ?? null
+  return firstRow(users) ?? null
 }
 
 async function upsertAppUser(
@@ -138,7 +154,7 @@ async function upsertAppUser(
     const updated = await (diagnostics?.measure ?? ((_, operation) => operation()))(
       'supabase.app_user.upsert',
       () =>
-        supabase.request<AppUserRow[]>(
+        supabase.request<AppUserRow[] | AppUserRow>(
           `/app_users?github_id=eq.${encodeQuery(identity.id)}&select=${APP_USER_SELECT}`,
           {
             method: 'PATCH',
@@ -152,31 +168,38 @@ async function upsertAppUser(
         ),
       { operation: 'patch' },
     )
-    return { appUser: updated[0] ?? existing, isNew: false }
+    return { appUser: firstRow(updated) ?? existing, isNew: false }
   }
 
-  const inserted = await (diagnostics?.measure ?? ((_, operation) => operation()))(
-    'supabase.app_user.upsert',
-    () =>
-      supabase.request<AppUserRow[]>(
-        `/app_users?select=${APP_USER_SELECT}`,
-        {
-          method: 'POST',
-          prefer: 'return=representation',
-          body: JSON.stringify({
-            github_id: identity.id,
-            github_username: identity.login,
-            github_avatar: identity.avatar_url,
-          }),
-        },
-      ),
-    { operation: 'insert' },
-  )
-
-  if (!inserted[0]) {
-    throw new ApiError('创建用户失败', 502)
+  try {
+    const inserted = await (diagnostics?.measure ?? ((_, operation) => operation()))(
+      'supabase.app_user.upsert',
+      () =>
+        supabase.request<AppUserRow[] | AppUserRow>(
+          `/app_users?select=${APP_USER_SELECT}`,
+          {
+            method: 'POST',
+            prefer: 'return=representation',
+            body: JSON.stringify({
+              github_id: identity.id,
+              github_username: identity.login,
+              github_avatar: identity.avatar_url,
+            }),
+          },
+        ),
+      { operation: 'insert' },
+    )
+    const appUser = firstRow(inserted)
+    if (!appUser) {
+      throw new ApiError('创建用户失败', 502)
+    }
+    return { appUser, isNew: true }
+  } catch (error) {
+    if (!isConflictError(error)) throw error
+    const raced = await findAppUserByGitHubId(env, identity.id, diagnostics)
+    if (raced) return { appUser: raced, isNew: false }
+    throw error
   }
-  return { appUser: inserted[0], isNew: true }
 }
 
 async function findDeveloperProfile(
@@ -188,15 +211,35 @@ async function findDeveloperProfile(
   const byUserId = await (diagnostics?.measure ?? ((_, operation) => operation()))(
     'supabase.developer_profile.query',
     () =>
-      supabase.request<DeveloperProfileRow[]>(
+      supabase.request<DeveloperProfileRow[] | DeveloperProfileRow>(
         `/developer_profiles?user_id=eq.${encodeQuery(appUserId)}&select=${DEVELOPER_PROFILE_SELECT}&limit=1`,
       ).catch(async () =>
-        supabase.request<DeveloperProfileRow[]>(
+        supabase.request<DeveloperProfileRow[] | DeveloperProfileRow>(
           `/developer_profiles?app_user_id=eq.${encodeQuery(appUserId)}&select=${DEVELOPER_PROFILE_SELECT}&limit=1`,
         ),
       ),
   )
-  return byUserId[0] ?? null
+  return firstRow(byUserId) ?? null
+}
+
+async function postDeveloperProfile(
+  env: PlatformEnv,
+  body: Record<string, unknown>,
+): Promise<DeveloperProfileRow> {
+  const supabase = createSupabaseClient(env)
+  const rows = await supabase.request<DeveloperProfileRow[] | DeveloperProfileRow>(
+    `/developer_profiles?select=${DEVELOPER_PROFILE_SELECT}`,
+    {
+      method: 'POST',
+      prefer: 'return=representation',
+      body: JSON.stringify(body),
+    },
+  )
+  const row = firstRow(rows)
+  if (!row) {
+    throw new ApiError('创建 Developer Profile 失败', 502)
+  }
+  return row
 }
 
 async function insertDeveloperProfile(
@@ -204,45 +247,42 @@ async function insertDeveloperProfile(
   appUserId: string,
   diagnostics?: OAuthPersistenceDiagnostics,
 ): Promise<DeveloperProfileRow> {
-  const supabase = createSupabaseClient(env)
-  const base = {
+  const required = {
     profile_setup_status: 'not_started',
     profile_confirmed: false,
-    profile_status: 'pending',
+  }
+  // Login must not depend on optional profile_status / flattened columns.
+  // If those columns exist, the database default already sets pending.
+  const attempts: Array<Record<string, unknown>> = [
+    { user_id: appUserId, ...required },
+    { app_user_id: appUserId, ...required },
+  ]
+
+  let lastError: unknown
+  for (const body of attempts) {
+    try {
+      return await (diagnostics?.measure ?? ((_, operation) => operation()))(
+        'supabase.developer_profile.create',
+        () => postDeveloperProfile(env, body),
+        { relation: 'user_id' in body ? 'user_id' : 'app_user_id' },
+      )
+    } catch (error) {
+      lastError = error
+      if (isConflictError(error)) {
+        const existing = await findDeveloperProfile(env, appUserId, diagnostics)
+        if (existing) return existing
+      }
+      if (!isMissingColumnError(error) && !isConflictError(error)) {
+        throw error
+      }
+    }
   }
 
-  const inserted = await (diagnostics?.measure ?? ((_, operation) => operation()))(
-    'supabase.developer_profile.create',
-    () =>
-      supabase.request<DeveloperProfileRow[]>(
-        `/developer_profiles?select=${DEVELOPER_PROFILE_SELECT}`,
-        {
-          method: 'POST',
-          prefer: 'return=representation',
-          body: JSON.stringify({
-            user_id: appUserId,
-            ...base,
-          }),
-        },
-      ).catch(async () =>
-        supabase.request<DeveloperProfileRow[]>(
-          `/developer_profiles?select=${DEVELOPER_PROFILE_SELECT}`,
-          {
-            method: 'POST',
-            prefer: 'return=representation',
-            body: JSON.stringify({
-              app_user_id: appUserId,
-              ...base,
-            }),
-          },
-        ),
-      ),
-  )
-
-  if (!inserted[0]) {
-    throw new ApiError('创建 Developer Profile 失败', 502)
-  }
-  return inserted[0]
+  const existing = await findDeveloperProfile(env, appUserId, diagnostics)
+  if (existing) return existing
+  throw lastError instanceof ApiError
+    ? lastError
+    : new ApiError('创建 Developer Profile 失败', 502)
 }
 
 function toStringArray(value: unknown): string[] | undefined {
@@ -507,11 +547,22 @@ export async function persistOAuthLogin(
     }
   }
 
-  return {
-    appUser,
-    developerProfile: hydrateDeveloperProfileRow(
-      await insertDeveloperProfile(env, appUser.id, diagnostics),
-    ),
+  try {
+    return {
+      appUser,
+      developerProfile: hydrateDeveloperProfileRow(
+        await insertDeveloperProfile(env, appUser.id, diagnostics),
+      ),
+    }
+  } catch (error) {
+    const raced = await findDeveloperProfile(env, appUser.id, diagnostics)
+    if (raced) {
+      return {
+        appUser,
+        developerProfile: hydrateDeveloperProfileRow(raced),
+      }
+    }
+    throw error
   }
 }
 
