@@ -12,4 +12,8 @@ export { default as githubService } from './githubService'
 export { default as aiService } from './aiService'
 export { default as repositoryService } from './repositoryService'
 export { default as codeReviewService } from './codeReviewService'
-export { default as authService } from './authService'
+export {
+  default as authService,
+  toServerUserState,
+} from './authService'
+export type { ServerMeResponse } from './authService'

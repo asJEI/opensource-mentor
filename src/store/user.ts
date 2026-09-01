@@ -14,6 +14,7 @@ import type {
   UserProfileContext,
   UserProfileFormData,
   UserPreferences,
+  DeveloperProfileStatus,
 } from '@/types'
 
 const USER_STORAGE_KEY = 'opensource-mentor:user-profile'
@@ -267,6 +268,8 @@ interface UserState {
   isAuthenticated: boolean
   /** GitHub OAuth 读取到的公开开发者画像 */
   githubProfile: GitHubDeveloperProfile | null
+  /** 服务端开发者画像生成状态 */
+  profileStatus: DeveloperProfileStatus | null
 
   // ---- Actions ----
   /** 部分更新用户资料 */
@@ -290,6 +293,7 @@ interface UserState {
     githubAvatar: string
     profileSetupStatus: ProfileSetupStatus
     profileConfirmed: boolean
+    profileStatus?: DeveloperProfileStatus | null
     openSourceGoal?: string | null
     preferredTechStack?: string[] | null
     contributionTimeBudget?: string | null
@@ -377,6 +381,7 @@ export const useUserStore = create<UserState>()(
       preferences: defaultPreferences,
       isAuthenticated: false,
       githubProfile: null,
+      profileStatus: null,
 
       updateProfile: (partial) =>
         set((state) => ({
@@ -416,6 +421,7 @@ export const useUserStore = create<UserState>()(
         set((state) => ({
           isAuthenticated: true,
           githubProfile,
+          profileStatus: githubProfile.developerProfile ? 'ready' : 'generating',
           profile: normalizeProfile({
             ...state.profile,
             username: githubProfile.profile.name || githubProfile.profile.username,
@@ -449,6 +455,7 @@ export const useUserStore = create<UserState>()(
           return {
             isAuthenticated: true,
             githubProfile,
+            profileStatus: input.profileStatus ?? state.profileStatus,
             profile: normalizeProfile({
               ...state.profile,
               username:
@@ -475,6 +482,7 @@ export const useUserStore = create<UserState>()(
         set((state) => ({
           isAuthenticated: false,
           githubProfile: null,
+          profileStatus: null,
           profile: normalizeProfile({
             ...state.profile,
             username: '',
@@ -499,6 +507,7 @@ export const useUserStore = create<UserState>()(
       merge: (persistedState, currentState) => ({
         ...currentState,
         ...normalizePersistedState(persistedState),
+        profileStatus: currentState.profileStatus,
         // 登录态只由启动时的 /api/me 服务端会话校验恢复。
         isAuthenticated: false,
       }),

@@ -10,7 +10,7 @@ import AiMentor from '@/pages/AiMentor'
 import Settings from '@/pages/Settings'
 import NotFound from '@/pages/NotFound'
 import { ToastContainer } from '@/components/ui'
-import { authService } from '@/services'
+import { authService, toServerUserState } from '@/services'
 import { useToastStore, useUserStore } from '@/store'
 
 const githubLoginErrorMessages: Record<string, string> = {
@@ -21,6 +21,13 @@ const githubLoginErrorMessages: Record<string, string> = {
   session_failed: 'GitHub 已授权，但登录会话创建失败，请检查 SESSION_SECRET 是否已保存并部署',
   profile_fetch_failed: 'GitHub 已授权，但读取 GitHub 用户信息失败，请稍后重试',
   oauth_failed: 'GitHub 登录未完成，请稍后重试',
+}
+
+const PROFILE_POLL_INTERVAL_MS = 2000
+const PROFILE_POLL_TIMEOUT_MS = 90_000
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
 /**
@@ -57,42 +64,57 @@ function App() {
   }, [location.pathname])
 
   useEffect(() => {
+    let cancelled = false
+    const params = new URLSearchParams(location.search)
     const githubProfile = authService.consumeGitHubOAuthProfile()
     if (githubProfile) {
       applyGitHubOAuthProfile(githubProfile)
       showToast(
         'success',
         'GitHub 已连接',
-        `已读取 ${githubProfile.profile.username} 的公开开发者画像`,
+        `已登录 ${githubProfile.profile.username}，开发者画像将在后台生成`,
       )
     }
 
-    void authService
-      .getMe()
-      .then((me) => {
-        applyServerUserState({
-          githubProfile: me.developerProfile.github_profile ?? githubProfile,
-          githubUsername: me.user.githubUsername,
-          githubAvatar: me.user.githubAvatar,
-          profileSetupStatus: me.developerProfile.profile_setup_status,
-          profileConfirmed: me.developerProfile.profile_confirmed,
-          openSourceGoal: me.developerProfile.open_source_goal,
-          preferredTechStack: me.developerProfile.preferred_tech_stack,
-          contributionTimeBudget: me.developerProfile.contribution_time_budget,
-          guidancePreference: me.developerProfile.guidance_preference,
-        })
-      })
-      .catch(() => {
-        // 未登录或会话过期时静默保留本地兼容数据。
-      })
+    void (async () => {
+      try {
+        const me = await authService.getMe()
+        if (cancelled) return
+        applyServerUserState(toServerUserState(me, githubProfile))
 
-    const params = new URLSearchParams(location.search)
+        let status = me.developerProfile.profile_status ?? 'pending'
+        const startedAt = Date.now()
+        while (
+          !cancelled &&
+          (status === 'pending' || status === 'generating') &&
+          Date.now() - startedAt < PROFILE_POLL_TIMEOUT_MS
+        ) {
+          await sleep(PROFILE_POLL_INTERVAL_MS)
+          if (cancelled) return
+          const next = await authService.getMe()
+          if (cancelled) return
+          applyServerUserState(toServerUserState(next, githubProfile))
+          status = next.developerProfile.profile_status ?? 'pending'
+        }
+
+        if (cancelled) return
+        if (status === 'ready' && (me.developerProfile.profile_status === 'pending' || me.developerProfile.profile_status === 'generating')) {
+          showToast('success', '开发者画像已就绪', '已根据 GitHub 公开资料生成你的能力画像')
+        } else if (status === 'failed') {
+          showToast(
+            'error',
+            '开发者画像生成失败',
+            '登录已成功，可稍后在偏好设置重新连接 GitHub',
+          )
+        }
+      } catch {
+        // 未登录或会话过期时静默保留本地兼容数据。
+      }
+    })()
+
     if (params.get('github_login') === 'success') {
       navigate('/issues', { replace: true })
-      return
-    }
-
-    if (params.get('github_login') === 'error') {
+    } else if (params.get('github_login') === 'error') {
       const reason = params.get('reason')
       showToast(
         'error',
@@ -103,6 +125,10 @@ function App() {
           : '请稍后重试，或检查 GitHub OAuth 配置',
       )
       navigate(location.pathname || '/', { replace: true })
+    }
+
+    return () => {
+      cancelled = true
     }
   }, [
     applyGitHubOAuthProfile,

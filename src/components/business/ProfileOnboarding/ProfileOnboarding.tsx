@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import clsx from 'clsx'
 import { Button, Modal } from '@/components/ui'
-import { authService } from '@/services'
+import { authService, toServerUserState } from '@/services'
 import { useToastStore, useUserStore } from '@/store'
 import type {
   ContributionTimeBudget,
@@ -101,6 +101,15 @@ const ProfileOnboarding = () => {
     [githubProfile],
   )
 
+  useEffect(() => {
+    if (detectedTechStack.length === 0) return
+    setTechStack((current) =>
+      current.length > 0
+        ? current
+        : normalizeTechStack([...profile.preferredTechStack, ...detectedTechStack]),
+    )
+  }, [detectedTechStack, profile.preferredTechStack])
+
   const handleSkip = () => {
     skipProfileSetup()
     showToast(
@@ -147,17 +156,7 @@ const ProfileOnboarding = () => {
           contributionTimeBudget: timeBudget,
           guidancePreference,
         })
-        applyServerUserState({
-          githubProfile: me.developerProfile.github_profile ?? githubProfile,
-          githubUsername: me.user.githubUsername,
-          githubAvatar: me.user.githubAvatar,
-          profileSetupStatus: me.developerProfile.profile_setup_status,
-          profileConfirmed: me.developerProfile.profile_confirmed,
-          openSourceGoal: me.developerProfile.open_source_goal,
-          preferredTechStack: me.developerProfile.preferred_tech_stack,
-          contributionTimeBudget: me.developerProfile.contribution_time_budget,
-          guidancePreference: me.developerProfile.guidance_preference,
-        })
+        applyServerUserState(toServerUserState(me, githubProfile))
         showToast('success', '偏好已保存', '已同步到服务端 Developer Profile')
       } catch {
         showToast('error', '保存失败', '服务端暂时无法保存偏好，请稍后重试')

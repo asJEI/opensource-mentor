@@ -28,8 +28,18 @@ create table if not exists public.developer_profiles (
   user_id uuid references public.app_users(id) on delete cascade,
   profile_setup_status text not null default 'not_started',
   profile_confirmed boolean not null default false,
+  profile_status text not null default 'pending',
   github_profile jsonb,
   developer_profile jsonb,
+  developer_level text,
+  languages jsonb not null default '[]'::jsonb,
+  frameworks text[] not null default '{}',
+  domains text[] not null default '{}',
+  open_source_experience text,
+  strengths text[] not null default '{}',
+  possible_weaknesses text[] not null default '{}',
+  evidence text[] not null default '{}',
+  github_summary text,
   open_source_goal text,
   preferred_tech_stack text[],
   contribution_time_budget text,
@@ -42,8 +52,18 @@ alter table public.developer_profiles
   add column if not exists user_id uuid references public.app_users(id) on delete cascade,
   add column if not exists profile_setup_status text not null default 'not_started',
   add column if not exists profile_confirmed boolean not null default false,
+  add column if not exists profile_status text not null default 'pending',
   add column if not exists github_profile jsonb,
   add column if not exists developer_profile jsonb,
+  add column if not exists developer_level text,
+  add column if not exists languages jsonb not null default '[]'::jsonb,
+  add column if not exists frameworks text[] not null default '{}',
+  add column if not exists domains text[] not null default '{}',
+  add column if not exists open_source_experience text,
+  add column if not exists strengths text[] not null default '{}',
+  add column if not exists possible_weaknesses text[] not null default '{}',
+  add column if not exists evidence text[] not null default '{}',
+  add column if not exists github_summary text,
   add column if not exists open_source_goal text,
   add column if not exists preferred_tech_stack text[],
   add column if not exists contribution_time_budget text,
@@ -65,6 +85,19 @@ begin
     alter table public.developer_profiles
       add constraint developer_profiles_profile_setup_status_check
       check (profile_setup_status in ('not_started', 'completed', 'skipped'));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'developer_profiles_profile_status_check'
+  ) then
+    alter table public.developer_profiles
+      add constraint developer_profiles_profile_status_check
+      check (profile_status in ('pending', 'generating', 'ready', 'failed'));
   end if;
 end $$;
 

@@ -89,6 +89,7 @@ const Sidebar = () => {
   const setCurrentAppPage = useAppStore((s) => s.setCurrentAppPage)
   const profile = useUserStore((s) => s.profile)
   const githubProfile = useUserStore((s) => s.githubProfile)
+  const profileStatus = useUserStore((s) => s.profileStatus)
   const isAuthenticated = useUserStore((s) => s.isAuthenticated)
 
   const getInitials = (name: string) => {
@@ -122,7 +123,11 @@ const Sidebar = () => {
       ? `${developerLevelMap[githubProfile.developerProfile.level] ?? '待判断'} · 能力判断把握度 ${Math.round(
           githubProfile.developerProfile.confidence * 100,
         )}%`
-      : githubProfile?.profile.bio || contributionLevelMap[profile.contributionLevel] || 'GitHub 已连接'
+      : profileStatus === 'failed'
+        ? '画像生成失败'
+        : profileStatus === 'generating' || profileStatus === 'pending'
+          ? '开发者画像生成中'
+          : githubProfile?.profile.bio || contributionLevelMap[profile.contributionLevel] || 'GitHub 已连接'
     : '配置保存在此设备'
 
   const handleNavClick = (id: string) => {

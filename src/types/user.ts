@@ -61,6 +61,12 @@ export type GuidancePreference =
 /** 用户画像填写状态 */
 export type ProfileSetupStatus = 'not_started' | 'completed' | 'skipped'
 
+export type DeveloperProfileStatus =
+  | 'pending'
+  | 'generating'
+  | 'ready'
+  | 'failed'
+
 /** 贡献等级 */
 export type ContributionLevel = 'none' | 'low' | 'medium' | 'high'
 

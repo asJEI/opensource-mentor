@@ -17,8 +17,18 @@ export type DeveloperProfileRow = {
   app_user_id?: string
   profile_setup_status: 'not_started' | 'completed' | 'skipped'
   profile_confirmed: boolean
+  profile_status?: 'pending' | 'generating' | 'ready' | 'failed'
   developer_profile?: unknown
   github_profile?: unknown
+  developer_level?: string | null
+  languages?: unknown
+  frameworks?: unknown
+  domains?: unknown
+  open_source_experience?: string | null
+  strengths?: unknown
+  possible_weaknesses?: unknown
+  evidence?: unknown
+  github_summary?: string | null
   open_source_goal?: string | null
   preferred_tech_stack?: string[] | null
   contribution_time_budget?: string | null

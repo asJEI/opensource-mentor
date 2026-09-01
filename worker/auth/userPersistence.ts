@@ -30,11 +30,35 @@ export type OAuthPersistenceDiagnostics = {
   ) => Promise<T>
 }
 
+export type ProfileStatus = 'pending' | 'generating' | 'ready' | 'failed'
+
+type StructuredDeveloperProfileSnapshot = {
+  level?: string
+  languages?: unknown[]
+  frameworks?: string[]
+  domains?: string[]
+  open_source_experience?: string
+  strengths?: string[]
+  possible_weaknesses?: string[]
+  evidence?: string[]
+  github_summary?: string
+}
+
 const APP_USER_SELECT = '*'
 const DEVELOPER_PROFILE_SELECT = '*'
 const OPTIONAL_PROFILE_COLUMNS = [
   'github_profile',
   'developer_profile',
+  'profile_status',
+  'developer_level',
+  'languages',
+  'frameworks',
+  'domains',
+  'open_source_experience',
+  'strengths',
+  'possible_weaknesses',
+  'evidence',
+  'github_summary',
   'open_source_goal',
   'preferred_tech_stack',
   'contribution_time_budget',
@@ -45,22 +69,43 @@ function encodeQuery(value: string | number): string {
   return encodeURIComponent(String(value))
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 function hasColumn(row: DeveloperProfileRow, column: string): boolean {
   return Object.prototype.hasOwnProperty.call(row, column)
+}
+
+function compactPatch(patch: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  )
 }
 
 function pickKnownProfilePatch(
   row: DeveloperProfileRow,
   patch: Record<string, unknown>,
 ): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(patch).filter(([key]) => {
-      if (key === 'updated_at') return hasColumn(row, key)
-      if ((OPTIONAL_PROFILE_COLUMNS as readonly string[]).includes(key)) {
-        return hasColumn(row, key)
-      }
-      return true
-    }),
+  return compactPatch(
+    Object.fromEntries(
+      Object.entries(patch).filter(([key]) => {
+        if (key === 'updated_at') return hasColumn(row, key)
+        if ((OPTIONAL_PROFILE_COLUMNS as readonly string[]).includes(key)) {
+          return hasColumn(row, key)
+        }
+        return true
+      }),
+    ),
+  )
+}
+
+function isMissingColumnError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return (
+    message.includes('Could not find') ||
+    message.includes('schema cache') ||
+    /column .* does not exist/i.test(message)
   )
 }
 
@@ -157,14 +202,13 @@ async function findDeveloperProfile(
 async function insertDeveloperProfile(
   env: PlatformEnv,
   appUserId: string,
-  githubProfile?: unknown,
-  developerProfile?: unknown,
   diagnostics?: OAuthPersistenceDiagnostics,
 ): Promise<DeveloperProfileRow> {
   const supabase = createSupabaseClient(env)
   const base = {
     profile_setup_status: 'not_started',
     profile_confirmed: false,
+    profile_status: 'pending',
   }
 
   const inserted = await (diagnostics?.measure ?? ((_, operation) => operation()))(
@@ -198,14 +242,136 @@ async function insertDeveloperProfile(
   if (!inserted[0]) {
     throw new ApiError('创建 Developer Profile 失败', 502)
   }
-  return patchProfileSnapshot(
-    env,
-    inserted[0],
-    appUserId,
-    githubProfile,
-    developerProfile,
-    diagnostics,
-  )
+  return inserted[0]
+}
+
+function toStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
+function unwrapStructuredDeveloperProfile(
+  value: unknown,
+): StructuredDeveloperProfileSnapshot | undefined {
+  if (!isRecord(value)) return undefined
+
+  const nested = value.developerProfile ?? value.developer_profile
+  if (isRecord(nested)) {
+    const nestedProfile = nested as StructuredDeveloperProfileSnapshot
+    if (
+      typeof nestedProfile.level === 'string' ||
+      Array.isArray(nestedProfile.languages) ||
+      Array.isArray(nestedProfile.frameworks)
+    ) {
+      return nestedProfile
+    }
+  }
+
+  if (
+    typeof value.level === 'string' ||
+    Array.isArray(value.frameworks) ||
+    Array.isArray(value.domains) ||
+    typeof value.open_source_experience === 'string' ||
+    typeof value.github_summary === 'string'
+  ) {
+    return value as StructuredDeveloperProfileSnapshot
+  }
+
+  return undefined
+}
+
+function flattenDeveloperProfile(
+  developerProfile: unknown,
+): Record<string, unknown> {
+  const profile = unwrapStructuredDeveloperProfile(developerProfile)
+  if (!profile) return {}
+
+  return compactPatch({
+    developer_level:
+      typeof profile.level === 'string' ? profile.level : undefined,
+    languages: Array.isArray(profile.languages) ? profile.languages : undefined,
+    frameworks: toStringArray(profile.frameworks),
+    domains: toStringArray(profile.domains),
+    open_source_experience:
+      typeof profile.open_source_experience === 'string'
+        ? profile.open_source_experience
+        : undefined,
+    strengths: toStringArray(profile.strengths),
+    possible_weaknesses: toStringArray(profile.possible_weaknesses),
+    evidence: toStringArray(profile.evidence),
+    github_summary:
+      typeof profile.github_summary === 'string'
+        ? profile.github_summary
+        : undefined,
+  })
+}
+
+function structuredFromRow(
+  row: DeveloperProfileRow,
+): StructuredDeveloperProfileSnapshot | undefined {
+  const fromJson =
+    unwrapStructuredDeveloperProfile(row.developer_profile) ??
+    unwrapStructuredDeveloperProfile(row.github_profile)
+  if (fromJson && typeof fromJson.level === 'string') return fromJson
+
+  if (
+    row.developer_level ||
+    (Array.isArray(row.languages) && row.languages.length > 0) ||
+    (Array.isArray(row.frameworks) && row.frameworks.length > 0)
+  ) {
+    return {
+      level: typeof row.developer_level === 'string' ? row.developer_level : undefined,
+      languages: Array.isArray(row.languages) ? row.languages : undefined,
+      frameworks: toStringArray(row.frameworks),
+      domains: toStringArray(row.domains),
+      open_source_experience:
+        typeof row.open_source_experience === 'string'
+          ? row.open_source_experience
+          : undefined,
+      strengths: toStringArray(row.strengths),
+      possible_weaknesses: toStringArray(row.possible_weaknesses),
+      evidence: toStringArray(row.evidence),
+      github_summary:
+        typeof row.github_summary === 'string' ? row.github_summary : undefined,
+    }
+  }
+
+  return fromJson
+}
+
+function hydrateDeveloperProfileRow(row: DeveloperProfileRow): DeveloperProfileRow {
+  const structured = structuredFromRow(row)
+  const githubProfile = isRecord(row.github_profile)
+    ? {
+        ...row.github_profile,
+        developerProfile:
+          structured ??
+          unwrapStructuredDeveloperProfile(row.github_profile),
+      }
+    : row.github_profile
+
+  return {
+    ...row,
+    profile_status:
+      row.profile_status ?? (structured ? 'ready' : 'pending'),
+    developer_profile: structured ?? row.developer_profile,
+    github_profile: githubProfile,
+    developer_level:
+      row.developer_level ??
+      (typeof structured?.level === 'string' ? structured.level : null),
+    languages: row.languages ?? structured?.languages ?? row.languages,
+    frameworks: row.frameworks ?? structured?.frameworks ?? row.frameworks,
+    domains: row.domains ?? structured?.domains ?? row.domains,
+    open_source_experience:
+      row.open_source_experience ?? structured?.open_source_experience ?? null,
+    strengths: row.strengths ?? structured?.strengths ?? row.strengths,
+    possible_weaknesses:
+      row.possible_weaknesses ??
+      structured?.possible_weaknesses ??
+      row.possible_weaknesses,
+    evidence: row.evidence ?? structured?.evidence ?? row.evidence,
+    github_summary: row.github_summary ?? structured?.github_summary ?? null,
+  }
 }
 
 async function patchDeveloperProfile(
@@ -213,10 +379,14 @@ async function patchDeveloperProfile(
   existing: DeveloperProfileRow,
   appUserId: string,
   patch: Record<string, unknown>,
+  options: { filterUnknown?: boolean } = {},
 ): Promise<DeveloperProfileRow> {
   const relationColumn = existing.user_id ? 'user_id' : 'app_user_id'
   const supabase = createSupabaseClient(env)
-  const knownPatch = pickKnownProfilePatch(existing, patch)
+  const knownPatch =
+    options.filterUnknown === false
+      ? compactPatch(patch)
+      : pickKnownProfilePatch(existing, patch)
 
   if (Object.keys(knownPatch).length === 0) return existing
 
@@ -237,33 +407,67 @@ async function patchProfileSnapshot(
   appUserId: string,
   githubProfile?: unknown,
   developerProfile?: unknown,
+  profileStatus: ProfileStatus = 'ready',
   diagnostics?: OAuthPersistenceDiagnostics,
 ): Promise<DeveloperProfileRow> {
-  const patch = pickKnownProfilePatch(existing, {
+  const structured =
+    unwrapStructuredDeveloperProfile(developerProfile) ??
+    unwrapStructuredDeveloperProfile(githubProfile)
+  const flattened = flattenDeveloperProfile(structured ?? developerProfile)
+  const corePatch = compactPatch({
+    profile_status: profileStatus,
     github_profile: githubProfile,
-    developer_profile: developerProfile,
+    developer_profile: structured ?? developerProfile,
     updated_at: new Date().toISOString(),
   })
-  if (Object.keys(patch).length === 0) return existing
+  const fullPatch = {
+    ...corePatch,
+    ...flattened,
+  }
+
+  const runPatch = (patch: Record<string, unknown>, filterUnknown: boolean) =>
+    patchDeveloperProfile(env, existing, appUserId, patch, { filterUnknown })
 
   try {
     return await (diagnostics?.measure ?? ((_, operation) => operation()))(
       'supabase.developer_profile.snapshot',
-      () => patchDeveloperProfile(env, existing, appUserId, patch),
+      () => runPatch(fullPatch, false),
+      {
+        flattened_keys: Object.keys(flattened),
+      },
     )
   } catch (error) {
-    const message = error instanceof Error ? error.message : ''
-    if (
-      message.includes('Could not find') ||
-      message.includes('column') ||
-      message.includes('schema cache')
-    ) {
-      console.warn(
-        '[supabase] developer profile snapshot columns unavailable, skipping optional profile persistence',
+    if (!isMissingColumnError(error)) throw error
+
+    console.warn(
+      '[supabase] developer profile snapshot includes unknown columns, retrying with compatible subset',
+    )
+
+    try {
+      const compatible = await runPatch(fullPatch, true)
+      const leftover = compactPatch(
+        Object.fromEntries(
+          Object.entries(flattened).filter(
+            ([key]) => !hasColumn(compatible, key) && !hasColumn(existing, key),
+          ),
+        ),
       )
-      return existing
+      if (Object.keys(leftover).length === 0) return compatible
+
+      return await runPatch(
+        {
+          ...leftover,
+          updated_at: new Date().toISOString(),
+        },
+        false,
+      ).catch(() => compatible)
+    } catch (fallbackError) {
+      if (!isMissingColumnError(fallbackError)) throw fallbackError
+      console.warn(
+        '[supabase] flattened developer profile columns unavailable, persisting github/developer JSON only',
+      )
+      return runPatch(corePatch, true)
     }
-    throw error
   }
 }
 
@@ -274,44 +478,100 @@ export async function persistOAuthUser(
   developerProfile: unknown,
   diagnostics?: OAuthPersistenceDiagnostics,
 ): Promise<UserPersistenceResult> {
-  const { appUser, isNew } = await upsertAppUser(env, identity, diagnostics)
-  const existingProfile = await findDeveloperProfile(env, appUser.id, diagnostics)
-
-  if (existingProfile) {
-    const updated = await patchProfileSnapshot(
-      env,
-      existingProfile,
-      appUser.id,
-      githubProfile,
-      developerProfile,
-      diagnostics,
-    )
-    return { appUser, developerProfile: updated }
+  const persisted = await persistOAuthLogin(env, identity, diagnostics)
+  const updated = await updateOAuthDeveloperProfileSnapshot(
+    env,
+    persisted.appUser.id,
+    githubProfile,
+    developerProfile,
+    'ready',
+    diagnostics,
+  )
+  return {
+    appUser: persisted.appUser,
+    developerProfile: updated ?? persisted.developerProfile,
   }
+}
 
-  if (!isNew) {
+export async function persistOAuthLogin(
+  env: PlatformEnv,
+  identity: GitHubIdentity,
+  diagnostics?: OAuthPersistenceDiagnostics,
+): Promise<UserPersistenceResult> {
+  const { appUser } = await upsertAppUser(env, identity, diagnostics)
+  const existingProfile = await findDeveloperProfile(env, appUser.id, diagnostics)
+  if (existingProfile) {
     return {
       appUser,
-      developerProfile: await insertDeveloperProfile(
-        env,
-        appUser.id,
-        githubProfile,
-        developerProfile,
-        diagnostics,
-      ),
+      developerProfile: hydrateDeveloperProfileRow(existingProfile),
     }
   }
 
   return {
     appUser,
-    developerProfile: await insertDeveloperProfile(
-      env,
-      appUser.id,
-      githubProfile,
-      developerProfile,
-      diagnostics,
+    developerProfile: hydrateDeveloperProfileRow(
+      await insertDeveloperProfile(env, appUser.id, diagnostics),
     ),
   }
+}
+
+export async function setDeveloperProfileStatus(
+  env: PlatformEnv,
+  appUserId: string,
+  profileStatus: ProfileStatus,
+): Promise<DeveloperProfileRow | null> {
+  const existing = await findDeveloperProfile(env, appUserId)
+  if (!existing) return null
+  try {
+    return hydrateDeveloperProfileRow(
+      await patchDeveloperProfile(
+        env,
+        existing,
+        appUserId,
+        {
+          profile_status: profileStatus,
+          updated_at: new Date().toISOString(),
+        },
+        { filterUnknown: false },
+      ),
+    )
+  } catch (error) {
+    if (!isMissingColumnError(error)) throw error
+    return hydrateDeveloperProfileRow(
+      await patchDeveloperProfile(env, existing, appUserId, {
+        profile_status: profileStatus,
+        updated_at: new Date().toISOString(),
+      }),
+    )
+  }
+}
+
+export async function updateOAuthDeveloperProfileSnapshot(
+  env: PlatformEnv,
+  appUserId: string,
+  githubProfile: unknown,
+  developerProfile: unknown,
+  profileStatus: ProfileStatus,
+  diagnostics?: OAuthPersistenceDiagnostics,
+): Promise<DeveloperProfileRow | null> {
+  const existing =
+    (await findDeveloperProfile(env, appUserId, diagnostics)) ??
+    (await insertDeveloperProfile(env, appUserId, diagnostics).catch(() => null))
+  if (!existing) return null
+  if (githubProfile === undefined && developerProfile === undefined) {
+    return setDeveloperProfileStatus(env, appUserId, profileStatus)
+  }
+  return hydrateDeveloperProfileRow(
+    await patchProfileSnapshot(
+      env,
+      existing,
+      appUserId,
+      githubProfile,
+      developerProfile,
+      profileStatus,
+      diagnostics,
+    ),
+  )
 }
 
 export async function readCurrentUser(
@@ -322,7 +582,10 @@ export async function readCurrentUser(
   if (!appUser) return null
   const developerProfile = await findDeveloperProfile(env, appUser.id)
   if (!developerProfile) return null
-  return { appUser, developerProfile }
+  return {
+    appUser,
+    developerProfile: hydrateDeveloperProfileRow(developerProfile),
+  }
 }
 
 export async function updateDeveloperProfile(
@@ -359,5 +622,5 @@ export async function updateDeveloperProfile(
     )
   })
   if (!updated) throw new ApiError('更新 Developer Profile 失败', 502)
-  return updated
+  return hydrateDeveloperProfileRow(updated)
 }

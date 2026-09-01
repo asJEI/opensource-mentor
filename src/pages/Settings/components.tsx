@@ -228,6 +228,7 @@ const GitHubApiSettings = () => {
   const githubConfig = useSettingsStore((state) => state.githubConfig)
   const profile = useUserStore((state) => state.profile)
   const githubProfile = useUserStore((state) => state.githubProfile)
+  const profileStatus = useUserStore((state) => state.profileStatus)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
   const logout = useUserStore((state) => state.logout)
   const updateGitHubConfig = useSettingsStore(
@@ -332,9 +333,13 @@ const GitHubApiSettings = () => {
                   ? `${githubProfile.developerProfile.level} · 能力判断把握度 ${Math.round(
                       githubProfile.developerProfile.confidence * 100,
                     )}%`
-                  : isAuthenticated
-                    ? '已读取公开资料'
-                    : '点击登录后生成结构化 Developer Profile'}
+                  : profileStatus === 'failed'
+                    ? '画像生成失败，可重新连接 GitHub'
+                    : profileStatus === 'generating' || profileStatus === 'pending'
+                      ? '开发者画像正在后台生成'
+                    : isAuthenticated
+                      ? '已读取公开资料'
+                      : '点击登录后生成结构化 Developer Profile'}
               </small>
             </div>
           </div>

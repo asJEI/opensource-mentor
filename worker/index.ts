@@ -45,7 +45,11 @@ import {
 import { json, toErrorResponse } from './http'
 
 export default {
-  async fetch(request: Request, env: PlatformEnv): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: PlatformEnv,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     const url = new URL(request.url)
 
     try {
@@ -119,7 +123,7 @@ export default {
         url.pathname === '/api/auth/github/callback' &&
         request.method === 'GET'
       ) {
-        return await handleGitHubOAuthCallback(request, env)
+        return await handleGitHubOAuthCallback(request, env, ctx)
       }
 
       if (url.pathname === '/api/ai/explain' && request.method === 'POST') {

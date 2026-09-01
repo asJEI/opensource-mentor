@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Badge, Button, Card } from '@/components/ui'
-import { authService } from '@/services'
+import { authService, toServerUserState } from '@/services'
 import { useToastStore, useUserStore } from '@/store'
 import type {
   ContributionTimeBudget,
+  DeveloperProfileStatus,
   GitHubDeveloperProfile,
   GuidancePreference,
   LearningGoal,
@@ -105,9 +106,21 @@ function confidenceLabel(confidence?: number): string {
   return `${Math.round(confidence * 100)}%`
 }
 
+function generationStatusMeta(status: DeveloperProfileStatus | null): {
+  label: string
+  variant: 'default' | 'success' | 'warning' | 'danger' | 'info'
+} | null {
+  if (!status) return null
+  if (status === 'ready') return { label: '画像已就绪', variant: 'success' }
+  if (status === 'failed') return { label: '画像生成失败', variant: 'danger' }
+  if (status === 'generating') return { label: '画像生成中', variant: 'info' }
+  return { label: '等待生成画像', variant: 'warning' }
+}
+
 const Settings = () => {
   const profile = useUserStore((state) => state.profile)
   const githubProfile = useUserStore((state) => state.githubProfile)
+  const profileStatus = useUserStore((state) => state.profileStatus)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
   const completeProfileSetup = useUserStore(
     (state) => state.completeProfileSetup,
@@ -135,6 +148,7 @@ const Settings = () => {
   }))
 
   const developerProfile = githubProfile?.developerProfile
+  const generationStatus = generationStatusMeta(profileStatus)
   const statusLabel = {
     not_started: '待补充',
     completed: '已完成',
@@ -209,17 +223,7 @@ const Settings = () => {
           contributionTimeBudget: draft.contributionTimeBudget,
           guidancePreference: draft.guidancePreference,
         })
-        applyServerUserState({
-          githubProfile: me.developerProfile.github_profile ?? githubProfile,
-          githubUsername: me.user.githubUsername,
-          githubAvatar: me.user.githubAvatar,
-          profileSetupStatus: me.developerProfile.profile_setup_status,
-          profileConfirmed: me.developerProfile.profile_confirmed,
-          openSourceGoal: me.developerProfile.open_source_goal,
-          preferredTechStack: me.developerProfile.preferred_tech_stack,
-          contributionTimeBudget: me.developerProfile.contribution_time_budget,
-          guidancePreference: me.developerProfile.guidance_preference,
-        })
+        applyServerUserState(toServerUserState(me, githubProfile))
         showToast('success', '偏好已同步', '已保存到服务端 Developer Profile')
       } catch {
         showToast('error', '保存失败', '服务端暂时无法保存偏好，请稍后重试')
@@ -269,6 +273,11 @@ const Settings = () => {
                 <ProfileIcon />
               </span>
               <span>Developer Profile</span>
+              {generationStatus && (
+                <Badge variant={generationStatus.variant} size="sm">
+                  {generationStatus.label}
+                </Badge>
+              )}
               <Badge variant={statusVariant} size="sm">
                 {statusLabel}
               </Badge>
@@ -452,7 +461,11 @@ const Settings = () => {
                       ? `${developerProfile.level} · 把握度 ${confidenceLabel(
                           developerProfile.confidence,
                         )}`
-                      : '等待 GitHub 画像生成'}
+                      : profileStatus === 'failed'
+                        ? '画像生成失败，可重新连接 GitHub'
+                        : profileStatus === 'generating' || profileStatus === 'pending'
+                          ? '开发者画像生成中'
+                          : '等待 GitHub 画像生成'}
                   </dd>
                 </div>
                 <div>

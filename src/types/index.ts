@@ -74,6 +74,7 @@ export type {
   OpenSourceGoal,
   LearningGoal,
   ProfileSetupStatus,
+  DeveloperProfileStatus,
   UserPreferences,
   ContributionLevel,
   GitHubDeveloperProfile,
