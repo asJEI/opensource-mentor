@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { AiPageError } from '@/components/business'
 import { Button } from '@/components/ui'
-import { useRepositoryStore, useToastStore, useUserStore } from '@/store'
+import { useAppStore, useRepositoryStore, useToastStore, useUserStore } from '@/store'
 import type { CandidateIssue } from '@/types'
 import { parseGitHubIssueOrRepoInput } from '@/utils/githubRepository'
 
@@ -100,10 +100,13 @@ function localizeScope(raw?: string | null): string {
 
 function availabilityLabel(issue: CandidateIssue): string {
   const status = issue.availability?.status
+  if (status === 'assigned') return '已分配'
+  if (status === 'claimed') return '已有认领记录'
+  if (status === 'has_linked_pr') return '已有相关 PR'
   if (status === 'ask_first' || issue.availability?.shouldAskFirst) return '建议先确认'
   if (status === 'possibly_outdated') return '先核验现状'
   if (status === 'uncertain') return '状态待确认'
-  return '可以开始'
+  return status === 'ready_to_start' ? '未发现认领记录' : '状态待确认'
 }
 
 function availabilityDescription(issue: CandidateIssue): string {
@@ -131,12 +134,16 @@ const CandidateIssueCard = ({
   analysisStatus,
   onToggle,
   onStart,
+  saved,
+  onSave,
 }: {
   issue: CandidateIssue
   expanded: boolean
   analysisStatus: 'idle' | 'loading' | 'success' | 'error'
   onToggle: () => void
   onStart: () => void
+  saved: boolean
+  onSave: () => void
 }) => {
   const analysis = issue.analysis
   const technologies = analysis?.technologies?.length
@@ -162,7 +169,7 @@ const CandidateIssueCard = ({
 
   return (
     <article className={clsx('issue-row-card', expanded && 'expanded')}>
-      <button type="button" className="issue-row-main" onClick={onToggle}>
+      <button type="button" className="issue-row-main" onClick={onToggle} aria-expanded={expanded}>
         <span className="issue-row-status" aria-hidden="true">
           <IssueIcon />
         </span>
@@ -198,6 +205,7 @@ const CandidateIssueCard = ({
           )}
         </span>
       </button>
+      <button type="button" className="issue-save" aria-pressed={saved} aria-label={saved ? '取消收藏任务' : '收藏任务到此浏览器'} title={saved ? '取消收藏' : '收藏到此浏览器'} onClick={onSave}><span aria-hidden="true">{saved ? '★' : '☆'}</span></button>
 
       {expanded && (
         <div className="issue-expanded-panel">
@@ -301,6 +309,7 @@ const Issues = () => {
   const navigate = useNavigate()
   const showToast = useToastStore((state) => state.showToast)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
+  const sessionChecked = useAppStore((state) => state.sessionChecked)
   const profile = useUserStore((state) => state.profile)
   const issues = useRepositoryStore((state) => state.candidateIssues)
   const meta = useRepositoryStore((state) => state.candidateIssuesMeta)
@@ -321,6 +330,29 @@ const Issues = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [languageFilter, setLanguageFilter] = useState('')
+  const [difficultyFilter, setDifficultyFilter] = useState('')
+  const [savedOnly, setSavedOnly] = useState(false)
+  const [savedIds, setSavedIds] = useState<string[]>(() => {
+    try {
+      const value: unknown = JSON.parse(localStorage.getItem('osm.saved-issue-ids.v1') || '[]')
+      return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []
+    } catch { return [] }
+  })
+  const toggleSaved = (id: string) => {
+    const next = savedIds.includes(id) ? savedIds.filter((item) => item !== id) : [...savedIds, id]
+    setSavedIds(next)
+    try { localStorage.setItem('osm.saved-issue-ids.v1', JSON.stringify(next)) }
+    catch { showToast('error', '无法保存收藏', '浏览器存储不可用，本次选择仅在此页面有效') }
+  }
+  const clearFilters = () => { setLanguageFilter(''); setDifficultyFilter(''); setSavedOnly(false) }
+  const languages = [...new Set(issues.map((issue) => issue.language).filter((value): value is string => Boolean(value)))].sort()
+  const difficulties = [...new Set(issues.map((issue) => localizeDifficulty(issue.analysis?.difficulty)))].sort()
+  const visibleIssues = issues.filter((issue) =>
+    (!languageFilter || issue.language === languageFilter) &&
+    (!difficultyFilter || localizeDifficulty(issue.analysis?.difficulty) === difficultyFilter) &&
+    (!savedOnly || savedIds.includes(issue.id)),
+  )
   const [activeScope, setActiveScope] = useState<CandidateSearchScope>({
     type: 'profile',
   })
@@ -470,7 +502,7 @@ const Issues = () => {
         : '为你推荐'
 
   return (
-    <AppLayout breadcrumbs={[{ label: 'Issue 推荐' }]}>
+    <AppLayout breadcrumbs={[{ label: '发现任务' }]}>
       <div className="app-page active">
         <div className="page-header">
           <div className="page-title-row">
@@ -479,11 +511,9 @@ const Issues = () => {
                 <span className="osm-kicker-dot" />
                 ISSUE FEED
               </span>
-              <h1 className="page-title">Issue 推荐</h1>
+              <h1 className="page-title">发现你的下一次贡献</h1>
               <p className="page-subtitle">
-                根据你的 GitHub 画像和贡献偏好，从 GitHub 拉取候选 Issue。
-                也可以粘贴仓库或 Issue 链接做定向筛选。选定后点「开始贡献」，
-                后续的仓库分析、贡献指南和代码审查都会围绕它展开。
+                从适合你的技术、时间和目标出发，找到值得开始的任务。
               </p>
             </div>
             <span className="repo-pill">
@@ -493,7 +523,9 @@ const Issues = () => {
           </div>
         </div>
 
-        {!isAuthenticated ? (
+        {!sessionChecked && !isAuthenticated ? (
+          <div className="workbench-loading" role="status"><span className="btn-spinner" /> 正在恢复登录状态…</div>
+        ) : !isAuthenticated ? (
           <AiPageError
             kicker="AUTH REQUIRED"
             title="需要先登录 GitHub"
@@ -516,7 +548,7 @@ const Issues = () => {
                       if (searchError) setSearchError(null)
                     }}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter') handleSearch()
+                      if (event.key === 'Enter' && !event.nativeEvent.isComposing) handleSearch()
                     }}
                     placeholder="粘贴仓库链接或 Issue 链接，例如 owner/repo 或 owner/repo#123"
                     aria-label="搜索仓库或 Issue"
@@ -597,6 +629,16 @@ const Issues = () => {
                   </div>
                 </div>
 
+                {issues.length > 0 && (
+                  <div className="issue-filters" aria-label="筛选当前结果">
+                    <label>语言<select value={languageFilter} onChange={(event) => setLanguageFilter(event.target.value)}><option value="">全部语言</option>{languages.map((language) => <option key={language}>{language}</option>)}</select></label>
+                    <label>难度<select value={difficultyFilter} onChange={(event) => setDifficultyFilter(event.target.value)}><option value="">全部难度</option>{difficulties.map((difficulty) => <option key={difficulty}>{difficulty}</option>)}</select></label>
+                    <span role="status">显示 {visibleIssues.length} / {issues.length} 项</span>
+                    <label><input type="checkbox" checked={savedOnly} onChange={(event) => setSavedOnly(event.target.checked)} />只看本批收藏</label>
+                    {(languageFilter || difficultyFilter || savedOnly) && <button type="button" className="btn btn-ghost" onClick={clearFilters}>清除筛选</button>}
+                  </div>
+                )}
+
                 {aiFallbackWarnings.length ? (
                   <div className="issue-subtle-notice">
                     部分推荐暂时使用基础信息生成，稍后刷新可能会更完整。
@@ -604,11 +646,13 @@ const Issues = () => {
                 ) : null}
 
                 <div className="issues-list candidate-issues-list">
-                  {issues.length > 0 ? (
-                    issues.map((issue) => (
+                  {visibleIssues.length > 0 ? (
+                    visibleIssues.map((issue) => (
                       <CandidateIssueCard
                         key={issue.id}
                         issue={issue}
+                        saved={savedIds.includes(issue.id)}
+                        onSave={() => toggleSaved(issue.id)}
                         expanded={expandedId === issue.id}
                         analysisStatus={analysisStatusByIssue[issue.id] || 'idle'}
                         onToggle={() =>
@@ -619,6 +663,8 @@ const Issues = () => {
                         onStart={() => handleStart(issue)}
                       />
                     ))
+                  ) : issues.length > 0 ? (
+                    <div className="workbench-empty"><h2>没有符合筛选条件的任务</h2><button type="button" className="btn btn-secondary" onClick={clearFilters}>清除筛选</button></div>
                   ) : (
                     <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
                       {activeScope.type === 'repo'

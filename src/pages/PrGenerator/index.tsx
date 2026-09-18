@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { AppLayout } from '@/components/layout'
 import { Card } from '@/components/ui'
 import PrTypeSelector from '@/components/business/PrTypeSelector'
@@ -136,11 +137,17 @@ const PrGenerator = () => {
             </div>
             <span className="repo-pill">
               <CodeIcon />
-              {currentOwner}/{currentRepo}
+              {currentOwner && currentRepo ? `${currentOwner}/${currentRepo}` : '尚未选择仓库'}
             </span>
           </div>
         </div>
 
+        {(!currentOwner || !currentRepo) && (
+          <section className="pr-context-empty">
+            <div><strong>先选择这次贡献的仓库</strong><p>选定任务后，仓库和关联 Issue 会自动带入。</p></div>
+            <Link to="/issues">去发现任务 →</Link>
+          </section>
+        )}
         {/* 左右两栏布局 */}
         <div className="generator-grid">
           {/* 左侧：Commit Summary Card */}
@@ -159,10 +166,11 @@ const PrGenerator = () => {
 
             {/* 描述 textarea */}
             <div className="form-group">
-              <label className="form-label">
+              <label className="form-label" htmlFor="pr-summary">
                 改动描述 <span className="required">*</span>
               </label>
               <textarea
+                id="pr-summary"
                 className="form-textarea"
                 placeholder="简要描述你的改动内容，AI 将基于此生成专业的 PR..."
                 value={summary}
@@ -174,8 +182,9 @@ const PrGenerator = () => {
 
             {/* 关联 Issue input */}
             <div className="form-group">
-              <label className="form-label">关联 Issue</label>
+              <label className="form-label" htmlFor="pr-linked-issue">关联 Issue <span className="required">*</span></label>
               <input
+                id="pr-linked-issue"
                 type="text"
                 className="form-input"
                 placeholder="输入 Issue 编号，如：1234"
@@ -217,7 +226,7 @@ const PrGenerator = () => {
             <button
               className="analyze-btn"
               onClick={handleGenerate}
-              disabled={isGenerating || !summary.trim()}
+              disabled={isGenerating || !summary.trim() || !currentOwner || !currentRepo || !/^[1-9]\d*$/.test(linkedIssue.trim())}
               style={{ marginTop: '8px' }}
             >
               {isGenerating ? (
@@ -242,6 +251,7 @@ const PrGenerator = () => {
           >
             <PrResultPanel
               draft={prDraft}
+              onEdit={usePrStore.getState().editDraft}
               status={resultStatus}
               error={error}
               onCopy={handleCopy}
@@ -255,7 +265,7 @@ const PrGenerator = () => {
           <div className="next-step-card">
             <div className="next-step-content">
               <div className="next-step-badge">
-                🎉 步骤 6 / 6 · 全部完成！
+                草稿已生成 · 尚未提交
               </div>
               <div className="next-step-title">PR 草稿已就绪</div>
               <div className="next-step-desc">

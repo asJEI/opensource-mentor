@@ -9,9 +9,10 @@ import CodeReview from '@/pages/CodeReview'
 import AiMentor from '@/pages/AiMentor'
 import Settings from '@/pages/Settings'
 import NotFound from '@/pages/NotFound'
+import Contribution from '@/pages/Contribution'
 import { ToastContainer } from '@/components/ui'
 import { authService, toServerUserState } from '@/services'
-import { useToastStore, useUserStore } from '@/store'
+import { useAppStore, useToastStore, useUserStore } from '@/store'
 
 const githubLoginErrorMessages: Record<string, string> = {
   oauth_unavailable: 'GitHub 登录暂时不可用，请稍后重试',
@@ -83,6 +84,7 @@ function App() {
         const fallbackGithub =
           githubProfile ?? useUserStore.getState().githubProfile
         applyServerUserState(toServerUserState(me, fallbackGithub))
+        useAppStore.getState().setSessionChecked(true)
 
         let status = me.developerProfile.profile_status ?? 'pending'
         const startedAt = Date.now()
@@ -114,6 +116,8 @@ function App() {
         }
       } catch {
         // 未登录或会话过期时静默保留本地兼容数据。
+      } finally {
+        if (!cancelled) useAppStore.getState().setSessionChecked(true)
       }
     })()
 
@@ -147,6 +151,7 @@ function App() {
   return (
     <div className="app">
       <Routes location={location} key={location.pathname}>
+        <Route path="/contribution" element={<PageTransition><Contribution /></PageTransition>} />
         {/* 落地页 - 首屏，展示产品价值 */}
         <Route
           path="/"

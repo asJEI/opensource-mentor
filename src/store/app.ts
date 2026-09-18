@@ -6,6 +6,7 @@ export type AppPage = 'landing' | 'app'
 
 /** 应用内的子页面 */
 export type AppSubPage =
+  | 'contribution'
   | 'dashboard'
   | 'issues'
   | 'pr-generator'
@@ -22,6 +23,8 @@ export type AppTheme = 'light'
  * 管理应用级别的页面切换、侧边栏状态、主题等
  */
 interface AppState {
+  sessionChecked: boolean
+  setSessionChecked: (checked: boolean) => void
   /** 当前是首页还是应用内 */
   currentPage: AppPage
   /** 应用内当前页面 */
@@ -60,6 +63,8 @@ function generateToastId(): string {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  sessionChecked: false,
+  setSessionChecked: (sessionChecked) => set({ sessionChecked }),
   currentPage: 'app',
   currentAppPage: 'dashboard',
   sidebarCollapsed: false,

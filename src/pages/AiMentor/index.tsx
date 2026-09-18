@@ -120,10 +120,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      useToastStore.getState().showToast('error', '未能复制', '请选中回复后手动复制')
+    }
   }
 
   const formatTime = (iso: string) => {
@@ -221,7 +225,7 @@ function WelcomeState({
 }) {
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
-  const repoName = `${currentOwner}/${currentRepoName}`
+  const repoName = currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : '尚未选择仓库'
   const summary = guideContext ? formatGuideSummary(guideContext) : null
 
   return (
@@ -411,6 +415,7 @@ const AiMentor = () => {
 
   // 清空聊天
   const handleClear = () => {
+    if (isStreaming) return
     if (messages.length === 0 && !guideContext) return
     clearChat()
     autoSentRef.current = false
@@ -419,14 +424,14 @@ const AiMentor = () => {
 
   // 回车发送
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       handleSend()
     }
   }
 
   const hasMessages = messages.length > 0
-  const repoName = `${currentOwner}/${currentRepoName}`
+  const repoName = currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : '尚未选择仓库'
   const guideSummary = guideContext ? formatGuideSummary(guideContext) : null
 
   return (
@@ -461,7 +466,7 @@ const AiMentor = () => {
                 variant="ghost"
                 size="sm"
                 onClick={handleClear}
-                disabled={!hasMessages && !guideContext}
+                disabled={isStreaming || (!hasMessages && !guideContext)}
               >
                 <TrashIcon />
                 清空对话
@@ -515,7 +520,8 @@ const AiMentor = () => {
             <div className="chat-input-wrapper">
               <textarea
                 className="chat-input"
-                placeholder="输入你的问题...（Enter 发送，Shift+Enter 换行）"
+                placeholder="描述你的问题或卡住的地方…"
+                aria-label="向 AI 导师提问"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -523,6 +529,7 @@ const AiMentor = () => {
                 disabled={isStreaming}
               />
               <button
+                aria-label="发送问题"
                 className={clsx('chat-send-btn', {
                   disabled: isStreaming || !inputValue.trim(),
                 })}

@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAppStore, useUserStore, type AppSubPage } from '@/store'
 
@@ -20,13 +20,13 @@ const Icon = ({ d }: { d: string }) => (
   </svg>
 )
 
-const navGroups: NavGroup[] = [
+const toolGroups: NavGroup[] = [
   {
     title: '主菜单',
     items: [
       {
         id: 'issues',
-        label: 'Issue 推荐',
+        label: '发现任务',
         icon: <Icon d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
         badge: '新',
       },
@@ -70,18 +70,14 @@ const navGroups: NavGroup[] = [
   },
 ]
 
-const contributionLevelMap: Record<string, string> = {
-  none: '访客模式',
-  low: '初级贡献者',
-  medium: '中级贡献者',
-  high: '高级贡献者',
-}
-
-const developerLevelMap: Record<string, string> = {
-  beginner: '初学者',
-  intermediate: '中级',
-  advanced: '高级',
-}
+const navGroups: NavGroup[] = [
+  { title: '工作空间', items: [toolGroups[0].items[0], {
+    id: 'contribution', label: '我的贡献',
+    icon: <Icon d="M9 5H5v16h14V5h-4M9 3h6v4H9zM8 12h8M8 16h5" />,
+  }] },
+  { title: '工具', items: toolGroups[0].items.slice(1) },
+  toolGroups[1],
+]
 
 const Sidebar = () => {
   const navigate = useNavigate()
@@ -106,6 +102,9 @@ const Sidebar = () => {
   // 从当前路径获取活动页面
   const getActivePage = (): string => {
     const path = location.pathname
+    if (path === '/contribution') return 'contribution'
+    if (path === '/mentor') return 'ai-mentor'
+    if (path === '/review') return 'code-review'
     if (path === '/dashboard' || path.startsWith('/dashboard')) return 'dashboard'
     if (path === '/issues' || path.startsWith('/issues')) return 'issues'
     if (path === '/pr-generator' || path.startsWith('/pr-generator')) return 'pr-generator'
@@ -120,14 +119,12 @@ const Sidebar = () => {
   const displayName = profile.username || githubProfile?.profile.username || ''
   const userRole = isAuthenticated
     ? githubProfile?.developerProfile
-      ? `${developerLevelMap[githubProfile.developerProfile.level] ?? '待判断'} · 能力判断把握度 ${Math.round(
-          githubProfile.developerProfile.confidence * 100,
-        )}%`
+      ? 'GitHub 已连接'
       : profileStatus === 'failed'
         ? '画像生成失败'
         : profileStatus === 'generating' || profileStatus === 'pending'
           ? '开发者画像生成中'
-          : githubProfile?.profile.bio || contributionLevelMap[profile.contributionLevel] || 'GitHub 已连接'
+          : 'GitHub 已连接'
     : '配置保存在此设备'
 
   const handleNavClick = (id: string) => {
@@ -164,15 +161,16 @@ const Sidebar = () => {
           <div key={group.title} className="nav-group">
             <div className="nav-group-label">{group.title}</div>
             {group.items.map((item) => (
-              <div
+              <NavLink
                 key={item.id}
+                to={`/${item.id}`}
                 className={clsx('nav-link-item', activePage === item.id && 'active')}
-                onClick={() => handleNavClick(item.id)}
+                onClick={() => setCurrentAppPage(item.id as AppSubPage)}
               >
                 {item.icon}
                 <span>{item.label}</span>
                 {item.badge && <span className="nav-badge">{item.badge}</span>}
-              </div>
+              </NavLink>
             ))}
           </div>
         ))}
@@ -198,6 +196,18 @@ const Sidebar = () => {
           </div>
         </button>
       </div>
+      <nav className="mobile-app-nav" aria-label="移动导航">
+        <NavLink to="/issues">发现任务</NavLink>
+        <NavLink to="/contribution">当前任务</NavLink>
+        <details key={location.pathname}>
+          <summary>更多</summary>
+          <nav aria-label="工具与设置">
+            {navGroups.flatMap((group) => group.items).filter((item) => item.id !== 'issues' && item.id !== 'contribution').map((item) => (
+              <NavLink key={item.id} to={`/${item.id}`}>{item.label}</NavLink>
+            ))}
+          </nav>
+        </details>
+      </nav>
     </aside>
   )
 }

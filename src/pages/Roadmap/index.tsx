@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
 import { Button } from '@/components/ui'
 import { AiPageError } from '@/components/business'
+import ContextMentor from '@/components/business/ContextMentor'
 import {
   selectUserProfileContext,
   useRepositoryStore,
@@ -487,6 +488,7 @@ function buildMentorContext(params: {
   }
 }
 
+
 const Roadmap = () => {
   const roadmap = useRoadmapStore((s) => s.roadmap)
   const steps = useRoadmapStore((s) => s.steps)
@@ -696,6 +698,7 @@ const Roadmap = () => {
           })}
         </nav>
 
+        <div className="contribution-workspace">
         <div className="guide-layout">
           <aside className="guide-sidebar">
             <div className="guide-sidebar-title">章节目录</div>
@@ -756,6 +759,13 @@ const Roadmap = () => {
               }
             />
           )}
+        </div>
+        <ContextMentor key={activeContributionIssue?.id ?? `${currentOwner}/${currentRepoName}`} context={buildMentorContext({
+          owner: currentOwner, repo: currentRepoName, branch,
+          issueNumber: activeContributionIssue?.issueNumber,
+          issueTitle: activeContributionIssue?.title,
+          steps, activePhase: activeSection?.phase || null,
+        })} />
         </div>
       </div>
     </AppLayout>

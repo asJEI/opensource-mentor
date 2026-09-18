@@ -32,6 +32,7 @@ interface PrState {
   setSummary: (text: string) => void
   /** 设置关联 Issue */
   setLinkedIssue: (text: string) => void
+  editDraft: (changes: Partial<Pick<PrDraft, 'title' | 'description'>>) => void
   /** 设置当前仓库 */
   setCurrentRepository: (owner: string, repo: string) => void
   /**
@@ -58,6 +59,9 @@ export const usePrStore = create<PrState>((set, get) => ({
   setSummary: (text: string) => set({ summary: text }),
 
   setLinkedIssue: (text: string) => set({ linkedIssue: text }),
+  editDraft: (changes) => set((state) => ({
+    prDraft: state.prDraft ? { ...state.prDraft, ...changes } : null,
+  })),
 
   setCurrentRepository: (owner: string, repo: string) => {
     set({ currentOwner: owner, currentRepo: repo })

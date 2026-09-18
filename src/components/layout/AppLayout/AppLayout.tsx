@@ -3,6 +3,7 @@ import Sidebar from '../Sidebar'
 import AppHeader from '../AppHeader'
 import ProfileOnboarding from '@/components/business/ProfileOnboarding'
 import type { BreadcrumbItem } from '../AppHeader'
+import TaskContext from '../TaskContext'
 
 export interface AppLayoutProps {
   children: ReactNode
@@ -16,6 +17,7 @@ const AppLayout = ({ children, breadcrumbs }: AppLayoutProps) => {
       <Sidebar />
       <main className="app-main">
         <AppHeader breadcrumbs={breadcrumbs} />
+        <TaskContext />
         <div className="app-content">{children}</div>
       </main>
       <ProfileOnboarding />

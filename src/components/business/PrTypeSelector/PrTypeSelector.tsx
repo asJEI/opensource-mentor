@@ -40,7 +40,9 @@ export const PrTypeSelector: React.FC<PrTypeSelectorProps> = ({
       {typeOptions.map((option) => {
         const isSelected = value === option.type
         return (
-          <div
+          <button
+            type="button"
+            aria-pressed={isSelected}
             key={option.type}
             className={clsx('type-option', { selected: isSelected, active: isSelected })}
             onClick={() => onChange(option.type)}
@@ -57,7 +59,7 @@ export const PrTypeSelector: React.FC<PrTypeSelectorProps> = ({
               </div>
               <div className="type-desc">{option.desc}</div>
             </div>
-          </div>
+          </button>
         )
       })}
     </div>

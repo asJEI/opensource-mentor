@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import clsx from 'clsx'
+import { useToastStore } from '@/store'
 import type { PrDraft, LoadingState, PrSuggestionType } from '@/types'
 import { AiPageError } from '@/components/business'
 
@@ -14,6 +15,7 @@ export interface PrResultPanelProps {
   onCopy?: (text: string, label: string) => void
   /** 重试回调 */
   onRetry?: () => void
+  onEdit?: (changes: Partial<Pick<PrDraft, 'title' | 'description'>>) => void
   /** 自定义类名 */
   className?: string
 }
@@ -73,11 +75,23 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
   error,
   onCopy,
   onRetry,
+  onEdit,
   className,
 }) => {
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard?.writeText(text)
-    onCopy?.(text, label)
+  const showToast = useToastStore((state) => state.showToast)
+  const [editedTitle, setEditedTitle] = useState(draft?.title ?? '')
+  const [editedDescription, setEditedDescription] = useState(draft?.description ?? '')
+  useEffect(() => {
+    setEditedTitle(draft?.title ?? '')
+    setEditedDescription(draft?.description ?? '')
+  }, [draft])
+  const handleCopy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      onCopy?.(text, label)
+    } catch {
+      showToast('error', '未能复制', '请选中内容后手动复制')
+    }
   }
 
   // Loading 状态
@@ -146,7 +160,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
           <ol className="osm-list osm-list-ordered result-empty-steps">
             <li>选择改动类型（fix / feat / docs）</li>
             <li>用一两句话说明你改了什么</li>
-            <li>可选：填写要关联的 Issue 编号</li>
+            <li>填写要关联的 Issue 编号</li>
           </ol>
         </div>
       </div>
@@ -182,7 +196,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
           <button
             type="button"
             className="copy-btn"
-            onClick={() => handleCopy(draft.title, 'PR 标题')}
+            onClick={() => handleCopy(editedTitle, 'PR 标题')}
           >
             <svg
               viewBox="0 0 24 24"
@@ -198,7 +212,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
             复制
           </button>
         </div>
-        <div className="pr-title-display">{draft.title}</div>
+        <input className="pr-draft-title" aria-label="编辑 PR 标题" value={editedTitle} onChange={(event) => { setEditedTitle(event.target.value); onEdit?.({ title: event.target.value }) }} />
       </div>
 
       {/* Description */}
@@ -223,7 +237,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
           <button
             type="button"
             className="copy-btn"
-            onClick={() => handleCopy(draft.description, 'PR 描述')}
+            onClick={() => handleCopy(editedDescription, 'PR 描述')}
           >
             <svg
               viewBox="0 0 24 24"
@@ -239,9 +253,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
             复制
           </button>
         </div>
-        <div className="pr-description">
-          <div style={{ whiteSpace: 'pre-wrap' }}>{draft.description}</div>
-        </div>
+        <textarea className="pr-draft-description" aria-label="编辑 PR 描述" value={editedDescription} onChange={(event) => { setEditedDescription(event.target.value); onEdit?.({ description: event.target.value }) }} />
       </div>
 
       {/* 置信度（新版字段） */}

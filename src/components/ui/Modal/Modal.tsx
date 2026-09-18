@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback, useRef, useId } from 'react'
 import clsx from 'clsx'
 
 export interface ModalProps {
@@ -36,23 +36,45 @@ export const Modal: React.FC<ModalProps> = ({
   width,
   className,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
+      }
+      if (e.key === 'Tab') {
+        const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex="0"]',
+        ) ?? []).filter((element) => element.getClientRects().length > 0)
+        const first = controls[0]
+        const last = controls[controls.length - 1]
+        if (!first) { e.preventDefault(); dialogRef.current?.focus(); return }
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+          e.preventDefault(); last?.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus()
+        }
       }
     },
-    [onClose]
+    []
   )
 
   useEffect(() => {
+    if (!visible) return
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
     if (visible) {
       document.addEventListener('keydown', handleKeyDown)
       document.body.style.overflow = 'hidden'
+      dialogRef.current?.focus()
     }
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = ''
+      document.body.style.overflow = previousOverflow
+      if (previousFocus?.isConnected) previousFocus.focus()
     }
   }, [visible, handleKeyDown])
 
@@ -74,12 +96,12 @@ export const Modal: React.FC<ModalProps> = ({
       className={clsx('modal-overlay', { active: visible })}
       onClick={handleOverlayClick}
     >
-      <div className={clsx('modal', className)} style={modalStyle}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : '对话框'} tabIndex={-1} className={clsx('modal', className)} style={modalStyle}>
         <div className="modal-header">
           <div className="modal-title-group">
             {icon && <div className="modal-icon">{icon}</div>}
             <div>
-              {title && <div className="modal-title">{title}</div>}
+              {title && <div id={titleId} className="modal-title">{title}</div>}
               {subtitle && <div className="modal-subtitle">{subtitle}</div>}
             </div>
           </div>

@@ -215,7 +215,7 @@ const CodeReview = () => {
 
   const repoName = activeContributionIssue
     ? activeContributionIssue.repository.fullName
-    : `${currentOwner || 'microsoft'}/${currentRepoName || 'vscode'}`
+    : currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : ''
 
   const [upstreamOwner, upstreamRepo] = useMemo(() => {
     const parts = repoName.split('/')
@@ -237,6 +237,7 @@ const CodeReview = () => {
   useEffect(() => {
     if (
       !boundIssue &&
+      currentOwner && currentRepoName &&
       recommendedIssues.length === 0 &&
       issuesStatus === 'idle'
     ) {
@@ -450,7 +451,7 @@ const CodeReview = () => {
               </div>
               <span className="repo-pill">
                 <CodeIcon />
-                {repoName}
+                {repoName || '尚未选择仓库'}
               </span>
             </div>
           </div>
@@ -466,6 +467,7 @@ const CodeReview = () => {
                 审查需要知道你在解决哪个 Issue。可以从下面的候选中选一个；
                 如果列表是空的，请先到「Issue 推荐」锁定任务。
               </p>
+              <button className="btn btn-primary" type="button" onClick={() => navigate('/issues')}>发现任务</button>
             </div>
 
             <div className="quick-issue-list">
@@ -545,7 +547,7 @@ const CodeReview = () => {
             estimatedTime={
               issue.estimatedTime
                 ? `${issue.estimatedTime} 小时`
-                : '2-3 小时'
+                : '待评估'
             }
           />
         </div>

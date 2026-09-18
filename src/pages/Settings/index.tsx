@@ -272,7 +272,7 @@ const Settings = () => {
               <span className="settings-card-icon">
                 <ProfileIcon />
               </span>
-              <span>Developer Profile</span>
+              <span>贡献偏好与画像</span>
               {generationStatus && (
                 <Badge variant={generationStatus.variant} size="sm">
                   {generationStatus.label}
@@ -453,6 +453,8 @@ const Settings = () => {
                 </div>
               </section>
 
+              <details className="profile-summary-details">
+                <summary>查看画像与贡献偏好</summary>
               <dl className="profile-summary-grid">
                 <div>
                   <dt>能力判断</dt>
@@ -537,6 +539,7 @@ const Settings = () => {
                   </dd>
                 </div>
               </dl>
+              </details>
 
               {developerProfile?.github_summary && (
                 <div className="profile-default-notice">

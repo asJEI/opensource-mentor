@@ -129,7 +129,7 @@ function HeroSection() {
     <section className="landing-hero" id="hero">
       <div className="landing-hero-copy">
         <div className="landing-kicker">OpenSource Mentor</div>
-        <h1>找到适合你的开源 Issue，然后把它做完。</h1>
+        <h1>OpenSource Mentor</h1>
         <p>
           面向开发者的开源贡献工作台。它会根据你的能力、技术栈和目标，推荐更合适的
           Issue，并把理解项目、拆解任务、准备 PR 的过程串起来。
@@ -165,7 +165,7 @@ function HeroSection() {
           <span />
           <span />
           <span />
-          <strong>opensource-mentor</strong>
+          <strong>示例流程 · 非实际推荐</strong>
         </div>
         <div className="terminal-body">
           <div className="terminal-line muted">$ connect github</div>
@@ -180,7 +180,7 @@ function HeroSection() {
               <span className="issue-tag quiet">docs</span>
             </div>
             <h2>Improve onboarding docs for plugin setup</h2>
-            <p>匹配度 92%，预计 1-2 小时，改动范围清晰，维护者近期活跃。</p>
+            <p>文档贡献示例。实际难度、耗时和认领状态以任务分析与维护者确认为准。</p>
           </div>
           <div className="terminal-line muted">$ mentor explain --next-step</div>
           <div className="terminal-output">

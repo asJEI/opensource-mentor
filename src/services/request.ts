@@ -125,7 +125,8 @@ export function bffGet<T = unknown>(
   url: string,
   config?: AxiosRequestConfig,
 ): Promise<T> {
-  return bffService.get<T, T>(url, config)
+  // The response interceptor unwraps ApiResponse.data before this resolves.
+  return bffService.get(url, config) as Promise<T>
 }
 
 /** BFF POST — optional AbortSignal via config.signal */
@@ -134,7 +135,7 @@ export function bffPost<T = unknown>(
   data?: unknown,
   config?: AxiosRequestConfig,
 ): Promise<T> {
-  return bffService.post<T, T>(url, data, config)
+  return bffService.post(url, data, config) as Promise<T>
 }
 
 export function bffPatch<T = unknown>(
@@ -142,7 +143,7 @@ export function bffPatch<T = unknown>(
   data?: unknown,
   config?: AxiosRequestConfig,
 ): Promise<T> {
-  return bffService.patch<T, T>(url, data, config)
+  return bffService.patch(url, data, config) as Promise<T>
 }
 
 export function mockDelay(minMs = 500, maxMs = 1500): Promise<void> {
