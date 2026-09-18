@@ -88,8 +88,17 @@
 .app-layout .issue-row-main :is(h2,h3,strong), .app-layout .page-title { overflow-wrap: anywhere; }
 .app-layout .guide-layout { background: #fff; border: 1px solid var(--ln-1); border-radius: 8px; }
 .app-layout .guide-sidebar { background: #fbfcfc; }
-.app-layout .guide-reader { background: #fff; min-width: 0; }
-.app-layout .guide-stepper { background: #fff; border-color: var(--ln-1); }
+.app-layout .guide-reader {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 784px;
+  min-width: 0;
+  margin-inline: auto;
+  padding: 32px 32px 40px;
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+.app-layout .guide-stepper { background: #fff; border-color: var(--ln-1); padding: 12px 16px; }
 .app-layout .chat-message__bubble { background: #fff; border-color: var(--ln-1); }
 .app-layout .chat-message--user .chat-message__bubble { background: var(--brand-wash); }
 .app-layout pre { background: #f5f7f8; color: #263b32; border-color: var(--ln-1); overflow-x: auto; }
@@ -205,6 +214,8 @@
   .task-context { padding: 14px 20px 0; }
 }
 @media (max-width: 768px) {
+  .app-layout .guide-reader { padding: 24px 16px 28px; }
+  .app-layout .guide-stepper { padding: 8px 12px; }
   .landing-page .landing-hero { min-height: 0; padding-top: 96px; }
   .landing-page .landing-hero h1 { font-size: 32px; }
   .landing-page :is(.landing-section-header h2, .landing-product-strip h2) { font-size: 24px; }
