@@ -12,12 +12,18 @@ const labels = {
 export default function WorkspaceSyncStatus() {
   const state = useWorkspaceStore()
   const conflict = workspaceSync.getConflict()
+  const showStatus = state.status !== 'saved' || !state.durable
+
+  if (!showStatus && !state.legacyAvailable) return null
+
   return (
     <section className="workspace-sync-status" aria-label="进度保存状态" aria-live="polite">
-      <span>
-        {labels[state.status]}
-        {!state.durable && ' · 设备缓存不可用，请勿关闭页面'}
-      </span>
+      {showStatus && (
+        <span>
+          {labels[state.status]}
+          {!state.durable && ' · 设备缓存不可用，请勿关闭页面'}
+        </span>
+      )}
       {state.error && <span>{state.error}</span>}
       {state.status === 'error' && (
         <button
