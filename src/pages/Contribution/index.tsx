@@ -35,7 +35,7 @@ export default function Contribution() {
             <nav className="contribution-actions" aria-label="贡献步骤">
               {actions.map((action) => <Link to={action.path} key={action.path}><span>{action.number}</span><div><h3>{action.title}</h3><p>{action.description}</p></div><span aria-hidden="true">→</span></Link>)}
             </nav>
-            <div className="contribution-footnote"><span>当前任务保存在此浏览器</span><Link to="/issues">发现其他任务 →</Link></div>
+            <div className="contribution-footnote"><span>保存状态见上方提示</span><Link to="/issues">发现其他任务 →</Link></div>
           </>
         )}
       </div>

@@ -13,9 +13,11 @@ import type {
 import { githubService, repositoryService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
+import { useUserStore } from './user'
 
 // localStorage 键名
 const STORAGE_KEY = 'opensource-mentor:repository'
+function repositoryStorageKey() { const userId = useUserStore.getState().serverUserId; return userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY }
 
 /**
  * 从 localStorage 读取保存的仓库信息
@@ -54,13 +56,13 @@ function saveRepositoryToStorage(
   activeIssue?: CandidateIssue | null,
 ) {
   try {
-    const previous = localStorage.getItem(STORAGE_KEY)
+    const previous = localStorage.getItem(repositoryStorageKey())
     const previousIssue =
       activeIssue === undefined && previous
         ? JSON.parse(previous).activeIssue ?? null
         : null
     localStorage.setItem(
-      STORAGE_KEY,
+      repositoryStorageKey(),
       JSON.stringify({
         owner,
         repoName,
@@ -77,7 +79,7 @@ function saveRepositoryToStorage(
  */
 function clearRepositoryFromStorage() {
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(repositoryStorageKey())
   } catch {
     // 忽略清除错误
   }
@@ -162,7 +164,8 @@ interface RepositoryState {
   /** 设置当前仓库信息 */
   setCurrentRepo: (repo: Repository | null) => void
   /** 清空仓库相关所有状态 */
-  clearRepo: () => void
+  clearRepo: (options?: { preserveStorage?: boolean }) => void
+  invalidateRequests: () => void
   explainIssue: (
     owner: string,
     name: string,
@@ -205,15 +208,16 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
     currentIssue: null,
 
     analyzeRepo: async (owner: string, name: string) => {
-      const requestId = ++analysisRequestId
       set({
         analysisStatus: 'loading',
         analysisError: null,
         currentOwner: owner,
         currentRepoName: name,
+        ...(get().activeContributionIssue && (get().activeContributionIssue!.repository.owner !== owner || get().activeContributionIssue!.repository.name !== name) ? { activeContributionIssue: null, selectedIssue: null } : {}),
       })
+      const requestId = ++analysisRequestId
       // 保存到 localStorage
-      saveRepositoryToStorage(owner, name)
+      saveRepositoryToStorage(owner, name, get().activeContributionIssue)
       try {
         const { repository, analysis } =
           await repositoryService.analyzeRepository(owner, name)
@@ -231,7 +235,6 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
     },
 
     loadRecommendedIssues: async (owner: string, name: string, params) => {
-      const requestId = ++issuesRequestId
       const userProfile = getEffectiveUserProfileContext()
 
       set({
@@ -239,9 +242,11 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
         issuesError: null,
         currentOwner: owner,
         currentRepoName: name,
+        ...(get().activeContributionIssue && (get().activeContributionIssue!.repository.owner !== owner || get().activeContributionIssue!.repository.name !== name) ? { activeContributionIssue: null, selectedIssue: null } : {}),
       })
+      const requestId = ++issuesRequestId
       // 保存到 localStorage
-      saveRepositoryToStorage(owner, name)
+      saveRepositoryToStorage(owner, name, get().activeContributionIssue)
       try {
         const recommendedIssues = await repositoryService.getRecommendedIssues(
           owner,
@@ -346,6 +351,9 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
     },
 
     startContribution: (issue: CandidateIssue) => {
+      analysisRequestId += 1
+      issuesRequestId += 1
+      explainRequestId += 1
       set({
         activeContributionIssue: issue,
         selectedIssue: issue,
@@ -362,7 +370,6 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
     setCurrentRepo: (repo: Repository | null) => set({ currentRepo: repo }),
 
     explainIssue: async (owner, name, issue) => {
-      const requestId = ++explainRequestId
       set({
         explainStatus: 'loading',
         explainError: null,
@@ -370,6 +377,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
         currentOwner: owner,
         currentRepoName: name,
       })
+      const requestId = ++explainRequestId
       try {
         const currentExplain = await repositoryService.getIssueExplain(
           owner,
@@ -389,12 +397,13 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
 
     openModal: () => set({ modalVisible: true }),
     closeModal: () => set({ modalVisible: false }),
+    invalidateRequests: () => { analysisRequestId += 1; issuesRequestId += 1; explainRequestId += 1 },
 
-    clearRepo: () => {
+    clearRepo: (options) => {
       analysisRequestId += 1
       issuesRequestId += 1
       explainRequestId += 1
-      clearRepositoryFromStorage()
+      if (!options?.preserveStorage) clearRepositoryFromStorage()
       set({
         currentRepo: null,
         analysis: null,

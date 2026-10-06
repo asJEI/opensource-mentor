@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ChatMessage, GuideMentorContext, Issue, Repository } from '@/types'
 import { aiService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
+let chatGeneration = 0
 
 /**
  * 生成唯一消息 ID
@@ -20,7 +21,7 @@ interface ChatState {
   /** 是否正在生成回复 */
   isStreaming: boolean
   /** 当前会话 ID */
-  /** 会话 ID（预留：未来可映射 D1 对话历史；当前仅本地态） */
+  /** 同步层按用户和任务保存的业务会话标识 */
   sessionId: string | null
   /** 错误信息 */
   error: string | null
@@ -65,6 +66,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     content: string,
     context?: { repo?: Repository; issue?: Issue },
   ) => {
+    const generation = chatGeneration
+    if (get().isStreaming) return
     const { currentOwner, currentRepo, messages, guideContext } = get()
 
     // 确定使用的仓库
@@ -93,6 +96,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content,
         guideContext || undefined,
       )
+      if (generation !== chatGeneration) return
 
       // 添加 AI 回复
       const assistantMessage: ChatMessage = {
@@ -107,12 +111,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         isStreaming: false,
       }))
     } catch (err) {
+      if (generation !== chatGeneration) return
       const message = getErrorMessage(err, '消息发送失败，请稍后重试')
       set({ isStreaming: false, error: message })
     }
   },
 
   setCurrentRepository: (owner: string, repo: string) => {
+    if (owner !== get().currentOwner || repo !== get().currentRepo) chatGeneration += 1
     set({ currentOwner: owner, currentRepo: repo })
   },
 
@@ -120,13 +126,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ guideContext: context })
   },
 
-  clearChat: () =>
+  clearChat: () => {
+    chatGeneration += 1
     set({
       messages: [],
       sessionId: null,
       error: null,
       guideContext: null,
-    }),
+    })
+  },
 
   setStreaming: (value: boolean) => set({ isStreaming: value }),
 }))

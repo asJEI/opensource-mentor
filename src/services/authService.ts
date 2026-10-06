@@ -100,6 +100,7 @@ export function toServerUserState(
   fallbackGithubProfile: GitHubDeveloperProfile | null = null,
 ) {
   return {
+    serverUserId: me.user.id,
     githubProfile: hydrateGitHubProfileFromMe(me, fallbackGithubProfile),
     githubUsername: me.user.githubUsername,
     githubAvatar: me.user.githubAvatar,

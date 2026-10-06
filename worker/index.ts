@@ -43,6 +43,7 @@ import {
   handleGitHubOAuthStart,
 } from './github/oauth'
 import { json, toErrorResponse } from './http'
+import { handleGetWorkspace, handleSaveWorkspace } from './workspace/routes'
 
 export default {
   async fetch(
@@ -53,6 +54,8 @@ export default {
     const url = new URL(request.url)
 
     try {
+      if (url.pathname === '/api/workspace' && request.method === 'GET') return await handleGetWorkspace(request, env)
+      if (url.pathname === '/api/workspace' && request.method === 'PUT') return await handleSaveWorkspace(request, env)
       if (url.pathname === '/api/health' && request.method === 'GET') {
         return json({
           success: true,

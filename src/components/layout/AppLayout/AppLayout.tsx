@@ -4,6 +4,10 @@ import AppHeader from '../AppHeader'
 import ProfileOnboarding from '@/components/business/ProfileOnboarding'
 import type { BreadcrumbItem } from '../AppHeader'
 import TaskContext from '../TaskContext'
+import WorkspaceSyncStatus from '../WorkspaceSyncStatus'
+import { useWorkspaceStore } from '@/store/workspace'
+import { useUserStore } from '@/store/user'
+import { useAppStore } from '@/store/app'
 
 export interface AppLayoutProps {
   children: ReactNode
@@ -12,13 +16,18 @@ export interface AppLayoutProps {
 }
 
 const AppLayout = ({ children, breadcrumbs }: AppLayoutProps) => {
+  const sessionChecked = useAppStore((state) => state.sessionChecked)
+  const serverUserId = useUserStore((state) => state.serverUserId)
+  const workspace = useWorkspaceStore()
+  const restoring = !sessionChecked || (serverUserId && (workspace.restoring || workspace.userId !== serverUserId))
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="app-main">
         <AppHeader breadcrumbs={breadcrumbs} />
         <TaskContext />
-        <div className="app-content">{children}</div>
+        <WorkspaceSyncStatus />
+        <div className="app-content">{restoring ? <p role="status">正在恢复账户与贡献进度…</p> : children}</div>
       </main>
       <ProfileOnboarding />
     </div>

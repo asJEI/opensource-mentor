@@ -14,10 +14,10 @@ function base64UrlEncode(value: string): string {
 }
 
 function base64UrlDecode(value: string): string {
-  const padded = value.replaceAll('-', '+').replaceAll('_', '/').padEnd(
-    Math.ceil(value.length / 4) * 4,
-    '=',
-  )
+  const padded = value
+    .replaceAll('-', '+')
+    .replaceAll('_', '/')
+    .padEnd(Math.ceil(value.length / 4) * 4, '=')
   return atob(padded)
 }
 
@@ -46,12 +46,7 @@ function getCookie(request: Request, name: string): string {
   return ''
 }
 
-function serializeCookie(
-  request: Request,
-  name: string,
-  value: string,
-  maxAge: number,
-): string {
+function serializeCookie(request: Request, name: string, value: string, maxAge: number): string {
   const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : ''
   return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`
 }
@@ -70,11 +65,7 @@ export async function createSessionCookie(
   }
   const body = base64UrlEncode(JSON.stringify(session))
   const key = await importSigningKey(secret)
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(body),
-  )
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))
 
   return serializeCookie(
     request,
@@ -95,20 +86,20 @@ export async function readSession(
   const secret = env.SESSION_SECRET?.trim()
   if (!secret) return null
 
-  const raw = getCookie(request, SESSION_COOKIE)
-  const [body, signature] = raw.split('.')
-  if (!body || !signature) return null
-
-  const key = await importSigningKey(secret)
-  const valid = await crypto.subtle.verify(
-    'HMAC',
-    key,
-    Uint8Array.from(base64UrlDecode(signature), (char) => char.charCodeAt(0)),
-    new TextEncoder().encode(body),
-  )
-  if (!valid) return null
-
   try {
+    const raw = getCookie(request, SESSION_COOKIE)
+    const [body, signature] = raw.split('.')
+    if (!body || !signature) return null
+
+    const key = await importSigningKey(secret)
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      Uint8Array.from(base64UrlDecode(signature), (char) => char.charCodeAt(0)),
+      new TextEncoder().encode(body),
+    )
+    if (!valid) return null
+
     const parsed = JSON.parse(base64UrlDecode(body)) as SessionPayload
     if (
       typeof parsed.userId !== 'string' ||

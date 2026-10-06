@@ -252,3 +252,5 @@
   .pr-context-empty { align-items: flex-start; flex-direction: column; gap: 10px; }
   .app-layout .btn, .app-layout .analyze-btn { min-height: 44px; }
 }
+.workspace-sync-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 24px; font-size: 13px; border-bottom: 1px solid var(--border-color, #30343b); }
+.workspace-sync-status button { color: inherit; background: transparent; border: 1px solid var(--border-color, #555); border-radius: 6px; padding: 5px 9px; cursor: pointer; }

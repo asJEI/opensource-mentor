@@ -13,6 +13,8 @@ import Contribution from '@/pages/Contribution'
 import { ToastContainer } from '@/components/ui'
 import { authService, toServerUserState } from '@/services'
 import { useAppStore, useToastStore, useUserStore } from '@/store'
+import { useWorkspaceStore } from '@/store/workspace'
+import { ApiClientError } from '@/services/errors'
 
 const githubLoginErrorMessages: Record<string, string> = {
   oauth_unavailable: 'GitHub 登录暂时不可用，请稍后重试',
@@ -49,6 +51,10 @@ function PageTransition({ children }: { children: React.ReactNode }) {
  * 默认打开为落地页（Landing），引导用户了解产品价值后进入应用
  */
 function App() {
+  const sessionChecked = useAppStore((state) => state.sessionChecked)
+  const serverUserId = useUserStore((state) => state.serverUserId)
+  const workspace = useWorkspaceStore()
+  const restoring = !sessionChecked || (serverUserId && (workspace.restoring || workspace.userId !== serverUserId))
   const location = useLocation()
   const navigate = useNavigate()
   const applyGitHubOAuthProfile = useUserStore(
@@ -114,8 +120,8 @@ function App() {
             '登录已成功，可稍后在偏好设置重新连接 GitHub',
           )
         }
-      } catch {
-        // 未登录或会话过期时静默保留本地兼容数据。
+      } catch (error) {
+        if (!cancelled && error instanceof ApiClientError && error.status === 401) useUserStore.getState().logout()
       } finally {
         if (!cancelled) useAppStore.getState().setSessionChecked(true)
       }
@@ -150,7 +156,7 @@ function App() {
 
   return (
     <div className="app">
-      <Routes location={location} key={location.pathname}>
+      {restoring ? <p role="status" className="workspace-sync-status">正在恢复账户与贡献进度…</p> : <Routes location={location} key={location.pathname}>
         <Route path="/contribution" element={<PageTransition><Contribution /></PageTransition>} />
         {/* 落地页 - 首屏，展示产品价值 */}
         <Route
@@ -250,7 +256,7 @@ function App() {
             </PageTransition>
           }
         />
-      </Routes>
+      </Routes>}
 
       {/* 全局 Toast 容器 */}
       <ToastContainer />

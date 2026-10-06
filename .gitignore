@@ -43,6 +43,7 @@ Thumbs.db
 # Misc
 *.local
 coverage
+supabase/.temp/
 
 # Cloudflare / Wrangler
 .wrangler

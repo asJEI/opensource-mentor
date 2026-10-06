@@ -12,6 +12,7 @@ import type {
 } from '@/types'
 import { codeReviewService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
+let reviewGeneration = 0
 
 interface CodeReviewState {
   reviewId: string | null
@@ -94,6 +95,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
   setSelectedIssue: (issue) => set({ selectedIssue: issue }),
 
   startReview: async () => {
+    const generation = ++reviewGeneration
     const { prUrl, mode, compareInput, _pollTimer } = get()
 
     let payload: CreateReviewRequest
@@ -142,6 +144,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
 
     try {
       const record = await codeReviewService.createReview(payload)
+      if (generation !== reviewGeneration) return
       const firstFile = record.artifacts?.changedFiles[0]?.filename || null
       set({
         reviewId: record.reviewId,
@@ -166,12 +169,14 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       }, 2000)
       set({ _pollTimer: timer })
     } catch (err) {
+      if (generation !== reviewGeneration) return
       const message = getErrorMessage(err, '创建审查任务失败，请稍后重试')
       set({ status: 'failed', error: message, _pollTimer: null })
     }
   },
 
   pollReview: async () => {
+    const generation = reviewGeneration
     const { reviewId, status, _pollTimer } = get()
 
     if (!reviewId) return
@@ -186,6 +191,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
 
     try {
       const record = await codeReviewService.getReview(reviewId)
+      if (generation !== reviewGeneration) return
       set((state) => ({
         status: record.status,
         progress: record.progress,
@@ -207,6 +213,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
         }
       }
     } catch (err) {
+      if (generation !== reviewGeneration) return
       const message = getErrorMessage(err, '获取审查状态失败')
       set({ error: message })
     }
@@ -220,6 +227,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
   },
 
   reset: () => {
+    reviewGeneration += 1
     const { _pollTimer, compareInput } = get()
     if (_pollTimer) {
       clearInterval(_pollTimer)

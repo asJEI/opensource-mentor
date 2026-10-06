@@ -266,6 +266,8 @@ interface UserState {
   /** 是否已认证 */
   /** 是否已登录 GitHub */
   isAuthenticated: boolean
+  /** Verified application identity; never restored from localStorage. */
+  serverUserId: string | null
   /** GitHub OAuth 读取到的公开开发者画像 */
   githubProfile: GitHubDeveloperProfile | null
   /** 服务端开发者画像生成状态 */
@@ -289,6 +291,7 @@ interface UserState {
   /** 应用服务端 /api/me 返回的持久化状态 */
   applyServerUserState: (
     input: {
+      serverUserId: string
       githubProfile: GitHubDeveloperProfile | null
       githubUsername: string
       githubAvatar: string
@@ -383,6 +386,7 @@ export const useUserStore = create<UserState>()(
       profile: { ...DEFAULT_USER_PROFILE },
       preferences: defaultPreferences,
       isAuthenticated: false,
+      serverUserId: null,
       githubProfile: null,
       profileStatus: null,
 
@@ -418,7 +422,7 @@ export const useUserStore = create<UserState>()(
           }),
         })),
 
-      setAuthenticated: (value) => set({ isAuthenticated: value }),
+      setAuthenticated: (value) => set({ isAuthenticated: value, ...(value ? {} : { serverUserId: null }) }),
 
       applyGitHubOAuthProfile: (githubProfile) =>
         set((state) => ({
@@ -466,6 +470,7 @@ export const useUserStore = create<UserState>()(
               : input.profileSetupStatus
           return {
             isAuthenticated: true,
+            serverUserId: input.serverUserId,
             githubProfile,
             profileStatus: input.profileStatus ?? state.profileStatus,
             profile: normalizeProfile({
@@ -501,6 +506,7 @@ export const useUserStore = create<UserState>()(
       logout: () =>
         set((state) => ({
           isAuthenticated: false,
+          serverUserId: null,
           githubProfile: null,
           profileStatus: null,
           profile: normalizeProfile({

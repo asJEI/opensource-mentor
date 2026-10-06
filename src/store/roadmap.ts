@@ -9,6 +9,7 @@ import type {
 import { aiService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
 import { getEffectiveUserProfileContext } from './user'
+import { useUserStore } from './user'
 import { useRepositoryStore } from './repository'
 import { GUIDE_PHASE_TITLES } from '@/constants/guidePhases'
 import { extractStreamingGuidePreview } from '@/utils/streamingGuidePreview'
@@ -18,11 +19,10 @@ const DEFAULT_PHASE_TITLES = [...GUIDE_PHASE_TITLES]
 const STORAGE_PREFIX = 'osm.contribution-guide.v1:'
 
 function calculateProgress(phases: RoadmapPhase[]): RoadmapProgress {
-  const readyPhases = phases.filter((s) => s.generationStatus === 'ready')
   const totalSteps = phases.length
   const completedSteps = phases.filter((s) => s.status === 'completed').length
   const percentage =
-    totalSteps > 0 ? Math.round((readyPhases.length / totalSteps) * 100) : 0
+    totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
   const currentStepIndex = phases.findIndex((s) => s.status === 'current')
   const currentStep = currentStepIndex >= 0 ? currentStepIndex : 0
 
@@ -107,7 +107,8 @@ type PersistedGuide = {
 function readPersistedGuide(key: string): PersistedGuide | null {
   if (!key || typeof sessionStorage === 'undefined') return null
   try {
-    const raw = sessionStorage.getItem(key)
+    const userId = useUserStore.getState().serverUserId
+    const raw = sessionStorage.getItem(userId ? `${userId}:${key}` : key)
     if (!raw) return null
     const parsed = JSON.parse(raw) as PersistedGuide
     if (!parsed?.roadmap || !Array.isArray(parsed.steps)) return null
@@ -120,7 +121,8 @@ function readPersistedGuide(key: string): PersistedGuide | null {
 function writePersistedGuide(payload: PersistedGuide) {
   if (typeof sessionStorage === 'undefined') return
   try {
-    sessionStorage.setItem(payload.key, JSON.stringify(payload))
+    const userId = useUserStore.getState().serverUserId
+    sessionStorage.setItem(userId ? `${userId}:${payload.key}` : payload.key, JSON.stringify(payload))
   } catch {
     // ignore quota / private mode
   }
@@ -767,6 +769,8 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       ...step,
       status: (index === 0 ? 'current' : 'pending') as RoadmapStepStatus,
       tasks: step.tasks.map((task) => ({ ...task, completed: false })),
+      actionSteps: step.actionSteps?.map((action) => ({ ...action, completed: false })),
+      reproduce: step.reproduce ? { ...step.reproduce, completed: false } : step.reproduce,
     }))
     set({ steps: newSteps, progress: calculateProgress(newSteps) })
     persistCurrent(get)

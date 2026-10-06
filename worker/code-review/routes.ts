@@ -7,11 +7,10 @@ import { resolveAIClient } from '../ai/resolveConfig'
 import { createLLMReview, createRuleReview } from './review'
 import {
   generateReviewId,
-  loadReviewRecord,
-  storeReviewRecord,
   type ReviewJobRecord,
   type ReviewProgress,
 } from './store'
+import { persistReview, readPersistedReview } from '../workspace/reviews'
 
 async function parseJsonBody(request: Request): Promise<unknown> {
   try {
@@ -305,14 +304,14 @@ export async function handleCreateReview(
     createdAt: now,
     completedAt: new Date().toISOString(),
   }
-  await storeReviewRecord(record)
+  await persistReview(request, env, record)
   return success(record, '审查已完成')
 }
 
 /** GET /api/code-review/reviews/:id */
 export async function handleGetReview(
-  _request: Request,
-  _env: PlatformEnv,
+  request: Request,
+  env: PlatformEnv,
   reviewId: string,
 ): Promise<Response> {
   if (!reviewId.trim()) {
@@ -321,7 +320,7 @@ export async function handleGetReview(
     })
   }
 
-  const record = await loadReviewRecord(reviewId.trim())
+  const record = await readPersistedReview(request, env, reviewId.trim())
   if (!record) {
     throw new ApiError('审查任务不存在或已过期', 404, {
       errorCode: 'NOT_FOUND',

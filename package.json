@@ -16,6 +16,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.52.1",
     "@cloudflare/workers-types": "^5.20260816.1",
+    "@electric-sql/pglite": "0.5.8",
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

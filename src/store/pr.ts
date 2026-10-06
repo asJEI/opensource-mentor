@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { PrType, PrDraft } from '@/types'
 import { aiService } from '@/services'
 import { getErrorMessage } from '@/services/errors'
+let prGeneration = 0
 
 /**
  * PR 生成状态 Store
@@ -64,10 +65,13 @@ export const usePrStore = create<PrState>((set, get) => ({
   })),
 
   setCurrentRepository: (owner: string, repo: string) => {
+    if (owner !== get().currentOwner || repo !== get().currentRepo) prGeneration += 1
     set({ currentOwner: owner, currentRepo: repo })
   },
 
   generatePr: async (issueNumber?: number, additionalContext?: string) => {
+    const generation = prGeneration
+    const draftAtStart = get().prDraft
     const { prType, currentOwner, currentRepo, linkedIssue } = get()
     const issueNum = issueNumber || (linkedIssue ? parseInt(linkedIssue, 10) : 0)
 
@@ -85,14 +89,19 @@ export const usePrStore = create<PrState>((set, get) => ({
         prType,
         additionalContext,
       )
+      if (generation !== prGeneration) return
+      // A user's edits made during generation take precedence over the late generated draft.
+      if (get().prDraft !== draftAtStart) { set({ isGenerating: false }); return }
       set({ prDraft: draft, isGenerating: false })
     } catch (err) {
+      if (generation !== prGeneration) return
       const message = getErrorMessage(err, 'PR 生成失败，请稍后重试')
       set({ isGenerating: false, error: message })
     }
   },
 
-  resetPr: () =>
+  resetPr: () => {
+    prGeneration += 1
     set({
       prType: 'bug',
       summary: '',
@@ -100,7 +109,8 @@ export const usePrStore = create<PrState>((set, get) => ({
       prDraft: null,
       isGenerating: false,
       error: null,
-    }),
+    })
+  },
 }))
 
 export default usePrStore
