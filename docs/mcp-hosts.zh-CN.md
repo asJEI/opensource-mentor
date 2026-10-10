@@ -138,7 +138,7 @@ Skill 不会自动注册 MCP，也不会复制浏览器凭据。DeepSeek Harness
 
 ## 5. 通用验证
 
-1. 确认服务出现 12 个工具。
+1. 确认服务出现 17 个工具。
 2. 发送：“用 OpenSource Mentor 的 get_repository 获取 asJEI/opensource-mentor，不要使用其他搜索工具代替。”
 3. 发送：“用 analyze_repository，modelSource 指定 website、locale 指定 zh-CN，分析 asJEI/opensource-mentor；失败只报告错误，不切换模型。”
 4. 发送自己的技术、经验和时间预算，测试推荐流程；再明确指定 `modelSource: agent` 验证宿主模式。
@@ -146,3 +146,5 @@ Skill 不会自动注册 MCP，也不会复制浏览器凭据。DeepSeek Harness
 网页模型调用使用用户自己的供应商余额。`AUTH_REQUIRED` 常见于未传入 Key；供应商 `401`、额度不足、模型名或地址错误需要检查个人配置。GitHub 限流可配置个人 GitHub Token。宿主超时时应调整其支持的工具超时设置。
 
 当前验证过协议和本地 Codex 使用；其他宿主按官方文档提供配置，尚待实机验证。发布前已验证在线网站健康及仓库查询，但不代表所有 AI 生成功能已经端到端验证。首版不包含账号进度同步、自动 GitHub 发布、npm 包发布或远程 MCP 托管。
+
+[首次画像、GitHub 账号连接与同步说明](./mcp-onboarding.zh-CN.md)

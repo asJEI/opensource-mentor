@@ -3,6 +3,7 @@
  * Task 4: GitHub APIs. Task 5–6: AI + code-review endpoints.
  */
 
+import { handleMentor } from './auth/mentor'
 import { redactSecrets } from '../shared/byok'
 import { requestLocale } from '../shared/locale'
 import {
@@ -55,6 +56,11 @@ export default {
     const url = new URL(request.url)
 
     try {
+      if (['/api/mcp/connect', '/api/mcp/exchange', '/api/mcp/profile'].includes(url.pathname)) {
+        const response = await handleMentor(request, env)
+        response.headers.set('Cache-Control', 'no-store')
+        return response
+      }
       if (url.pathname === '/api/workspace' && request.method === 'GET') return await handleGetWorkspace(request, env)
       if (url.pathname === '/api/workspace' && request.method === 'PUT') return await handleSaveWorkspace(request, env)
       if (url.pathname === '/api/health' && request.method === 'GET') {

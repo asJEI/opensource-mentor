@@ -20,6 +20,7 @@ export type DeveloperProfilePatch = {
   preferred_tech_stack?: string[]
   contribution_time_budget?: string
   guidance_preference?: string
+  developer_profile?: unknown
 }
 
 export type OAuthPersistenceDiagnostics = {
@@ -394,7 +395,9 @@ function hydrateDeveloperProfileRow(row: DeveloperProfileRow): DeveloperProfileR
     ...row,
     profile_status:
       row.profile_status ?? (structured ? 'ready' : 'pending'),
-    developer_profile: structured ?? row.developer_profile,
+    developer_profile: structured
+      ? { ...structured, ...(isRecord(row.developer_profile) ? row.developer_profile : {}) }
+      : row.developer_profile,
     github_profile: githubProfile,
     developer_level:
       row.developer_level ??
@@ -430,14 +433,22 @@ async function patchDeveloperProfile(
 
   if (Object.keys(knownPatch).length === 0) return existing
 
+  const connection = isRecord(existing.developer_profile) ? existing.developer_profile.mentorConnectionId : null
+  const connectionFilter = 'developer_profile' in knownPatch
+    ? typeof connection === 'string'
+      ? `&developer_profile->>mentorConnectionId=eq.${encodeQuery(connection)}`
+      : '&developer_profile->>mentorConnectionId=is.null'
+    : ''
+
   const updated = await supabase.request<DeveloperProfileRow[] | DeveloperProfileRow>(
-    `/developer_profiles?${relationColumn}=eq.${encodeQuery(appUserId)}&select=${DEVELOPER_PROFILE_SELECT}`,
+    `/developer_profiles?${relationColumn}=eq.${encodeQuery(appUserId)}${connectionFilter}&select=${DEVELOPER_PROFILE_SELECT}`,
     {
       method: 'PATCH',
       prefer: 'return=representation',
       body: JSON.stringify(knownPatch),
     },
   )
+  if (connectionFilter && !firstRow(updated)) throw new ApiError('Profile changed; retry after reading it again', 409)
   return firstRow(updated) ?? existing
 }
 
@@ -453,11 +464,14 @@ async function patchProfileSnapshot(
   const structured =
     unwrapStructuredDeveloperProfile(developerProfile) ??
     unwrapStructuredDeveloperProfile(githubProfile)
+  // OAuth generation may finish after an Agent connection or preferences save.
+  const latest = await findDeveloperProfile(env, appUserId)
+  const mentorMetadata = isRecord(latest?.developer_profile) ? latest.developer_profile : {}
   const flattened = flattenDeveloperProfile(structured ?? developerProfile)
   const corePatch = compactPatch({
     profile_status: profileStatus,
     github_profile: githubProfile,
-    developer_profile: structured ?? developerProfile,
+    developer_profile: { ...(structured ?? (isRecord(developerProfile) ? developerProfile : {})), ...('mentorPreferences' in mentorMetadata ? { mentorPreferences: mentorMetadata.mentorPreferences } : {}), ...('mentorConnectionId' in mentorMetadata ? { mentorConnectionId: mentorMetadata.mentorConnectionId } : {}) },
     updated_at: new Date().toISOString(),
   })
   const fullPatch = {
@@ -466,7 +480,7 @@ async function patchProfileSnapshot(
   }
 
   const runPatch = (patch: Record<string, unknown>, filterUnknown: boolean) =>
-    patchDeveloperProfile(env, existing, appUserId, patch, { filterUnknown })
+    patchDeveloperProfile(env, latest ?? existing, appUserId, patch, { filterUnknown })
 
   try {
     return await (diagnostics?.measure ?? ((_, operation) => operation()))(
@@ -647,6 +661,16 @@ export async function updateDeveloperProfile(
   const existing = await findDeveloperProfile(env, appUserId)
   if (!existing) {
     throw new ApiError('Developer Profile 不存在', 404)
+  }
+  // A preferences write must never restore a stale connection ID supplied by an earlier read.
+  if (isRecord(patch.developer_profile)) {
+    patch = {
+      ...patch,
+      developer_profile: {
+        ...(isRecord(existing.developer_profile) ? existing.developer_profile : {}),
+        mentorPreferences: patch.developer_profile.mentorPreferences,
+      },
+    }
   }
   const explicitPatch = compactPatch({
     ...patch,

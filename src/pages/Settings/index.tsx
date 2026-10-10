@@ -217,6 +217,7 @@ const Settings = () => {
       setSaving(true)
       try {
         const me = await authService.updateDeveloperProfile({
+          profileContext: { ...nextProfile, profileSetupStatus: 'completed' },
           profileSetupStatus: 'completed',
           profileConfirmed: true,
           openSourceGoal: draft.openSourceGoal,

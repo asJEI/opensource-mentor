@@ -47,7 +47,7 @@ OSM_BASE_URL = "http://localhost:5173"
 OSM_LOCALE = "zh-CN"
 ```
 
-重新加载 MCP 连接，确认出现 12 个工具。宿主找不到 Node 时，将 `command` 改为 Node 的绝对路径。不支持 stdio 的宿主需要后续远程 MCP 版本。
+重新加载 MCP 连接，确认出现 17 个工具。宿主找不到 Node 时，将 `command` 改为 Node 的绝对路径。不支持 stdio 的宿主需要后续远程 MCP 版本。
 
 ## 凭据和 AI 配置
 
@@ -100,3 +100,5 @@ Issue 上下文最多读取前 30 条评论与时间线事件，长文有截断�
 PR 草稿不会创建 PR；审查可能在配置的服务保存审查记录，但不会向 GitHub 发布评论。首版未接入网页账号进度同步，不提供工作区写入接口。公开发现无需项目账号。协议测试通过不代表所有宿主已实测兼容。
 
 验证命令：`npm run test:mcp`、`npm test`、`npm run build`。完整配置说明见[英文安装说明](./agent-installation.md)。
+
+[首次画像、GitHub 账号连接与同步说明](./mcp-onboarding.zh-CN.md)

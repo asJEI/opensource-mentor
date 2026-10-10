@@ -49,7 +49,7 @@ OSM_BASE_URL = "http://localhost:5173"
 OSM_LOCALE = "en-US"
 ```
 
-Reload the connection and check that the 12 tools appear. Hosts without stdio support need a future remote MCP adapter; this release does not provide one.
+Reload the connection and check that the 17 tools appear. Hosts without stdio support need a future remote MCP adapter; this release does not provide one.
 
 ## Configuration
 
@@ -117,3 +117,5 @@ npm run build
 ```
 
 MCP tests cover actual initialization/tool calls over in-memory and stdio transports, schema validation, locale and API payload mapping, credential transport/redaction, discovery and issue explanation.
+
+[Onboarding, GitHub account connection and profile sync](./mcp-onboarding.md)

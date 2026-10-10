@@ -1,3 +1,4 @@
+import type { MentorProfile } from '../../shared/mentorProfile'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { detectLocale, isLocale } from '@shared/locale'
@@ -173,6 +174,7 @@ function normalizeProfile(value: unknown): UserProfile {
       hasLegacyAnswers,
     ),
     programmingLanguages: normalizedLanguages,
+    weeklyHours: typeof profile.weeklyHours === 'number' && Number.isFinite(profile.weeklyHours) && profile.weeklyHours >= 0 && profile.weeklyHours <= 168 ? profile.weeklyHours : undefined,
     experienceLevel: normalizeExperienceLevel(
       profile.experienceLevel ?? profile.skillLevel,
     ),
@@ -297,6 +299,7 @@ interface UserState {
       githubUsername: string
       githubAvatar: string
       profileSetupStatus: ProfileSetupStatus
+      mentorProfile?: MentorProfile | null
       profileConfirmed: boolean
       profileStatus?: DeveloperProfileStatus | null
       openSourceGoal?: string | null
@@ -474,6 +477,7 @@ export const useUserStore = create<UserState>()(
             serverUserId: input.serverUserId,
             githubProfile,
             profileStatus: input.profileStatus ?? state.profileStatus,
+            ...(!generationOnly && input.mentorProfile ? { preferences: normalizePreferences({ ...state.preferences, language: input.mentorProfile.locale }) } : {}),
             profile: normalizeProfile({
               ...state.profile,
               username:
@@ -484,6 +488,7 @@ export const useUserStore = create<UserState>()(
               bio: githubProfile?.profile.bio || state.profile.bio,
               githubUrl:
                 githubProfile?.profile.htmlUrl || state.profile.githubUrl,
+              ...(!generationOnly && input.mentorProfile ? { programmingLanguages: input.mentorProfile.programmingLanguages, experienceLevel: input.mentorProfile.experienceLevel, interests: input.mentorProfile.interests, goals: input.mentorProfile.goals, weeklyHours: input.mentorProfile.weeklyHours } : {}),
               profileSetupStatus: nextSetupStatus,
               openSourceGoal: generationOnly
                 ? state.profile.openSourceGoal

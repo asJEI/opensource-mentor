@@ -1,3 +1,4 @@
+import { validMentorProfile } from '../../shared/mentorProfile'
 import type { PlatformEnv } from '../config'
 import { ApiError, success } from '../http'
 import { clearSessionCookie, readSession } from './session'
@@ -24,6 +25,7 @@ function mapMePayload(
       updatedAt: result.appUser.updated_at,
     },
     developerProfile: result.developerProfile,
+    mentorProfile: isRecord(result.developerProfile.developer_profile) && validMentorProfile(result.developerProfile.developer_profile.mentorPreferences) ? result.developerProfile.developer_profile.mentorPreferences : null,
   }
 }
 
@@ -97,10 +99,18 @@ export async function handleUpdateDeveloperProfile(
   const session = await readSession(request, env)
   if (!session) throw new ApiError('未登录', 401)
 
+  const body = await parseJsonBody(request)
+  const current = await readCurrentUser(env, session.githubId)
+  if (!current || current.appUser.id !== session.userId) throw new ApiError('登录状态已失效', 401)
+  const patch = parseDeveloperProfilePatch(body)
+  if (isRecord(body) && body.mentorProfile !== undefined) {
+    if (!validMentorProfile(body.mentorProfile)) throw new ApiError('Invalid user profile', 400)
+    patch.developer_profile = { ...(isRecord(current.developerProfile.developer_profile) ? current.developerProfile.developer_profile : {}), mentorPreferences: body.mentorProfile }
+  }
   const updated = await updateDeveloperProfile(
     env,
     session.userId,
-    parseDeveloperProfilePatch(await parseJsonBody(request)),
+    patch,
   )
   const result = await readCurrentUser(env, session.githubId)
   if (!result) throw new ApiError('登录状态已失效', 401)

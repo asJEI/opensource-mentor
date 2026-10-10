@@ -90,6 +90,8 @@ export interface UserProfile {
   preferredTechStack: string[]
   /** 下一次贡献的期望时间投入 */
   contributionTimeBudget: ContributionTimeBudget | ''
+  /** Exact weekly time supplied by the Agent; optional for existing web profiles. */
+  weeklyHours?: number
   /** 希望获得的陪伴程度 */
   guidancePreference: GuidancePreference | ''
   /** 用户名 */

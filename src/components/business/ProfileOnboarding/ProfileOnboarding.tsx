@@ -170,6 +170,7 @@ const ProfileOnboarding = () => {
     setSaving(true)
     try {
       await persistSetupStatus({
+        profileContext: { ...formData, profileSetupStatus: 'completed' },
         profileSetupStatus: 'completed',
         profileConfirmed: true,
         openSourceGoal,

@@ -26,7 +26,7 @@ Cloudflare Workers serves the static assets and API, including account and works
 - **Bring your own keys (BYOK)**: use your GitHub Token or an OpenAI-compatible AI provider. Keys stay in page memory and must be entered again after refresh; non-secret configuration is saved locally.
 - **English and Simplified Chinese**: the first visit follows the browser's preferred language. Chinese variants use `zh-CN`; other languages use `en-US`. Switch languages from the top navigation or workspace header. Your choice is saved in this browser's existing user preferences and survives refresh and sign-out.
 
-New AI responses follow the selected language. Code, commands, repository names, original issue quotations, JSON fields, and technical identifiers are preserved. Existing conversations and generated artifacts retain their original language. Language preferences are device-local; they are not synchronized between devices.
+New AI responses follow the selected language. Code, commands, repository names, original issue quotations, JSON fields, and technical identifiers are preserved. Existing conversations and generated artifacts retain their original language. Guest language preferences are device-local. Confirmed account onboarding profiles can include a language preference shared with the Agent.
 
 ## Contribution workflow
 
@@ -139,3 +139,5 @@ Cloudflare configuration, GitHub Actions, and production checks: [DEPLOY-CLOUDFL
 BYOK credentials are sent per request and are not persisted by the server. Platform mode uses server-defined provider endpoints and models. Platform AI applies its own quota; BYOK uses your provider's quota.
 
 OpenSource Mentor helps you understand projects and participate in their communities. Review AI suggestions against the actual repository, run appropriate checks, and follow maintainer contribution guidelines before submitting changes.
+
+Agent onboarding can persist locally or sync a confirmed profile to the web account after optional browser authorization. See [profile onboarding](./docs/mcp-onboarding.md).

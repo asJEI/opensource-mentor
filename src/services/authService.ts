@@ -1,3 +1,5 @@
+import type { UserProfileContext } from '@/types/user'
+import type { MentorProfile } from '../../shared/mentorProfile'
 import type {
   DeveloperProfileStatus,
   GitHubDeveloperProfile,
@@ -106,6 +108,7 @@ export function toServerUserState(
     githubUsername: me.user.githubUsername,
     githubAvatar: me.user.githubAvatar,
     profileSetupStatus: me.developerProfile.profile_setup_status,
+    mentorProfile: me.mentorProfile,
     profileConfirmed: me.developerProfile.profile_confirmed,
     profileStatus: me.developerProfile.profile_status ?? 'pending',
     openSourceGoal: me.developerProfile.open_source_goal,
@@ -139,6 +142,8 @@ export const authService = {
   },
 
   updateDeveloperProfile(payload: {
+    mentorProfile?: MentorProfile
+    profileContext?: UserProfileContext
     profileSetupStatus?: 'not_started' | 'completed' | 'skipped'
     profileConfirmed?: boolean
     openSourceGoal?: string
@@ -146,7 +151,13 @@ export const authService = {
     contributionTimeBudget?: string
     guidancePreference?: string
   }) {
-    return bffPatch<ServerMeResponse>('/me/developer-profile', payload)
+    const state = useUserStore.getState()
+    const p = state.profile
+    const hours: Record<string, number> = { lt_1h: 0.5, '1_3h': 2, '3_6h': 5, weekend: 8, no_preference: 0 }
+    const { profileContext, ...patch } = payload
+    const context = profileContext ?? p
+    const mentorProfile: MentorProfile = { profileSetupStatus: payload.profileSetupStatus ?? context.profileSetupStatus, programmingLanguages: context.programmingLanguages, experienceLevel: context.experienceLevel, interests: context.interests, goals: context.goals, weeklyHours: (payload.contributionTimeBudget === undefined || payload.contributionTimeBudget === p.contributionTimeBudget) && p.weeklyHours !== undefined ? p.weeklyHours : hours[payload.contributionTimeBudget ?? p.contributionTimeBudget] ?? 0, locale: state.preferences.language }
+    return bffPatch<ServerMeResponse>('/me/developer-profile', { ...patch, mentorProfile: payload.mentorProfile ?? mentorProfile })
   },
 
   logout() {
@@ -155,6 +166,7 @@ export const authService = {
 }
 
 export type ServerMeResponse = {
+  mentorProfile?: MentorProfile | null
   user: {
     id: string
     githubId: number

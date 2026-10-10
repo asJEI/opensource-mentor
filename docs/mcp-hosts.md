@@ -132,7 +132,7 @@ Installing a Skill does not register MCP or copy browser credentials. DeepSeek H
 
 ## Verify in any host
 
-1. Confirm 12 tools appear.
+1. Confirm 17 tools appear.
 2. Ask: "Use OpenSource Mentor `get_repository` to fetch `asJEI/opensource-mentor`; do not substitute another search tool."
 3. Ask: "Use `analyze_repository`, `modelSource: website`, `locale: en-US`, for `asJEI/opensource-mentor`; report errors without switching models."
 4. Ask for recommendations with your technologies, experience and time budget. Then test `modelSource: agent` explicitly and confirm the generation source is reported.
@@ -140,3 +140,5 @@ Installing a Skill does not register MCP or copy browser credentials. DeepSeek H
 AI calls use your provider balance. Errors such as `AUTH_REQUIRED` usually mean the MCP key was not passed, `401` may indicate an invalid key, and provider errors need balance/model/base URL checks. GitHub limits may require a personal GitHub token. Hosts can have shorter tool timeouts than model generation; adjust the host's supported timeout setting. Host-model review context covers a bounded diff, not guaranteed full-repository analysis.
 
 Compatibility status: MCP protocol and local Codex usage have been tested; the other configurations are based on official docs and await real host testing. Online health and repository reads were verified before this release; that does not establish end-to-end AI generation. No progress synchronization, automatic GitHub publication, npm registry release, or hosted remote MCP is included.
+
+[Onboarding, GitHub account connection and profile sync](./mcp-onboarding.md)

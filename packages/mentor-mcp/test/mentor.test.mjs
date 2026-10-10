@@ -44,7 +44,7 @@ test('real MCP protocol lists tools, validates inputs and forwards roadmap issue
   await host.connect(b);
   try {
     const tools = (await host.listTools()).tools;
-    assert.equal(tools.length, 12);
+    assert.equal(tools.length, 17);
     assert.equal(tools.find(t => t.name === 'review_pull_request').annotations.readOnlyHint, false);
     const result = await host.callTool({ name: 'generate_learning_plan', arguments: { owner: 'a', repo: 'b', issueNumber: 42, locale: 'zh-CN', userProfile: { programmingLanguages: ['python'], experienceLevel: 'some_experience' } } });
     assert.equal(result.isError, undefined);
@@ -62,7 +62,7 @@ test('real MCP protocol lists tools, validates inputs and forwards roadmap issue
 test('stdio process initializes without stdout noise', async () => {
   const host = new Client({ name: 'stdio-test', version: '1' });
   const transport = new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../src/stdio.mjs', import.meta.url))], env: { ...process.env, OSM_BASE_URL: 'http://localhost:5173' } });
-  try { await host.connect(transport); assert.equal((await host.listTools()).tools.length, 12); }
+  try { await host.connect(transport); assert.equal((await host.listTools()).tools.length, 17); }
   finally { await host.close(); }
 });
 
