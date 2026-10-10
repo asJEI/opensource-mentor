@@ -14,7 +14,9 @@
     "test": "vitest run --config vitest.config.ts",
     "mcp:install": "npm --prefix packages/mentor-mcp ci",
     "mcp:start": "node packages/mentor-mcp/src/stdio.mjs",
-    "test:mcp": "npm --prefix packages/mentor-mcp test"
+    "test:mcp": "npm --prefix packages/mentor-mcp test",
+    "remote:dev": "wrangler dev --config wrangler.remote.jsonc --var REMOTE_ORIGIN:http://localhost:8787",
+    "remote:build": "wrangler deploy --config wrangler.remote.jsonc --dry-run --outdir .remote-mcp-build"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.52.1",
@@ -30,11 +32,13 @@
     "wrangler": "^4.123.0"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "axios": "^1.18.1",
     "clsx": "^2.1.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
+    "zod": "4.6.5",
     "zustand": "^5.0.14"
   }
 }

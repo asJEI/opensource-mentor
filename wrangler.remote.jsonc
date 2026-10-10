@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "opensource-mentor-remote-mvp",
+  "main": "worker/remote/index.mjs",
+  "compatibility_date": "2026-08-14",
+  "workers_dev": true,
+  "vars": {
+    "WEBSITE_ORIGIN": "https://hokkai.top",
+    "REMOTE_ORIGIN": "https://replace-with-your-remote-worker.workers.dev"
+  },
+  "durable_objects": { "bindings": [{ "name": "REMOTE_USERS", "class_name": "RemoteUserState" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RemoteUserState"] }],
+  "ratelimits": [{ "name": "REMOTE_RATE_LIMITER", "namespace_id": "2101", "simple": { "limit": 40, "period": 60 } }],
+  "observability": { "enabled": false }
+  // Set REMOTE_ACCESS_TOKENS with wrangler secret put --config wrangler.remote.jsonc.
+  // This config has no custom-domain route and does not modify the existing website Worker.
+}

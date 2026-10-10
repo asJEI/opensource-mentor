@@ -8,6 +8,8 @@
 
 也可通过本地 MCP 与 Skill 在 Agent 中调用项目功能，详见 [MCP 通用安装教程](./docs/mcp-hosts.zh-CN.md)（Codex、Claude Code、Cursor、DeepSeek Harness 等），或 [本地开发说明](./docs/agent-installation.zh-CN.md)。
 
+无需本地克隆的 HTTPS 接入方案见 [Remote MCP MVP 说明](./docs/remote-mcp.zh-CN.md)。该独立 Worker 需要运营者部署，网页目前不会默认启用此端点。
+
 - Cloudflare Workers：[https://hokkai.top](https://hokkai.top/)
 
 在线版本与 Docker 自托管方案使用同一套前端和核心业务能力：

@@ -10,6 +10,8 @@ OpenSource Mentor connects these steps in one workspace. Recommendations use you
 
 You can also use the project's features inside an Agent through the local MCP server and Skill. See the [universal MCP installation guide](./docs/mcp-hosts.md) for Codex, Claude Code, Cursor, DeepSeek Harness and other stdio hosts, or the [local development guide](./docs/agent-installation.md).
 
+For HTTPS connections without a local clone, see the [Remote MCP MVP guide](./docs/remote-mcp.md). This independent Worker requires operator deployment; it is not enabled on the website by default.
+
 - [Cloudflare version](https://hokkai.top/)
 
 Cloudflare Workers serves the static assets and API, including account and workspace persistence. For self-hosting, the Docker path uses the same frontend with Nginx and an Express API; Express has not yet integrated account storage.

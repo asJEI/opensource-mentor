@@ -50,3 +50,5 @@ supabase/.temp/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
+.remote-mcp-build/
+.dev.vars.remote
