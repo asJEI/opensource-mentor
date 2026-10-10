@@ -11,7 +11,10 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv --include-runtime false",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
     "typecheck:server": "npm --prefix server run typecheck",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "mcp:install": "npm --prefix packages/mentor-mcp ci",
+    "mcp:start": "node packages/mentor-mcp/src/stdio.mjs",
+    "test:mcp": "npm --prefix packages/mentor-mcp test"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.52.1",

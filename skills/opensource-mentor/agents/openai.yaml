@@ -1,0 +1,6 @@
+interface:
+  display_name: "OpenSource Mentor"
+  short_description: "Find open-source projects and guide contributions"
+  default_prompt: "Use $opensource-mentor to find an open-source project that fits my skills and plan my first contribution."
+policy:
+  allow_implicit_invocation: true
