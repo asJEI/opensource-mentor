@@ -1,3 +1,4 @@
+import { t, uiMessage } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import { useToastStore } from '@/store'
@@ -77,14 +78,14 @@ export const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {
         {iconMap[toast.type] ?? iconMap.info}
       </div>
       <div className="toast-content">
-        {toast.title && <div className="toast-title">{toast.title}</div>}
-        {toast.message && <div className="toast-msg">{toast.message}</div>}
+        {toast.title && <div className="toast-title">{uiMessage(toast.title)}</div>}
+        {toast.message && <div className="toast-msg">{uiMessage(toast.message)}</div>}
       </div>
       <button
         type="button"
         className="toast-close"
         onClick={() => onClose(toast.id)}
-        aria-label="关闭"
+        aria-label={t("关闭")}
       />
     </div>
   )

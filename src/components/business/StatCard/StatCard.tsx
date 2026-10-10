@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 
@@ -76,7 +77,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             )}
             {Math.abs(change)}%
           </span>
-          <span style={{ marginLeft: '4px' }}>vs 上周</span>
+          <span style={{ marginLeft: '4px' }}>{t("vs 上周")}</span>
         </div>
       )}
     </div>

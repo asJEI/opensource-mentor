@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { authService } from '@/services'
 
 const GithubIcon = () => (
@@ -81,34 +82,34 @@ const TargetIcon = () => (
 
 const onboardingSteps = [
   {
-    title: '读取 GitHub 开发者上下文',
-    desc: '先从你的公开仓库、语言和贡献记录理解你现在的能力边界。',
+    get title() { return t("读取 GitHub 开发者上下文") },
+    get desc() { return t("先从你的公开仓库、语言和贡献记录理解你现在的能力边界。") },
   },
   {
-    title: '匹配真正适合的 Issue',
-    desc: '不只看 good first issue 标签，而是结合技术栈、改动范围和项目活跃度排序。',
+    get title() { return t("匹配真正适合的 Issue") },
+    get desc() { return t("不只看 good first issue 标签，而是结合技术栈、改动范围和项目活跃度排序。") },
   },
   {
-    title: '陪你完成第一次贡献',
-    desc: '把 Issue 拆成分章节的贡献指南，卡住时问 AI 导师，提交前先做代码审查再生成 PR 描述。',
+    get title() { return t("陪你完成第一次贡献") },
+    get desc() { return t("把 Issue 拆成分章节的贡献指南，卡住时问 AI 导师，提交前先做代码审查再生成 PR 描述。") },
   },
 ]
 
 const productPillars = [
   {
     icon: <TargetIcon />,
-    title: '能力画像',
-    desc: '把“我是新手/会一点/做过项目”转成可用于推荐的真实偏好。',
+    get title() { return t("能力画像") },
+    get desc() { return t("把“我是新手/会一点/做过项目”转成可用于推荐的真实偏好。") },
   },
   {
     icon: <GitPullRequestIcon />,
-    title: 'Issue 匹配',
-    desc: '从仓库和 Issue 数据里筛出当前阶段更容易完成、也更值得做的任务。',
+    get title() { return t("Issue 匹配") },
+    get desc() { return t("从仓库和 Issue 数据里筛出当前阶段更容易完成、也更值得做的任务。") },
   },
   {
     icon: <CodeIcon />,
-    title: '贡献陪跑',
-    desc: '从理解代码、拆任务到整理 PR，让开源贡献不是一次性 AI Demo。',
+    get title() { return t("贡献陪跑") },
+    get desc() { return t("从理解代码、拆任务到整理 PR，让开源贡献不是一次性 AI Demo。") },
   },
 ]
 
@@ -131,9 +132,7 @@ function HeroSection() {
         <div className="landing-kicker">OpenSource Mentor</div>
         <h1>OpenSource Mentor</h1>
         <p>
-          面向开发者的开源贡献工作台。它会根据你的能力、技术栈和目标，推荐更合适的
-          Issue，并把理解项目、拆解任务、准备 PR 的过程串起来。
-        </p>
+          {t("面向开发者的开源贡献工作台。它会根据你的能力、技术栈和目标，推荐更合适的 Issue，并把理解项目、拆解任务、准备 PR 的过程串起来。")}</p>
 
         <div className="landing-actions">
           <button
@@ -142,22 +141,18 @@ function HeroSection() {
             onClick={startWithGithub}
           >
             <GithubIcon />
-            使用 GitHub 登录
-            <ArrowRightIcon />
+            {t("使用 GitHub 登录")}<ArrowRightIcon />
           </button>
           <button
             type="button"
             className="landing-secondary-button"
             onClick={viewProduct}
           >
-            先了解流程
-          </button>
+            {t("先了解流程")}</button>
         </div>
 
         <div className="landing-note">
-          仅请求 GitHub 公开资料权限，不会读取私有仓库，也不需要你提供 Token。
-          Issue 推荐和平台 AI 依赖登录后的开发者画像；你也可在设置中使用自己的 AI API。
-        </div>
+          {t("仅请求 GitHub 公开资料权限，不会读取私有仓库，也不需要你提供 Token。 Issue 推荐和平台 AI 依赖登录后的开发者画像；你也可在设置中使用自己的 AI API。")}</div>
       </div>
 
       <div className="landing-terminal" aria-label="OpenSource Mentor workflow preview">
@@ -165,27 +160,25 @@ function HeroSection() {
           <span />
           <span />
           <span />
-          <strong>示例流程 · 非实际推荐</strong>
+          <strong>{t("示例流程 · 非实际推荐")}</strong>
         </div>
         <div className="terminal-body">
           <div className="terminal-line muted">$ connect github</div>
           <div className="terminal-line success">
             <CheckIcon />
-            已识别 TypeScript / React / 文档贡献经验
-          </div>
+            {t("已识别 TypeScript / React / 文档贡献经验")}</div>
           <div className="terminal-line muted">$ match issues --goal first-pr</div>
           <div className="issue-preview-card">
             <div>
-              <span className="issue-tag">推荐</span>
+              <span className="issue-tag">{t("推荐")}</span>
               <span className="issue-tag quiet">docs</span>
             </div>
             <h2>Improve onboarding docs for plugin setup</h2>
-            <p>文档贡献示例。实际难度、耗时和认领状态以任务分析与维护者确认为准。</p>
+            <p>{t("文档贡献示例。实际难度、耗时和认领状态以任务分析与维护者确认为准。")}</p>
           </div>
           <div className="terminal-line muted">$ mentor explain --next-step</div>
           <div className="terminal-output">
-            先复现文档中的步骤，再补充缺失截图和命令说明。PR 描述会自动整理成维护者容易 review 的格式。
-          </div>
+            {t("先复现文档中的步骤，再补充缺失截图和命令说明。PR 描述会自动整理成维护者容易 review 的格式。")}</div>
         </div>
       </div>
     </section>
@@ -196,8 +189,8 @@ function WorkflowSection() {
   return (
     <section className="landing-section" id="how-it-works">
       <div className="landing-section-header">
-        <span>首次进入产品后会发生什么</span>
-        <h2>先理解你，再推荐 Issue。</h2>
+        <span>{t("首次进入产品后会发生什么")}</span>
+        <h2>{t("先理解你，再推荐 Issue。")}</h2>
       </div>
 
       <div className="onboarding-grid">
@@ -217,8 +210,8 @@ function FeaturesSection() {
   return (
     <section className="landing-section landing-section-compact" id="features">
       <div className="landing-section-header">
-        <span>项目当前重点</span>
-        <h2>从仓库分析，走向贡献匹配。</h2>
+        <span>{t("项目当前重点")}</span>
+        <h2>{t("从仓库分析，走向贡献匹配。")}</h2>
       </div>
 
       <div className="pillar-grid">
@@ -238,12 +231,11 @@ function PreviewSection() {
   return (
     <section className="landing-product-strip" id="preview">
       <div>
-        <span>当前可用能力</span>
-        <h2>仓库分析、Issue 推荐、贡献指南、代码审查和 PR 生成已经在产品内串起来。</h2>
+        <span>{t("当前可用能力")}</span>
+        <h2>{t("仓库分析、Issue 推荐、贡献指南、代码审查和 PR 生成已经在产品内串起来。")}</h2>
       </div>
       <a href="/issues" className="landing-inline-link">
-        登录后开始 Issue 推荐
-        <ArrowRightIcon />
+        {t("登录后开始 Issue 推荐")}<ArrowRightIcon />
       </a>
     </section>
   )

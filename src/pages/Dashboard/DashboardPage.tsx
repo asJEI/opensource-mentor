@@ -1,8 +1,9 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout'
 import { Button } from '@/components/ui'
-import { useToastStore, useRepositoryStore } from '@/store'
+import { useToastStore, useRepositoryStore, useUserStore } from '@/store'
 import { NextStepCard, JourneyActions, AiPageError } from '@/components/business'
 import {
   AlertIcon,
@@ -32,24 +33,24 @@ import {
 } from './components'
 
 const ONBOARDING_FLOW = [
-  { title: '选定目标', desc: '在上方输入仓库，或从「Issue 推荐」挑一个任务' },
-  { title: '读懂项目', desc: 'AI 给出项目定位、技术栈和可切入的贡献领域' },
-  { title: '按指南推进', desc: '贡献指南把 Issue 拆成章节，卡住随时问 AI 导师' },
-  { title: '审查并提交 PR', desc: '先做代码审查，再生成 PR 标题与描述' },
+  { get title() { return t("选定目标") }, get desc() { return t("在上方输入仓库，或从「Issue 推荐」挑一个任务") } },
+  { get title() { return t("读懂项目") }, get desc() { return t("AI 给出项目定位、技术栈和可切入的贡献领域") } },
+  { get title() { return t("按指南推进") }, get desc() { return t("贡献指南把 Issue 拆成章节，卡住随时问 AI 导师") } },
+  { get title() { return t("审查并提交 PR") }, get desc() { return t("先做代码审查，再生成 PR 标题与描述") } },
 ]
 
 function localizeIssueDifficulty(raw?: string | null): string | null {
   if (!raw?.trim()) return null
   const value = raw.trim().toLowerCase()
   const map: Record<string, string> = {
-    beginner: '入门',
-    'beginner+': '入门+',
-    easy: '入门',
-    intermediate: '中等',
-    medium: '中等',
-    advanced: '进阶',
-    hard: '进阶',
-    expert: '专家',
+    beginner: t("入门"),
+    'beginner+': t("入门+"),
+    easy: t("入门"),
+    intermediate: t("中等"),
+    medium: t("中等"),
+    advanced: t("进阶"),
+    hard: t("进阶"),
+    expert: t("专家"),
   }
   return map[value] || raw.trim()
 }
@@ -59,14 +60,14 @@ function localizeEstimatedTime(raw?: string | null): string | null {
   const value = raw.trim()
   const lower = value.toLowerCase()
   if (/[\u4e00-\u9fff]/.test(value)) return value
-  if (/weekend/.test(lower)) return '约一个周末'
-  if (/few hours|couple of hours|2-4 hours|2–4 hours/.test(lower)) return '约几小时'
-  if (/half.?day/.test(lower)) return '约半天'
-  if (/\bday\b|1 day|one day/.test(lower)) return '约一天'
-  if (/week\b|1 week|one week/.test(lower)) return '约一周'
+  if (/weekend/.test(lower)) return t("约一个周末")
+  if (/few hours|couple of hours|2-4 hours|2–4 hours/.test(lower)) return t("约几小时")
+  if (/half.?day/.test(lower)) return t("约半天")
+  if (/\bday\b|1 day|one day/.test(lower)) return t("约一天")
+  if (/week\b|1 week|one week/.test(lower)) return t("约一周")
   if (/hour/.test(lower)) {
     const hours = value.match(/\d+(?:\.\d+)?/)?.[0]
-    return hours ? `约 ${hours} 小时` : '约数小时'
+    return hours ? t("约 {0} 小时", [hours]) : t("约数小时")
   }
   return value
 }
@@ -171,8 +172,8 @@ const Dashboard = () => {
     if (!parsed) {
       showToast(
         'error',
-        '输入格式错误',
-        '请输入 GitHub 仓库链接，或 owner/repo 格式',
+        t("输入格式错误"),
+        t("请输入 GitHub 仓库链接，或 owner/repo 格式"),
       )
       return
     }
@@ -190,16 +191,16 @@ const Dashboard = () => {
       ) {
         showToast(
           'error',
-          '分析失败',
+          t("分析失败"),
           latest.analysisError ||
             latest.issuesError ||
-            '仓库分析失败，请稍后重试',
+            t("仓库分析失败，请稍后重试"),
         )
       } else {
-        showToast('success', '分析完成', `已完成对 ${repoInput} 的仓库分析`)
+        showToast('success', t("分析完成"), t("已完成对 {0} 的仓库分析", [repoInput]))
       }
     } catch {
-      showToast('error', '分析失败', '仓库分析失败，请稍后重试')
+      showToast('error', t("分析失败"), t("仓库分析失败，请稍后重试"))
     }
   }
 
@@ -238,20 +239,20 @@ const Dashboard = () => {
   const confirmedContext = currentExplain?.confirmedContext?.length
     ? currentExplain.confirmedContext
     : [
-        `已确认仓库：${displayFullName}`,
+        t("已确认仓库：{0}", [displayFullName]),
         activeContributionIssue
-          ? `已确认 Issue：#${activeContributionIssue.issueNumber} ${activeContributionIssue.title}`
-          : '已确认当前仓库基础信息。',
+          ? t("已确认 Issue：#{0} {1}", [activeContributionIssue.issueNumber, activeContributionIssue.title])
+          : t("已确认当前仓库基础信息。"),
         currentRepo?.language
-          ? `已确认主要语言：${currentRepo.language}`
-          : '主要语言仍在等待仓库信息返回。',
+          ? t("已确认主要语言：{0}", [currentRepo.language])
+          : t("主要语言仍在等待仓库信息返回。"),
       ]
   const possibleAreasToInspect = currentExplain?.possibleAreasToInspect?.length
     ? currentExplain.possibleAreasToInspect
     : [
-        '建议先阅读 README、贡献指南和开发环境说明。',
-        '根据 Issue 描述中的关键词，在仓库中搜索相关功能、文档或测试。',
-        '如果无法定位代码，先在 Issue 下向维护者确认建议修改范围。',
+        t("建议先阅读 README、贡献指南和开发环境说明。"),
+        t("根据 Issue 描述中的关键词，在仓库中搜索相关功能、文档或测试。"),
+        t("如果无法定位代码，先在 Issue 下向维护者确认建议修改范围。"),
       ]
 
   const handleStartLearning = () => {
@@ -293,7 +294,7 @@ const Dashboard = () => {
   const analysisSectionIndex = isIssueMode ? '02' : '01'
 
   return (
-    <AppLayout breadcrumbs={[{ label: '仓库分析' }]}>
+    <AppLayout breadcrumbs={[{ label: t("仓库分析") }]}>
       <div className="app-page active dash">
         {/* ---------- 页头：页面身份 + 仓库输入 ---------- */}
         <header className="dash-masthead">
@@ -302,11 +303,11 @@ const Dashboard = () => {
               <span className="osm-kicker-dot" />
               Repository Analysis
             </span>
-            <h1 className="dash-title">仓库分析</h1>
+            <h1 className="dash-title">{t("仓库分析")}</h1>
             <p className="dash-lede">
               {isIssueMode
-                ? '围绕你选择的 Issue 理解仓库、任务背景和下一步思路。'
-                : '输入一个 GitHub 仓库，先把它读懂，再决定从哪里下手。'}
+                ? t("围绕你选择的 Issue 理解仓库、任务背景和下一步思路。")
+                : t("输入一个 GitHub 仓库，先把它读懂，再决定从哪里下手。")}
             </p>
           </div>
 
@@ -315,9 +316,8 @@ const Dashboard = () => {
               <div className="osm-note osm-note-brand">
                 <InfoIcon />
                 <span>
-                  已按当前 Issue 锁定仓库 <code>{displayFullName}</code>
-                  ，切换 Issue 即可分析其它仓库。
-                </span>
+                  {t("已按当前 Issue 锁定仓库")}<code>{displayFullName}</code>
+                  {t("，切换 Issue 即可分析其它仓库。")}</span>
               </div>
             ) : (
               <>
@@ -330,7 +330,7 @@ const Dashboard = () => {
                     onChange={(e) => handleRepoInputChange(e.target.value)}
                     placeholder="owner/repo"
                     spellCheck={false}
-                    aria-label="GitHub 仓库"
+                    aria-label={t("GitHub 仓库")}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleAnalyze()
                     }}
@@ -341,12 +341,11 @@ const Dashboard = () => {
                     onClick={hasAnalyzed ? handleReanalyze : handleAnalyze}
                     icon={hasAnalyzed ? <RefreshIcon /> : <ZapIcon />}
                   >
-                    {hasAnalyzed ? '重新分析' : '分析'}
+                    {hasAnalyzed ? t("重新分析") : t("分析")}
                   </Button>
                 </div>
                 <p className="dash-tool-hint">
-                  支持完整链接或 <code>owner/repo</code>，回车即可开始
-                </p>
+                  {t("支持完整链接或")}<code>owner/repo</code>{t("，回车即可开始")}</p>
               </>
             )}
           </div>
@@ -408,8 +407,7 @@ const Dashboard = () => {
                     )
                   }
                 >
-                  在 GitHub 查看
-                </Button>
+                  {t("在 GitHub 查看")}</Button>
               </div>
             </div>
           ) : hasError ? (
@@ -418,9 +416,9 @@ const Dashboard = () => {
                 <AlertIcon />
               </span>
               <div className="osm-repo-main">
-                <div className="dash-subject-error-title">仓库信息加载失败</div>
+                <div className="dash-subject-error-title">{t("仓库信息加载失败")}</div>
                 <p className="osm-repo-desc">
-                  {errorMessage || '请确认仓库地址是否正确，然后重新分析。'}
+                  {errorMessage || t("请确认仓库地址是否正确，然后重新分析。")}
                 </p>
               </div>
             </div>
@@ -443,15 +441,13 @@ const Dashboard = () => {
                 <InfoIcon />
               </span>
               <div className="osm-repo-main">
-                <div className="dash-subject-error-title">还没有选择要贡献的 Issue</div>
+                <div className="dash-subject-error-title">{t("还没有选择要贡献的 Issue")}</div>
                 <p className="osm-repo-desc">
-                  建议先从 Issue 推荐中选定任务，系统会自动分析对应仓库。你也可以在上方手动输入仓库。
-                </p>
+                  {t("建议先从 Issue 推荐中选定任务，系统会自动分析对应仓库。你也可以在上方手动输入仓库。")}</p>
               </div>
               <div className="osm-repo-side">
                 <Button variant="primary" onClick={() => navigate('/issues')}>
-                  去选择 Issue
-                </Button>
+                  {t("去选择 Issue")}</Button>
               </div>
             </div>
           )}
@@ -462,15 +458,14 @@ const Dashboard = () => {
           <section className="dash-flow">
             <SectionRule
               index="00"
-              label="上手路径"
+              label={t("上手路径")}
               aside={
                 <button
                   type="button"
                   className="dash-dismiss"
                   onClick={handleDismissOnboarding}
                 >
-                  不再显示
-                </button>
+                  {t("不再显示")}</button>
               }
             />
             <ol className="dash-flow-list">
@@ -498,7 +493,7 @@ const Dashboard = () => {
               <section className="osm-section">
                 <SectionRule
                   index="01"
-                  label="当前任务"
+                  label={t("当前任务")}
                   aside={`#${activeContributionIssue.issueNumber}`}
                 />
                 <div className="osm-panel dash-issue">
@@ -535,14 +530,13 @@ const Dashboard = () => {
                         )
                       }
                     >
-                      在 GitHub 查看
-                    </Button>
+                      {t("在 GitHub 查看")}</Button>
                   </div>
                   <div className="dash-issue-foot">
-                    开放中 · 评论 {activeContributionIssue.comments} · 更新于{' '}
+                    {t("开放中 · 评论")}{activeContributionIssue.comments} {t("· 更新于")}{' '}
                     {new Date(
                       activeContributionIssue.updatedAt,
-                    ).toLocaleDateString('zh-CN')}
+                    ).toLocaleDateString(useUserStore.getState().preferences.language)}
                   </div>
                 </div>
               </section>
@@ -552,27 +546,27 @@ const Dashboard = () => {
             <section className="osm-section">
               <SectionRule
                 index={analysisSectionIndex}
-                label={isIssueMode ? '任务分析' : '项目理解'}
+                label={isIssueMode ? t("任务分析") : t("项目理解")}
                 aside={
                   analysis
-                    ? `置信度 ${Math.round((analysis.confidence || 0) * 100)}%`
+                    ? t("置信度 {0}%", [Math.round((analysis.confidence || 0) * 100)])
                     : undefined
                 }
               />
 
               {isLoading && !hasAnalyzed ? (
                 <div className="osm-log">
-                  <LogLine state={metadataState}>读取仓库元数据</LogLine>
-                  <LogLine state={architectureState}>分析项目架构与技术栈</LogLine>
+                  <LogLine state={metadataState}>{t("读取仓库元数据")}</LogLine>
+                  <LogLine state={architectureState}>{t("分析项目架构与技术栈")}</LogLine>
                   <LogLine state={thirdState}>
-                    {isIssueMode ? '生成当前 Issue 的上下文分析' : '评估难度并筛选推荐 Issue'}
+                    {isIssueMode ? t("生成当前 Issue 的上下文分析") : t("评估难度并筛选推荐 Issue")}
                   </LogLine>
                 </div>
               ) : hasError && !analysis ? (
                 <AiPageError
                   kicker="ANALYSIS FAILED"
-                  title="分析失败"
-                  message={errorMessage || '仓库分析失败，请稍后重试'}
+                  title={t("分析失败")}
+                  message={errorMessage || t("仓库分析失败，请稍后重试")}
                   onRetry={handleReanalyze}
                 />
               ) : hasAnalyzed && analysis ? (
@@ -580,8 +574,7 @@ const Dashboard = () => {
                   <div className="osm-ai">
                     <span className="osm-ai-mark">
                       <PulseIcon />
-                      AI 摘要
-                    </span>
+                      {t("AI 摘要")}</span>
                     <p className="osm-prose">
                       {isIssueMode && currentExplain
                         ? currentExplain.summary
@@ -591,7 +584,7 @@ const Dashboard = () => {
 
                   {!isIssueMode && coreTech.length > 0 && (
                     <div className="dash-subblock">
-                      <h3 className="dash-subtitle">技术栈</h3>
+                      <h3 className="dash-subtitle">{t("技术栈")}</h3>
                       <div className="osm-tags">
                         {coreTech.slice(0, 10).map((tech) => (
                           <span key={tech} className="osm-tag">
@@ -607,15 +600,14 @@ const Dashboard = () => {
                       {explainStatus === 'loading' && (
                         <div className="osm-log">
                           <LogLine state="running">
-                            正在生成当前 Issue 的分析
-                          </LogLine>
+                            {t("正在生成当前 Issue 的分析")}</LogLine>
                         </div>
                       )}
 
                       {currentExplain && (
                         <>
                           <div className="dash-subblock">
-                            <h3 className="dash-subtitle">已确认的上下文</h3>
+                            <h3 className="dash-subtitle">{t("已确认的上下文")}</h3>
                             <ul className="osm-list osm-list-check">
                               {confirmedContext.map((item) => (
                                 <li key={item}>{item}</li>
@@ -624,7 +616,7 @@ const Dashboard = () => {
                           </div>
 
                           <div className="dash-subblock">
-                            <h3 className="dash-subtitle">建议的推进步骤</h3>
+                            <h3 className="dash-subtitle">{t("建议的推进步骤")}</h3>
                             <ol className="osm-list osm-list-ordered">
                               {currentExplain.steps.slice(0, 6).map((step) => (
                                 <li key={step}>{step}</li>
@@ -633,7 +625,7 @@ const Dashboard = () => {
                           </div>
 
                           <div className="dash-subblock">
-                            <h3 className="dash-subtitle">值得排查的位置</h3>
+                            <h3 className="dash-subtitle">{t("值得排查的位置")}</h3>
                             <ul className="osm-list osm-list-dash">
                               {possibleAreasToInspect.map((item) => (
                                 <li key={item}>{item}</li>
@@ -646,7 +638,7 @@ const Dashboard = () => {
                       {explainStatus === 'error' && (
                         <div className="osm-note osm-note-danger">
                           <AlertIcon />
-                          <span>{explainError || '当前 Issue 分析暂时不可用'}</span>
+                          <span>{explainError || t("当前 Issue 分析暂时不可用")}</span>
                         </div>
                       )}
                     </>
@@ -655,8 +647,7 @@ const Dashboard = () => {
               ) : (
                 <div className="osm-log">
                   <LogLine state="pending">
-                    等待开始 — 在上方填入仓库后按回车
-                  </LogLine>
+                    {t("等待开始 — 在上方填入仓库后按回车")}</LogLine>
                 </div>
               )}
             </section>
@@ -666,8 +657,8 @@ const Dashboard = () => {
               <section className="osm-section">
                 <SectionRule
                   index="02"
-                  label="可以切入的贡献领域"
-                  aside={`${contributionAreas.length} 个`}
+                  label={t("可以切入的贡献领域")}
+                  aside={t("{0} 个", [contributionAreas.length])}
                 />
                 <div className="dash-areas">
                   {contributionAreas.slice(0, 6).map((area, index) => (
@@ -704,8 +695,8 @@ const Dashboard = () => {
               <section className="osm-section">
                 <SectionRule
                   index={contributionAreas.length > 0 ? '03' : '02'}
-                  label="推荐的入门 Issue"
-                  aside={`${recommendedIssues.length} 个候选`}
+                  label={t("推荐的入门 Issue")}
+                  aside={t("{0} 个候选", [recommendedIssues.length])}
                 />
                 {displayIssues.length > 0 ? (
                   <>
@@ -728,17 +719,14 @@ const Dashboard = () => {
                       className="dash-more"
                       onClick={() => navigate('/issues')}
                     >
-                      查看全部候选 Issue
-                      <ArrowRightIcon />
+                      {t("查看全部候选 Issue")}<ArrowRightIcon />
                     </button>
                   </>
                 ) : (
                   <div className="osm-note">
                     <InfoIcon />
                     <span>
-                      这个仓库暂时没有筛出适合入门的 Issue。可以换一个仓库再试，或到「Issue
-                      推荐」按你的画像跨仓库查找。
-                    </span>
+                      {t("这个仓库暂时没有筛出适合入门的 Issue。可以换一个仓库再试，或到「Issue 推荐」按你的画像跨仓库查找。")}</span>
                   </div>
                 )}
               </section>
@@ -749,8 +737,8 @@ const Dashboard = () => {
           <aside className="osm-rail">
             <div className="osm-panel">
               <div className="osm-panel-head">
-                <span className="osm-panel-title">新手友好度</span>
-                <span className="osm-panel-aside">AI 评估</span>
+                <span className="osm-panel-title">{t("新手友好度")}</span>
+                <span className="osm-panel-aside">{t("AI 评估")}</span>
               </div>
               <div className="osm-panel-body">
                 {analysis && friendliness ? (
@@ -761,13 +749,12 @@ const Dashboard = () => {
                     foot={
                       <>
                         {isBeginnerFriendly(analysis)
-                          ? '适合作为第一个贡献目标'
-                          : '上手门槛偏高，建议先熟悉相近项目'}
+                          ? t("适合作为第一个贡献目标")
+                          : t("上手门槛偏高，建议先熟悉相近项目")}
                         {recommendedIssues.length > 0 && (
                           <>
                             <span className="osm-meter-foot-sep">·</span>
-                            {recommendedIssues.length} 个候选 Issue
-                          </>
+                            {recommendedIssues.length} {t("个候选 Issue")}</>
                         )}
                       </>
                     }
@@ -784,15 +771,14 @@ const Dashboard = () => {
 
             <div className="osm-panel">
               <div className="osm-panel-head">
-                <span className="osm-panel-title">项目概况</span>
+                <span className="osm-panel-title">{t("项目概况")}</span>
               </div>
               <div className="osm-panel-body">
                 <div className="osm-facts">
                   <div className="osm-fact">
                     <span className="osm-fact-key">
                       <CodeIcon />
-                      主要语言
-                    </span>
+                      {t("主要语言")}</span>
                     <span className="osm-fact-val">
                       {currentRepo?.language || '--'}
                     </span>
@@ -800,8 +786,7 @@ const Dashboard = () => {
                   <div className="osm-fact">
                     <span className="osm-fact-key">
                       <PulseIcon />
-                      项目活跃度
-                    </span>
+                      {t("项目活跃度")}</span>
                     <span className="osm-fact-val">
                       {analysis ? getActivityLabel(analysis.activity?.level) : '--'}
                     </span>
@@ -809,8 +794,7 @@ const Dashboard = () => {
                   <div className="osm-fact">
                     <span className="osm-fact-key">
                       <BranchIcon />
-                      默认分支
-                    </span>
+                      {t("默认分支")}</span>
                     <span className="osm-fact-val">
                       {currentRepo?.defaultBranch || '--'}
                     </span>
@@ -818,8 +802,7 @@ const Dashboard = () => {
                   <div className="osm-fact">
                     <span className="osm-fact-key">
                       <IssueIcon />
-                      开放 Issue
-                    </span>
+                      {t("开放 Issue")}</span>
                     <span className="osm-fact-val">
                       {currentRepo ? currentRepo.issuesCount.toLocaleString() : '--'}
                     </span>
@@ -827,8 +810,7 @@ const Dashboard = () => {
                   <div className="osm-fact">
                     <span className="osm-fact-key">
                       <InfoIcon />
-                      许可证
-                    </span>
+                      {t("许可证")}</span>
                     <span className="osm-fact-val">
                       {currentRepo?.license || '--'}
                     </span>
@@ -854,23 +836,23 @@ const Dashboard = () => {
               <div className="osm-panel">
                 <div className="osm-panel-body">
                   <JourneyActions
-                    title="仓库已读懂，选择下一步"
-                    description="建议先锁定一个 Issue，后续步骤都会围绕它展开。"
+                    title={t("仓库已读懂，选择下一步")}
+                    description={t("建议先锁定一个 Issue，后续步骤都会围绕它展开。")}
                     paths={[
                       {
-                        title: '查看推荐 Issue',
-                        description: '找到适合你当前水平的入门任务',
+                        title: t("查看推荐 Issue"),
+                        description: t("找到适合你当前水平的入门任务"),
                         path: '/issues',
                         primary: true,
                       },
                       {
-                        title: '打开贡献指南',
-                        description: '需要先锁定一个 Issue 才能生成分章节指南',
+                        title: t("打开贡献指南"),
+                        description: t("需要先锁定一个 Issue 才能生成分章节指南"),
                         path: '/roadmap',
                       },
                       {
-                        title: '询问 AI 导师',
-                        description: '针对仓库结构与贡献流程提问',
+                        title: t("询问 AI 导师"),
+                        description: t("针对仓库结构与贡献流程提问"),
                         path: '/ai-mentor',
                       },
                     ]}
@@ -885,15 +867,13 @@ const Dashboard = () => {
         {hasAnalyzed && activeContributionIssue && (
           <div className="next-step-card">
             <div className="next-step-content">
-              <div className="next-step-badge">下一步</div>
-              <div className="next-step-title">开始解决这个 Issue</div>
+              <div className="next-step-badge">{t("下一步")}</div>
+              <div className="next-step-title">{t("开始解决这个 Issue")}</div>
               <div className="next-step-desc">
-                贡献指南会围绕当前 Issue 生成：先理解背景，再拆成可以逐步完成的小任务。
-              </div>
+                {t("贡献指南会围绕当前 Issue 生成：先理解背景，再拆成可以逐步完成的小任务。")}</div>
             </div>
             <button className="next-step-btn" onClick={handleStartLearning}>
-              打开贡献指南
-              <ArrowRightIcon />
+              {t("打开贡献指南")}<ArrowRightIcon />
             </button>
           </div>
         )}
@@ -902,9 +882,9 @@ const Dashboard = () => {
           <NextStepCard
             currentStep={2}
             totalSteps={6}
-            title="仓库分析完成"
-            description="下一步挑一个 Issue 锁定目标，后面的贡献指南、代码审查都会围绕它展开"
-            buttonText="查看推荐 Issue"
+            title={t("仓库分析完成")}
+            description={t("下一步挑一个 Issue 锁定目标，后面的贡献指南、代码审查都会围绕它展开")}
+            buttonText={t("查看推荐 Issue")}
             nextPath="/issues"
           />
         )}

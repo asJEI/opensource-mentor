@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { RoadmapPhase, RoadmapStepStatus } from '@/types'
@@ -35,9 +36,9 @@ const stepIcons: Record<RoadmapStepStatus, React.ReactNode> = {
 }
 
 const difficultyLabel: Record<string, string> = {
-  easy: '简单',
-  medium: '中等',
-  hard: '困难',
+  get easy() { return t("简单") },
+  get medium() { return t("中等") },
+  get hard() { return t("困难") },
 }
 
 /**
@@ -94,12 +95,12 @@ export const RoadmapTimeline: React.FC<RoadmapTimelineProps> = ({
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
                       </svg>
-                      阶段 {phase.phase}
+                      {t("阶段")}{phase.phase}
                     </div>
                     <h3 className="card-title">{phase.title}</h3>
                     <p className="card-desc">{phase.goal}</p>
                     <div className={clsx('card-difficulty', `difficulty-${phase.difficulty}`)}>
-                      难度：{difficultyLabel[phase.difficulty] || phase.difficulty}
+                      {t("难度：")}{difficultyLabel[phase.difficulty] || phase.difficulty}
                     </div>
                     <ul className="card-tasks">
                       {phase.tasks.map((task) => (
@@ -128,13 +129,11 @@ export const RoadmapTimeline: React.FC<RoadmapTimelineProps> = ({
                           onClick={onNextStep}
                           className="card-action"
                         >
-                          开始学习
-                        </Button>
+                          {t("开始学习")}</Button>
                       )}
                       {isCompleted && (
                         <span className="card-link">
-                          已完成
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {t("已完成")}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
                         </span>
@@ -156,12 +155,12 @@ export const RoadmapTimeline: React.FC<RoadmapTimelineProps> = ({
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
                       </svg>
-                      阶段 {phase.phase}
+                      {t("阶段")}{phase.phase}
                     </div>
                     <h3 className="card-title">{phase.title}</h3>
                     <p className="card-desc">{phase.goal}</p>
                     <div className={clsx('card-difficulty', `difficulty-${phase.difficulty}`)}>
-                      难度：{difficultyLabel[phase.difficulty] || phase.difficulty}
+                      {t("难度：")}{difficultyLabel[phase.difficulty] || phase.difficulty}
                     </div>
                     <ul className="card-tasks">
                       {phase.tasks.map((task) => (
@@ -190,13 +189,11 @@ export const RoadmapTimeline: React.FC<RoadmapTimelineProps> = ({
                           onClick={onNextStep}
                           className="card-action"
                         >
-                          开始学习
-                        </Button>
+                          {t("开始学习")}</Button>
                       )}
                       {isCompleted && (
                         <span className="card-link">
-                          已完成
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {t("已完成")}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
                         </span>
@@ -215,8 +212,7 @@ export const RoadmapTimeline: React.FC<RoadmapTimelineProps> = ({
       {onReset && (
         <div className="roadmap-controls">
           <Button variant="secondary" onClick={onReset}>
-            重置进度
-          </Button>
+            {t("重置进度")}</Button>
         </div>
       )}
     </div>

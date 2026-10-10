@@ -1,6 +1,7 @@
 import express from 'express'
 import { config } from './config'
 import routes from './routes'
+import { localeContext } from './middlewares/localeContext'
 import {
   aiRequestContext,
   errorHandler,
@@ -15,6 +16,7 @@ app.set('trust proxy', 1)
 
 // 中间件
 app.use(express.json())
+app.use(localeContext)
 app.use(requestLogger)
 app.use(githubRequestContext)
 app.use(aiRequestContext)

@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React, { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { useToastStore } from '@/store'
@@ -90,7 +91,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
       await navigator.clipboard.writeText(text)
       onCopy?.(text, label)
     } catch {
-      showToast('error', '未能复制', '请选中内容后手动复制')
+      showToast('error', t("未能复制"), t("请选中内容后手动复制"))
     }
   }
 
@@ -100,16 +101,15 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
       <div className={className}>
         <div className="pr-loading active">
           <div className="pr-loading-spinner" />
-          <div className="pr-loading-title">AI 正在生成 PR...</div>
+          <div className="pr-loading-title">{t("AI 正在生成 PR...")}</div>
           <div className="pr-loading-desc">
-            请稍候，正在分析并生成专业的 PR 内容
-          </div>
+            {t("请稍候，正在分析并生成专业的 PR 内容")}</div>
           <div className="pr-loading-steps">
             {[
-              '分析 Issue 信息',
-              '生成 PR 标题',
-              '撰写 PR 描述',
-              '整理变更建议',
+              t("分析 Issue 信息"),
+              t("生成 PR 标题"),
+              t("撰写 PR 描述"),
+              t("整理变更建议"),
             ].map((step, i) => (
               <div
                 key={step}
@@ -135,8 +135,8 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
         <div className="card-body">
           <AiPageError
             kicker="GENERATION FAILED"
-            title="生成失败"
-            message={error || 'PR 生成过程中出现错误，请稍后重试'}
+            title={t("生成失败")}
+            message={error || t("PR 生成过程中出现错误，请稍后重试")}
             onRetry={onRetry}
           />
         </div>
@@ -153,14 +153,13 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
             <span className="osm-kicker-dot" />
             AWAITING INPUT
           </span>
-          <div className="result-empty-title">还没有生成 PR</div>
+          <div className="result-empty-title">{t("还没有生成 PR")}</div>
           <p className="result-empty-desc">
-            填好左边的类型和改动描述，AI 会给出标题、描述、变更点和测试建议。
-          </p>
+            {t("填好左边的类型和改动描述，AI 会给出标题、描述、变更点和测试建议。")}</p>
           <ol className="osm-list osm-list-ordered result-empty-steps">
-            <li>选择改动类型（fix / feat / docs）</li>
-            <li>用一两句话说明你改了什么</li>
-            <li>填写要关联的 Issue 编号</li>
+            <li>{t("选择改动类型（fix / feat / docs）")}</li>
+            <li>{t("用一两句话说明你改了什么")}</li>
+            <li>{t("填写要关联的 Issue 编号")}</li>
           </ol>
         </div>
       </div>
@@ -191,12 +190,11 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            PR 标题
-          </div>
+            {t("PR 标题")}</div>
           <button
             type="button"
             className="copy-btn"
-            onClick={() => handleCopy(editedTitle, 'PR 标题')}
+            onClick={() => handleCopy(editedTitle, t("PR 标题"))}
           >
             <svg
               viewBox="0 0 24 24"
@@ -209,10 +207,9 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
-            复制
-          </button>
+            {t("复制")}</button>
         </div>
-        <input className="pr-draft-title" aria-label="编辑 PR 标题" value={editedTitle} onChange={(event) => { setEditedTitle(event.target.value); onEdit?.({ title: event.target.value }) }} />
+        <input className="pr-draft-title" aria-label={t("编辑 PR 标题")} value={editedTitle} onChange={(event) => { setEditedTitle(event.target.value); onEdit?.({ title: event.target.value }) }} />
       </div>
 
       {/* Description */}
@@ -232,12 +229,11 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               <line x1="16" y1="13" x2="8" y2="13" />
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
-            PR 描述
-          </div>
+            {t("PR 描述")}</div>
           <button
             type="button"
             className="copy-btn"
-            onClick={() => handleCopy(editedDescription, 'PR 描述')}
+            onClick={() => handleCopy(editedDescription, t("PR 描述"))}
           >
             <svg
               viewBox="0 0 24 24"
@@ -250,10 +246,9 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
-            复制
-          </button>
+            {t("复制")}</button>
         </div>
-        <textarea className="pr-draft-description" aria-label="编辑 PR 描述" value={editedDescription} onChange={(event) => { setEditedDescription(event.target.value); onEdit?.({ description: event.target.value }) }} />
+        <textarea className="pr-draft-description" aria-label={t("编辑 PR 描述")} value={editedDescription} onChange={(event) => { setEditedDescription(event.target.value); onEdit?.({ description: event.target.value }) }} />
       </div>
 
       {/* 置信度（新版字段） */}
@@ -272,8 +267,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
-              生成质量置信度
-            </div>
+              {t("生成质量置信度")}</div>
             <span
               style={{
                 fontSize: '13px',
@@ -333,8 +327,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                 <polyline points="16 18 22 12 16 6" />
                 <polyline points="8 6 2 12 8 18" />
               </svg>
-              主要变更点
-            </div>
+              {t("主要变更点")}</div>
           </div>
           <div className="checklist">
             {draft.changes.map((change, index) => (
@@ -379,8 +372,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                 <path d="M9 11l3 3L22 4" />
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
-              测试建议
-            </div>
+              {t("测试建议")}</div>
           </div>
           <div className="checklist">
             {draft.testingTips.map((tip, index) => (
@@ -426,8 +418,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
-              注意事项 / 风险点
-            </div>
+              {t("注意事项 / 风险点")}</div>
           </div>
           <div className="review-suggestions">
             {draft.notes.map((note, index) => (
@@ -462,8 +453,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                   <path d="M10 22h4" />
                   <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
                 </svg>
-                可改进建议
-              </div>
+                {t("可改进建议")}</div>
             </div>
             <div className="review-suggestions">
               {draft.improvementSuggestions.map((suggestion, index) => (
@@ -496,8 +486,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                 <polyline points="9 11 12 14 22 4" />
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
-              提交前检查清单
-            </div>
+              {t("提交前检查清单")}</div>
           </div>
           <div className="checklist">
             {draft.checklist.map((item, index) => (
@@ -525,8 +514,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
               >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              审查建议
-            </div>
+              {t("审查建议")}</div>
           </div>
           <div className="review-suggestions">
             {draft.suggestions.map((suggestion, index) => (
@@ -563,8 +551,7 @@ export const PrResultPanel: React.FC<PrResultPanelProps> = ({
                 <path d="M12 8v4" />
                 <path d="M12 16h.01" />
               </svg>
-              关联 Issue
-            </div>
+              {t("关联 Issue")}</div>
           </div>
           <div
             style={{

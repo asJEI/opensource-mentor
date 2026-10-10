@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useMemo, useState, useEffect } from 'react'
 import clsx from 'clsx'
 import { Button, Modal } from '@/components/ui'
@@ -14,25 +15,25 @@ import type {
 const TOTAL_STEPS = 4
 
 const goalOptions: Array<{ value: OpenSourceGoal; label: string; legacyGoal: LearningGoal }> = [
-  { value: 'ship_first_pr', label: '完成我的第一个 PR', legacyGoal: 'first_contribution' },
-  { value: 'improve_skills', label: '提升技术能力', legacyGoal: 'improve_engineering' },
-  { value: 'build_github_profile', label: '建设我的 GitHub 作品履历', legacyGoal: 'find_beginner_friendly_issues' },
-  { value: 'contribute_liked_projects', label: '参与我喜欢的项目', legacyGoal: 'learn_new_technology' },
-  { value: 'long_term_contributor', label: '成为长期贡献者', legacyGoal: 'improve_engineering' },
+  { value: 'ship_first_pr', get label() { return t("完成我的第一个 PR") }, legacyGoal: 'first_contribution' },
+  { value: 'improve_skills', get label() { return t("提升技术能力") }, legacyGoal: 'improve_engineering' },
+  { value: 'build_github_profile', get label() { return t("建设我的 GitHub 作品履历") }, legacyGoal: 'find_beginner_friendly_issues' },
+  { value: 'contribute_liked_projects', get label() { return t("参与我喜欢的项目") }, legacyGoal: 'learn_new_technology' },
+  { value: 'long_term_contributor', get label() { return t("成为长期贡献者") }, legacyGoal: 'improve_engineering' },
 ]
 
 const timeOptions: Array<{ value: ContributionTimeBudget; label: string }> = [
-  { value: 'lt_1h', label: '少于 1 小时' },
-  { value: '1_3h', label: '1–3 小时' },
-  { value: '3_6h', label: '3–6 小时' },
-  { value: 'weekend', label: '一个周末' },
-  { value: 'no_preference', label: '暂时无偏好' },
+  { value: 'lt_1h', get label() { return t("少于 1 小时") } },
+  { value: '1_3h', get label() { return t("1–3 小时") } },
+  { value: '3_6h', get label() { return t("3–6 小时") } },
+  { value: 'weekend', get label() { return t("一个周末") } },
+  { value: 'no_preference', get label() { return t("暂时无偏好") } },
 ]
 
 const guidanceOptions: Array<{ value: GuidancePreference; label: string; desc: string }> = [
-  { value: 'step_by_step', label: '一步一步带我做', desc: '适合第一次贡献或想降低卡住概率。' },
-  { value: 'hints_when_stuck', label: '卡住时给我提示', desc: '保留自主探索，只在关键点获得帮助。' },
-  { value: 'find_good_issues', label: '只帮我找到好 Issue', desc: '适合已经熟悉开源流程的开发者。' },
+  { value: 'step_by_step', get label() { return t("一步一步带我做") }, get desc() { return t("适合第一次贡献或想降低卡住概率。") } },
+  { value: 'hints_when_stuck', get label() { return t("卡住时给我提示") }, get desc() { return t("保留自主探索，只在关键点获得帮助。") } },
+  { value: 'find_good_issues', get label() { return t("只帮我找到好 Issue") }, get desc() { return t("适合已经熟悉开源流程的开发者。") } },
 ]
 
 const languageAliases: Record<string, ProgrammingLanguage> = {
@@ -125,11 +126,11 @@ const ProfileOnboarding = () => {
     skipProfileSetup()
     showToast(
       'info',
-      '已跳过偏好补充',
-      '推荐将只依据 GitHub 公开画像，准确度会低一些；随时可在偏好设置补充',
+      t("已跳过偏好补充"),
+      t("推荐将只依据 GitHub 公开画像，准确度会低一些；随时可在偏好设置补充"),
     )
     void persistSetupStatus({ profileSetupStatus: 'skipped' }).catch(() => {
-      showToast('error', '同步失败', '已在本地跳过，稍后可在偏好设置再保存一次')
+      showToast('error', t("同步失败"), t("已在本地跳过，稍后可在偏好设置再保存一次"))
     })
   }
 
@@ -162,7 +163,7 @@ const ProfileOnboarding = () => {
     completeProfileSetup(formData)
 
     if (!isAuthenticated) {
-      showToast('success', '偏好已保存', '访客偏好已保存在当前浏览器')
+      showToast('success', t("偏好已保存"), t("访客偏好已保存在当前浏览器"))
       return
     }
 
@@ -176,9 +177,9 @@ const ProfileOnboarding = () => {
         contributionTimeBudget: timeBudget,
         guidancePreference,
       })
-      showToast('success', '偏好已保存', '已同步到服务端 Developer Profile')
+      showToast('success', t("偏好已保存"), t("已同步到服务端 Developer Profile"))
     } catch {
-      showToast('error', '同步失败', '偏好已保存在当前浏览器，稍后可在设置页再同步')
+      showToast('error', t("同步失败"), t("偏好已保存在当前浏览器，稍后可在设置页再同步"))
     } finally {
       setSaving(false)
     }
@@ -191,14 +192,14 @@ const ProfileOnboarding = () => {
       width={680}
       className="profile-onboarding-modal"
       icon={<SparklesIcon />}
-      title="完善你的开源偏好"
-      subtitle="GitHub 只能看出你做过什么，这 4 个问题用来判断你现在想做什么，直接影响 Issue 推荐结果。"
+      title={t("完善你的开源偏好")}
+      subtitle={t("GitHub 只能看出你做过什么，这 4 个问题用来判断你现在想做什么，直接影响 Issue 推荐结果。")}
       footer={
         <div className="profile-onboarding-footer">
-          <Button variant="ghost" onClick={handleSkip}>稍后再说</Button>
+          <Button variant="ghost" onClick={handleSkip}>{t("稍后再说")}</Button>
           <div className="profile-onboarding-footer-actions">
-            {step > 0 && <Button variant="secondary" onClick={() => setStep((current) => current - 1)}>返回</Button>}
-            <Button variant="primary" loading={saving} onClick={handleNext}>{step === TOTAL_STEPS - 1 ? '保存偏好' : '继续'}</Button>
+            {step > 0 && <Button variant="secondary" onClick={() => setStep((current) => current - 1)}>{t("返回")}</Button>}
+            <Button variant="primary" loading={saving} onClick={handleNext}>{step === TOTAL_STEPS - 1 ? t("保存偏好") : t("继续")}</Button>
           </div>
         </div>
       }
@@ -206,7 +207,7 @@ const ProfileOnboarding = () => {
       <div className="profile-onboarding-progress">
         <div className="profile-onboarding-progress-meta">
           <span>Step {step + 1} / {TOTAL_STEPS}</span>
-          <span>约 1 分钟，之后可在偏好设置随时修改</span>
+          <span>{t("约 1 分钟，之后可在偏好设置随时修改")}</span>
         </div>
         <div className="profile-onboarding-progress-track">
           <span style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }} />
@@ -216,8 +217,8 @@ const ProfileOnboarding = () => {
       <article className="profile-onboarding-card">
         {step === 0 && (
           <section className="profile-onboarding-question">
-            <h2>你希望从开源中获得什么？</h2>
-            <p>这个答案会决定我们优先匹配“容易完成 / 技术成长 / 长期参与”的哪类 Issue。</p>
+            <h2>{t("你希望从开源中获得什么？")}</h2>
+            <p>{t("这个答案会决定我们优先匹配“容易完成 / 技术成长 / 长期参与”的哪类 Issue。")}</p>
             <div className="experience-option-list profile-onboarding-experience">
               {goalOptions.map((option) => (
                 <button key={option.value} type="button" className={clsx('experience-option', openSourceGoal === option.value && 'selected')} aria-pressed={openSourceGoal === option.value} onClick={() => setOpenSourceGoal(option.value)}>
@@ -231,9 +232,9 @@ const ProfileOnboarding = () => {
 
         {step === 1 && (
           <section className="profile-onboarding-question">
-            <h2>你想使用哪些技术栈？</h2>
-            <p>我已根据 GitHub 公开项目预选了一些技术栈。你可以删除不想做的，也可以添加新的。</p>
-            {detectedTechStack.length > 0 && <div className="profile-detected-stack">GitHub 识别：{detectedTechStack.join('、')}</div>}
+            <h2>{t("你想使用哪些技术栈？")}</h2>
+            <p>{t("我已根据 GitHub 公开项目预选了一些技术栈。你可以删除不想做的，也可以添加新的。")}</p>
+            {detectedTechStack.length > 0 && <div className="profile-detected-stack">{t("GitHub 识别：")}{detectedTechStack.join('、')}</div>}
             <div className="profile-tech-stack-list">
               {techStack.map((item) => (
                 <button key={item} type="button" className="profile-tech-chip" onClick={() => setTechStack((current) => toggleValue(current, item))}>
@@ -242,16 +243,16 @@ const ProfileOnboarding = () => {
               ))}
             </div>
             <div className="profile-tech-add-row">
-              <input className="form-input" value={customTech} placeholder="例如：TypeScript、React、Python、Node.js" onChange={(event) => setCustomTech(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCustomTech() } }} />
-              <Button variant="secondary" onClick={addCustomTech}>添加</Button>
+              <input className="form-input" value={customTech} placeholder={t("例如：TypeScript、React、Python、Node.js")} onChange={(event) => setCustomTech(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCustomTech() } }} />
+              <Button variant="secondary" onClick={addCustomTech}>{t("添加")}</Button>
             </div>
           </section>
         )}
 
         {step === 2 && (
           <section className="profile-onboarding-question">
-            <h2>你希望下一次贡献投入多少时间？</h2>
-            <p>时间偏好会影响 Issue 的范围、复杂度和推荐排序。</p>
+            <h2>{t("你希望下一次贡献投入多少时间？")}</h2>
+            <p>{t("时间偏好会影响 Issue 的范围、复杂度和推荐排序。")}</p>
             <div className="profile-option-grid">
               {timeOptions.map((option) => (
                 <button key={option.value} type="button" className={clsx('profile-option', timeBudget === option.value && 'selected')} aria-pressed={timeBudget === option.value} onClick={() => setTimeBudget(option.value)}>
@@ -265,8 +266,8 @@ const ProfileOnboarding = () => {
 
         {step === 3 && (
           <section className="profile-onboarding-question">
-            <h2>你希望我提供多少指导？</h2>
-            <p>同一个 Issue，可以被拆成“手把手陪跑”或“只给方向”的不同模式。</p>
+            <h2>{t("你希望我提供多少指导？")}</h2>
+            <p>{t("同一个 Issue，可以被拆成“手把手陪跑”或“只给方向”的不同模式。")}</p>
             <div className="experience-option-list profile-onboarding-experience">
               {guidanceOptions.map((option) => (
                 <button key={option.value} type="button" className={clsx('experience-option', guidancePreference === option.value && 'selected')} aria-pressed={guidancePreference === option.value} onClick={() => setGuidancePreference(option.value)}>

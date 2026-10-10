@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import Landing from '@/pages/Landing'
@@ -17,13 +18,13 @@ import { useWorkspaceStore } from '@/store/workspace'
 import { ApiClientError } from '@/services/errors'
 
 const githubLoginErrorMessages: Record<string, string> = {
-  oauth_unavailable: 'GitHub 登录暂时不可用，请稍后重试',
-  oauth_expired: '本次授权已失效，请从首页重新登录',
-  oauth_token_failed: 'GitHub 授权校验失败，请检查 OAuth Client Secret 是否配置正确',
-  user_sync_failed: 'GitHub 已授权，但用户数据同步失败，请检查 Supabase 配置',
-  session_failed: 'GitHub 已授权，但登录会话创建失败，请检查 SESSION_SECRET 是否已保存并部署',
-  profile_fetch_failed: 'GitHub 已授权，但读取 GitHub 用户信息失败，请稍后重试',
-  oauth_failed: 'GitHub 登录未完成，请稍后重试',
+  get oauth_unavailable() { return t("GitHub 登录暂时不可用，请稍后重试") },
+  get oauth_expired() { return t("本次授权已失效，请从首页重新登录") },
+  get oauth_token_failed() { return t("GitHub 授权校验失败，请检查 OAuth Client Secret 是否配置正确") },
+  get user_sync_failed() { return t("GitHub 已授权，但用户数据同步失败，请检查 Supabase 配置") },
+  get session_failed() { return t("GitHub 已授权，但登录会话创建失败，请检查 SESSION_SECRET 是否已保存并部署") },
+  get profile_fetch_failed() { return t("GitHub 已授权，但读取 GitHub 用户信息失败，请稍后重试") },
+  get oauth_failed() { return t("GitHub 登录未完成，请稍后重试") },
 }
 
 const PROFILE_POLL_INTERVAL_MS = 2000
@@ -51,6 +52,15 @@ function PageTransition({ children }: { children: React.ReactNode }) {
  * 默认打开为落地页（Landing），引导用户了解产品价值后进入应用
  */
 function App() {
+  const locale = useUserStore((state) => state.preferences.language)
+  useEffect(() => {
+    document.documentElement.lang = locale
+    document.title = locale === 'en-US'
+      ? 'OpenSource Mentor — Your AI open source contribution mentor'
+      : 'OpenSource Mentor — AI 开源贡献导师'
+    document.querySelector('meta[name="description"]')?.setAttribute('content',
+      t('面向开发者的开源贡献工作台。它会根据你的能力、技术栈和目标，推荐更合适的 Issue，并把理解项目、拆解任务、准备 PR 的过程串起来。'))
+  }, [locale])
   const sessionChecked = useAppStore((state) => state.sessionChecked)
   const serverUserId = useUserStore((state) => state.serverUserId)
   const workspace = useWorkspaceStore()
@@ -78,8 +88,8 @@ function App() {
       applyGitHubOAuthProfile(githubProfile)
       showToast(
         'success',
-        'GitHub 已连接',
-        `已登录 ${githubProfile.profile.username}，开发者画像将在后台生成`,
+        t("GitHub 已连接"),
+        t("已登录 {0}，开发者画像将在后台生成", [githubProfile.profile.username]),
       )
     }
 
@@ -112,12 +122,12 @@ function App() {
 
         if (cancelled) return
         if (status === 'ready' && (me.developerProfile.profile_status === 'pending' || me.developerProfile.profile_status === 'generating')) {
-          showToast('success', '开发者画像已就绪', '已根据 GitHub 公开资料生成你的能力画像')
+          showToast('success', t("开发者画像已就绪"), t("已根据 GitHub 公开资料生成你的能力画像"))
         } else if (status === 'failed') {
           showToast(
             'error',
-            '开发者画像生成失败',
-            '登录已成功，可稍后在偏好设置重新连接 GitHub',
+            t("开发者画像生成失败"),
+            t("登录已成功，可稍后在偏好设置重新连接 GitHub"),
           )
         }
       } catch (error) {
@@ -133,11 +143,11 @@ function App() {
       const reason = params.get('reason')
       showToast(
         'error',
-        'GitHub 登录失败',
+        t("GitHub 登录失败"),
         reason
           ? (githubLoginErrorMessages[reason] ??
-              '登录未完成，请稍后重试')
-          : '请稍后重试，或检查 GitHub OAuth 配置',
+              t("登录未完成，请稍后重试"))
+          : t("请稍后重试，或检查 GitHub OAuth 配置"),
       )
       navigate(location.pathname || '/', { replace: true })
     }
@@ -156,7 +166,7 @@ function App() {
 
   return (
     <div className="app">
-      {restoring ? <p role="status" className="workspace-sync-status">正在恢复账户与贡献进度…</p> : <Routes location={location} key={location.pathname}>
+      {restoring ? <p role="status" className="workspace-sync-status">{t("正在恢复账户与贡献进度…")}</p> : <Routes location={location} key={location.pathname}>
         <Route path="/contribution" element={<PageTransition><Contribution /></PageTransition>} />
         {/* 落地页 - 首屏，展示产品价值 */}
         <Route

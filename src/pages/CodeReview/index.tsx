@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout'
@@ -291,7 +292,7 @@ const CodeReview = () => {
     } catch (err) {
       setForkBranches([])
       setBranchesError(
-        err instanceof Error ? err.message : '加载分支列表失败，可手动填写',
+        err instanceof Error ? err.message : t("加载分支列表失败，可手动填写"),
       )
     } finally {
       setBranchesLoading(false)
@@ -347,15 +348,15 @@ const CodeReview = () => {
     setSelectedIssue(toReviewIssue(issue))
     showToast(
       'success',
-      '已选择 Issue',
-      `已选择 #${issue.number}，可以开始提交代码了`,
+      t("已选择 Issue"),
+      t("已选择 #{0}，可以开始提交代码了", [issue.number]),
     )
   }
 
   const handleStartReview = () => {
     if (mode === 'pr') {
       if (!prUrlInput.trim()) {
-        showToast('error', '请输入 PR 链接', '需要知道你提交的 PR 才能审查哦')
+        showToast('error', t("请输入 PR 链接"), t("需要知道你提交的 PR 才能审查哦"))
         return
       }
       setPrUrl(prUrlInput.trim())
@@ -374,24 +375,24 @@ const CodeReview = () => {
       if (!forkRepoUrl.trim() && !headOwner) {
         showToast(
           'error',
-          '请粘贴你的 Fork 仓库链接',
-          '例如 https://github.com/你的用户名/仓库名',
+          t("请粘贴你的 Fork 仓库链接"),
+          t("例如 https://github.com/你的用户名/仓库名"),
         )
         return
       }
       if (!headOwner) {
         showToast(
           'error',
-          '无法识别 GitHub 用户名',
-          '请粘贴完整仓库链接，或先登录 GitHub',
+          t("无法识别 GitHub 用户名"),
+          t("请粘贴完整仓库链接，或先登录 GitHub"),
         )
         return
       }
       if (!headRef) {
         showToast(
           'error',
-          '请填写分支名',
-          '填写你已 push 的分支，例如 fix/issue-15',
+          t("请填写分支名"),
+          t("填写你已 push 的分支，例如 fix/issue-15"),
         )
         return
       }
@@ -411,13 +412,13 @@ const CodeReview = () => {
   const handleFixCode = () => {
     showToast(
       'info',
-      '修改建议在右侧面板',
-      '「AI 审查」栏已按文件列出问题、风险和建议，逐条对照修改即可；有疑问可以问 AI 导师',
+      t("修改建议在右侧面板"),
+      t("「AI 审查」栏已按文件列出问题、风险和建议，逐条对照修改即可；有疑问可以问 AI 导师"),
     )
   }
 
   const handleGeneratePr = () => {
-    showToast('info', '正在前往 PR 生成器', '在那里补一句改动说明，就能生成标题和描述')
+    showToast('info', t("正在前往 PR 生成器"), t("在那里补一句改动说明，就能生成标题和描述"))
     setTimeout(() => {
       navigate('/pr-generator')
     }, 800)
@@ -428,14 +429,14 @@ const CodeReview = () => {
     window.open(createPrUrl, '_blank', 'noopener,noreferrer')
     showToast(
       'success',
-      '已打开 GitHub Compare',
-      '确认无误后可直接创建 Pull Request 合并申请',
+      t("已打开 GitHub Compare"),
+      t("确认无误后可直接创建 Pull Request 合并申请"),
     )
   }
 
   if (!boundIssue && status === 'idle') {
     return (
-      <AppLayout breadcrumbs={[{ label: '代码审查' }]}>
+      <AppLayout breadcrumbs={[{ label: t("代码审查") }]}>
         <div className="app-page active code-review-page">
           <div className="page-header">
             <div className="page-title-row">
@@ -444,14 +445,13 @@ const CodeReview = () => {
                   <span className="osm-kicker-dot" />
                   CODE REVIEW
                 </span>
-                <h1 className="page-title">代码审查</h1>
+                <h1 className="page-title">{t("代码审查")}</h1>
                 <p className="page-subtitle">
-                  提交 PR 前先让 AI 过一遍改动，减少来回修改的次数
-                </p>
+                  {t("提交 PR 前先让 AI 过一遍改动，减少来回修改的次数")}</p>
               </div>
               <span className="repo-pill">
                 <CodeIcon />
-                {repoName || '尚未选择仓库'}
+                {repoName || t("尚未选择仓库")}
               </span>
             </div>
           </div>
@@ -462,12 +462,10 @@ const CodeReview = () => {
                 <span className="osm-kicker-dot" />
                 NO ISSUE BOUND
               </span>
-              <h2>选择一个 Issue 开始代码审查</h2>
+              <h2>{t("选择一个 Issue 开始代码审查")}</h2>
               <p className="empty-desc">
-                审查需要知道你在解决哪个 Issue。可以从下面的候选中选一个；
-                如果列表是空的，请先到「Issue 推荐」锁定任务。
-              </p>
-              <button className="btn btn-primary" type="button" onClick={() => navigate('/issues')}>发现任务</button>
+                {t("审查需要知道你在解决哪个 Issue。可以从下面的候选中选一个； 如果列表是空的，请先到「Issue 推荐」锁定任务。")}</p>
+              <button className="btn btn-primary" type="button" onClick={() => navigate('/issues')}>{t("发现任务")}</button>
             </div>
 
             <div className="quick-issue-list">
@@ -486,10 +484,10 @@ const CodeReview = () => {
                       className={`quick-issue-difficulty difficulty-${issue.difficulty || 'medium'}`}
                     >
                       {issue.difficulty === 'easy'
-                        ? '入门'
+                        ? t("入门")
                         : issue.difficulty === 'hard'
-                          ? '进阶'
-                          : '中等'}
+                          ? t("进阶")
+                          : t("中等")}
                     </span>
                   </div>
                 </button>
@@ -504,7 +502,7 @@ const CodeReview = () => {
   const issue = boundIssue!
 
   return (
-    <AppLayout breadcrumbs={[{ label: '代码审查' }]}>
+    <AppLayout breadcrumbs={[{ label: t("代码审查") }]}>
       <div className="app-page active code-review-page">
         <div className="page-header">
           <div className="page-title-row">
@@ -513,10 +511,9 @@ const CodeReview = () => {
                 <span className="osm-kicker-dot" />
                 CODE REVIEW
               </span>
-              <h1 className="page-title">代码审查</h1>
+              <h1 className="page-title">{t("代码审查")}</h1>
               <p className="page-subtitle">
-                支持 PR 链接，或审查你个人 Fork 分支相对上游的改动
-              </p>
+                {t("支持 PR 链接，或审查你个人 Fork 分支相对上游的改动")}</p>
             </div>
             <span className="repo-pill">
               <CodeIcon />
@@ -539,15 +536,15 @@ const CodeReview = () => {
             repoName={repoName}
             difficulty={
               issue.difficulty === 'easy'
-                ? '入门'
+                ? t("入门")
                 : issue.difficulty === 'hard'
-                  ? '进阶'
-                  : '中等'
+                  ? t("进阶")
+                  : t("中等")
             }
             estimatedTime={
               issue.estimatedTime
-                ? `${issue.estimatedTime} 小时`
-                : '待评估'
+                ? t("{0} 小时", [issue.estimatedTime])
+                : t("待评估")
             }
           />
         </div>
@@ -558,21 +555,17 @@ const CodeReview = () => {
               <div className="submit-card__header">
                 <div className="submit-card__title">
                   <UploadIcon />
-                  提交你的代码
-                </div>
+                  {t("提交你的代码")}</div>
                 <div className="submit-card__subtitle">
-                  推荐：先把修改 push 到个人 Fork，再审查相对上游的 diff，通过后去开合并申请
-                </div>
+                  {t("推荐：先把修改 push 到个人 Fork，再审查相对上游的 diff，通过后去开合并申请")}</div>
               </div>
 
               <div className="demo-notice">
                 <div className="demo-notice__icon">💡</div>
                 <div className="demo-notice__content">
-                  <strong>推荐流程</strong>
+                  <strong>{t("推荐流程")}</strong>
                   <p>
-                    Fork 上游仓库 → 本地修改并 push 到个人分支 → 用「Fork
-                    分支」审查 → 通过后一键打开 GitHub Compare 发起 PR。
-                  </p>
+                    {t("Fork 上游仓库 → 本地修改并 push 到个人分支 → 用「Fork 分支」审查 → 通过后一键打开 GitHub Compare 发起 PR。")}</p>
                 </div>
               </div>
 
@@ -582,24 +575,20 @@ const CodeReview = () => {
                   onClick={() => setMode('pr')}
                 >
                   <LinkIcon />
-                  PR 链接
-                </button>
+                  {t("PR 链接")}</button>
                 <button
                   className={mode === 'compare' ? 'active' : ''}
                   onClick={() => setMode('compare')}
                 >
                   <GitBranchIcon />
-                  Fork 分支
-                </button>
+                  {t("Fork 分支")}</button>
               </div>
 
               {mode === 'pr' && (
                 <div className="submit-form">
                   <label className="form-label">
-                    GitHub PR 链接
-                    <span className="form-hint">
-                      若你已开好 PR，可直接粘贴链接审查
-                    </span>
+                    {t("GitHub PR 链接")}<span className="form-hint">
+                      {t("若你已开好 PR，可直接粘贴链接审查")}</span>
                   </label>
                   <input
                     type="text"
@@ -609,22 +598,19 @@ const CodeReview = () => {
                     onChange={(e) => setPrUrlInput(e.target.value)}
                   />
                   <div className="form-tip">
-                    💡 尚未开 PR 时，可切换到「Fork 分支」粘贴你的仓库链接
-                  </div>
+                    {t("💡 尚未开 PR 时，可切换到「Fork 分支」粘贴你的仓库链接")}</div>
                 </div>
               )}
 
               {mode === 'compare' && (
                 <div className="submit-form compare-form">
                   <label className="form-label">
-                    你的 Fork 仓库链接
-                    <span className="form-hint">
-                      粘贴后自动识别用户名并加载分支
-                      {githubUsername
-                        ? `（当前登录：${githubUsername}）`
+                    {t("你的 Fork 仓库链接")}<span className="form-hint">
+                      {t("粘贴后自动识别用户名并加载分支")}{githubUsername
+                        ? t("（当前登录：{0}）", [githubUsername])
                         : isAuthenticated
                           ? ''
-                          : '；未登录也可从链接识别'}
+                          : t("；未登录也可从链接识别")}
                     </span>
                   </label>
                   <input
@@ -645,13 +631,12 @@ const CodeReview = () => {
                   />
 
                   <label className="form-label" style={{ marginTop: 14 }}>
-                    你的分支
-                    <span className="form-hint">
+                    {t("你的分支")}<span className="form-hint">
                       {branchesLoading
-                        ? '正在从 GitHub 加载分支…'
+                        ? t("正在从 GitHub 加载分支…")
                         : boundIssue?.number
-                          ? `优先匹配含 #${boundIssue.number} 的分支，一般无需手填`
-                          : '从列表选择你已 push 的改动分支'}
+                          ? t("优先匹配含 #{0} 的分支，一般无需手填", [boundIssue.number])
+                          : t("从列表选择你已 push 的改动分支")}
                     </span>
                   </label>
                   {forkBranches.length > 0 ? (
@@ -671,7 +656,7 @@ const CodeReview = () => {
                         <option key={name} value={name}>
                           {boundIssue?.number &&
                           name.includes(String(boundIssue.number))
-                            ? `⭐ ${name}（匹配 Issue #${boundIssue.number}）`
+                            ? t("⭐ {0}（匹配 Issue #{1}）", [name, boundIssue.number])
                             : name}
                         </option>
                       ))}
@@ -695,19 +680,16 @@ const CodeReview = () => {
                   ) : null}
                   {forkBranches.length > 0 ? (
                     <div className="form-tip">
-                      已加载 {forkBranches.length} 个分支
-                      {boundIssue?.number &&
+                      {t("已加载")}{forkBranches.length} {t("个分支")}{boundIssue?.number &&
                       forkBranch.includes(String(boundIssue.number))
-                        ? `，已自动选中与 Issue #${boundIssue.number} 相关的分支`
-                        : '，可在列表中切换'}
-                      。仍可粘贴带 /tree/分支 的仓库链接自动识别。
-                    </div>
+                        ? t("，已自动选中与 Issue #{0} 相关的分支", [boundIssue.number])
+                        : t("，可在列表中切换")}
+                      {t("。仍可粘贴带 /tree/分支 的仓库链接自动识别。")}</div>
                   ) : null}
 
                   <label className="form-label" style={{ marginTop: 14 }}>
-                    对比上游分支
-                    <span className="form-hint">
-                      默认对比 {upstreamOwner}/{upstreamRepo}
+                    {t("对比上游分支")}<span className="form-hint">
+                      {t("默认对比")}{upstreamOwner}/{upstreamRepo}
                     </span>
                   </label>
                   <input
@@ -721,7 +703,7 @@ const CodeReview = () => {
                   />
 
                   <div className="form-tip">
-                    系统会拉取{' '}
+                    {t("系统会拉取")}{' '}
                     <code>
                       {upstreamOwner || 'upstream'}/{upstreamRepo || 'repo'}:
                       {compareInput.baseRef || 'main'}
@@ -729,8 +711,7 @@ const CodeReview = () => {
                       {compareInput.headOwner || githubUsername || 'you'}:
                       {forkBranch || compareInput.headRef || 'branch'}
                     </code>{' '}
-                    的变更进行审查
-                  </div>
+                    {t("的变更进行审查")}</div>
                 </div>
               )}
 
@@ -739,12 +720,9 @@ const CodeReview = () => {
                   className="btn btn-primary btn-lg"
                   onClick={handleStartReview}
                 >
-                  🚀 开始 AI 审查
-                </button>
+                  {t("🚀 开始 AI 审查")}</button>
                 <p className="submit-disclaimer">
-                  改动越大耗时越长，通常在 30 秒左右；结果会以「文件列表 | Diff | AI
-                  审查」三列展示
-                </p>
+                  {t("改动越大耗时越长，通常在 30 秒左右；结果会以「文件列表 | Diff | AI 审查」三列展示")}</p>
               </div>
             </div>
           </div>
@@ -775,10 +753,10 @@ const CodeReview = () => {
           <AiPageError
             className="code-review__error"
             kicker="REVIEW FAILED"
-            title="审查遇到了一点问题"
-            message={error || '请检查网络或 GitHub Token 后重试'}
+            title={t("审查遇到了一点问题")}
+            message={error || t("请检查网络或 GitHub Token 后重试")}
             onRetry={() => reset()}
-            retryLabel="重新提交"
+            retryLabel={t("重新提交")}
           />
         )}
 
@@ -796,13 +774,13 @@ const CodeReview = () => {
           <NextStepCard
             currentStep={5}
             totalSteps={6}
-            title="AI 审查完成"
+            title={t("AI 审查完成")}
             description={
               createPrUrl
-                ? '确认审查结果没有遗漏后，可以打开 GitHub 发起合并申请，再回到 PR 生成器完善描述。'
-                : '确认审查结果没有遗漏后，下一步生成 PR 描述，让维护者更容易 review'
+                ? t("确认审查结果没有遗漏后，可以打开 GitHub 发起合并申请，再回到 PR 生成器完善描述。")
+                : t("确认审查结果没有遗漏后，下一步生成 PR 描述，让维护者更容易 review")
             }
-            buttonText={createPrUrl ? '去开合并申请' : '生成 PR 描述'}
+            buttonText={createPrUrl ? t("去开合并申请") : t("生成 PR 描述")}
             nextPath="/pr-generator"
             onClick={createPrUrl ? handleOpenCreatePr : handleGeneratePr}
           />

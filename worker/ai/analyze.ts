@@ -35,7 +35,7 @@ export async function analyzeRepository(
       topP: 0.9,
       responseFormat: { type: 'json_object' },
     })
-    return validateRepoAnalysisResult(parseJsonSafely(content))
+    return localizeGenerated(validateRepoAnalysisResult(parseJsonSafely(content)), client.locale ?? 'zh-CN')
   } catch (error) {
     if (error instanceof ApiError) throw error
     console.error(
@@ -47,3 +47,4 @@ export async function analyzeRepository(
     })
   }
 }
+import { localizeGenerated } from '../../shared/generatedLocale'

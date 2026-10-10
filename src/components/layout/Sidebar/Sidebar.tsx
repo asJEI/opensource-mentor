@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAppStore, useUserStore, type AppSubPage } from '@/store'
@@ -22,48 +23,48 @@ const Icon = ({ d }: { d: string }) => (
 
 const toolGroups: NavGroup[] = [
   {
-    title: '主菜单',
+    get title() { return t("主菜单") },
     items: [
       {
         id: 'issues',
-        label: '发现任务',
+        get label() { return t("发现任务") },
         icon: <Icon d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
-        badge: '新',
+        get badge() { return t("新") },
       },
       {
         id: 'dashboard',
-        label: '仓库分析',
+        get label() { return t("仓库分析") },
         icon: <Icon d="M3 12l9-9 9 9M5 10v10h14V10" />,
       },
       {
         id: 'roadmap',
-        label: '贡献指南',
+        get label() { return t("贡献指南") },
         icon: <Icon d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7" />,
       },
       {
         id: 'ai-mentor',
-        label: 'AI 导师',
+        get label() { return t("AI 导师") },
         icon: <Icon d="M12 8V4H8m8 4V4m-4 8v4m-4-4h8M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7" />,
-        badge: '新',
+        get badge() { return t("新") },
       },
       {
         id: 'code-review',
-        label: '代码审查',
+        get label() { return t("代码审查") },
         icon: <Icon d="M9 12h6M12 9v6M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.68.94 6.36 2.64L21 3v9h-9" />,
       },
       {
         id: 'pr-generator',
-        label: 'PR 生成器',
+        get label() { return t("PR 生成器") },
         icon: <Icon d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18M2 2l7.586 7.586M11 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />,
       },
     ],
   },
   {
-    title: '设置',
+    get title() { return t("设置") },
     items: [
       {
         id: 'settings',
-        label: '偏好设置',
+        get label() { return t("偏好设置") },
         icon: <Icon d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />,
       },
     ],
@@ -71,11 +72,11 @@ const toolGroups: NavGroup[] = [
 ]
 
 const navGroups: NavGroup[] = [
-  { title: '工作空间', items: [toolGroups[0].items[0], {
-    id: 'contribution', label: '我的贡献',
+  { get title() { return t("工作空间") }, items: [toolGroups[0].items[0], {
+    id: 'contribution', get label() { return t("我的贡献") },
     icon: <Icon d="M9 5H5v16h14V5h-4M9 3h6v4H9zM8 12h8M8 16h5" />,
   }] },
-  { title: '工具', items: toolGroups[0].items.slice(1) },
+  { get title() { return t("工具") }, items: toolGroups[0].items.slice(1) },
   toolGroups[1],
 ]
 
@@ -119,13 +120,13 @@ const Sidebar = () => {
   const displayName = profile.username || githubProfile?.profile.username || ''
   const userRole = isAuthenticated
     ? githubProfile?.developerProfile
-      ? 'GitHub 已连接'
+      ? t("GitHub 已连接")
       : profileStatus === 'failed'
-        ? '画像生成失败'
+        ? t("画像生成失败")
         : profileStatus === 'generating' || profileStatus === 'pending'
-          ? '开发者画像生成中'
-          : 'GitHub 已连接'
-    : '配置保存在此设备'
+          ? t("开发者画像生成中")
+          : t("GitHub 已连接")
+    : t("配置保存在此设备")
 
   const handleNavClick = (id: string) => {
     const validPages: AppSubPage[] = [
@@ -181,7 +182,7 @@ const Sidebar = () => {
           type="button"
           className="user-card user-card-button"
           onClick={() => handleNavClick('settings')}
-          aria-label="打开偏好设置"
+          aria-label={t("打开偏好设置")}
         >
           <div className="user-avatar">
             {profile.avatar ? (
@@ -191,17 +192,17 @@ const Sidebar = () => {
             )}
           </div>
           <div className="user-info">
-            <div className="user-name">{displayName || '访客模式'}</div>
+            <div className="user-name">{displayName || t("访客模式")}</div>
             <div className="user-role">{userRole}</div>
           </div>
         </button>
       </div>
-      <nav className="mobile-app-nav" aria-label="移动导航">
-        <NavLink to="/issues">发现任务</NavLink>
-        <NavLink to="/contribution">当前任务</NavLink>
+      <nav className="mobile-app-nav" aria-label={t("移动导航")}>
+        <NavLink to="/issues">{t("发现任务")}</NavLink>
+        <NavLink to="/contribution">{t("当前任务")}</NavLink>
         <details key={location.pathname}>
-          <summary>更多</summary>
-          <nav aria-label="工具与设置">
+          <summary>{t("更多")}</summary>
+          <nav aria-label={t("工具与设置")}>
             {navGroups.flatMap((group) => group.items).filter((item) => item.id !== 'issues' && item.id !== 'contribution').map((item) => (
               <NavLink key={item.id} to={`/${item.id}`}>{item.label}</NavLink>
             ))}

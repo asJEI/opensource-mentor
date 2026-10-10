@@ -1,3 +1,4 @@
+import { t } from './locale'
 import {
   IssueExplain,
   Issue,
@@ -32,24 +33,24 @@ export function validateExplainResult(parsed: Record<string, unknown>): IssueExp
     : 'medium'
 
   return {
-    summary: String(parsed.summary || '暂无总结'),
+    summary: String(parsed.summary || t("暂无总结")),
     difficulty: validDifficulty,
     knowledge: ensureStringArray(parsed.knowledge, [
-      '了解项目基本架构',
-      '熟悉 Git 基本操作',
+      t("了解项目基本架构"),
+      t("熟悉 Git 基本操作"),
     ]),
     steps: ensureStringArray(parsed.steps, [
-      '阅读 Issue 描述，理解需求',
-      '在本地复现问题',
-      '查找相关代码',
-      '实现修复',
-      '提交 PR',
+      t("阅读 Issue 描述，理解需求"),
+      t("在本地复现问题"),
+      t("查找相关代码"),
+      t("实现修复"),
+      t("提交 PR"),
     ]),
-    estimatedTime: String(parsed.estimatedTime || '2-4 小时'),
+    estimatedTime: String(parsed.estimatedTime || t("2-4 小时")),
     tips: ensureStringArray(parsed.tips, [
-      '先看 CONTRIBUTING.md 了解贡献规范',
-      '写代码前先和维护者确认方案',
-      '提交后耐心等待 Review',
+      t("先看 CONTRIBUTING.md 了解贡献规范"),
+      t("写代码前先和维护者确认方案"),
+      t("提交后耐心等待 Review"),
     ]),
   }
 }
@@ -61,13 +62,13 @@ export function validateRepoAnalysisResult(parsed: Record<string, unknown>): Rep
   const contributionAreas = (parsed.contributionAreas as unknown[]) || []
 
   return {
-    overview: String(parsed.overview || '暂无项目概述'),
+    overview: String(parsed.overview || t("暂无项目概述")),
     techStack: {
-      primaryLanguage: String(techStack.primaryLanguage || '未知'),
+      primaryLanguage: String(techStack.primaryLanguage || t("未知")),
       coreTechnologies: ensureStringArray(techStack.coreTechnologies),
       buildTools: ensureStringArray(techStack.buildTools),
       testFrameworks: ensureStringArray(techStack.testFrameworks),
-      architecture: String(techStack.architecture || '未知'),
+      architecture: String(techStack.architecture || t("未知")),
     },
     activity: {
       level: ensureEnum(
@@ -75,9 +76,9 @@ export function validateRepoAnalysisResult(parsed: Record<string, unknown>): Rep
         ['very-active', 'active', 'moderate', 'low', 'inactive'],
         'moderate',
       ),
-      commitFrequency: String(activity.commitFrequency || '未知'),
-      maintainerResponsiveness: String(activity.maintainerResponsiveness || '未知'),
-      lastMajorUpdate: String(activity.lastMajorUpdate || '未知'),
+      commitFrequency: String(activity.commitFrequency || t("未知")),
+      maintainerResponsiveness: String(activity.maintainerResponsiveness || t("未知")),
+      lastMajorUpdate: String(activity.lastMajorUpdate || t("未知")),
     },
     beginnerFriendliness: {
       level: ensureEnum(
@@ -94,7 +95,7 @@ export function validateRepoAnalysisResult(parsed: Record<string, unknown>): Rep
     contributionAreas: contributionAreas
       .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
       .map((area) => ({
-        name: String(area.name || '未命名'),
+        name: String(area.name || t("未命名")),
         description: String(area.description || ''),
         difficulty: ensureEnum(
           area.difficulty,
@@ -127,10 +128,10 @@ export function validateRecommendationResult(
       )
       const matchReasons =
         userProfile.profileSetupStatus !== 'completed'
-          ? ['这是一个适合开源新手的 Issue。']
+          ? [t("这是一个适合开源新手的 Issue。")]
           : parsedReasons.length > 0
             ? parsedReasons
-            : ['该 Issue 与你当前填写的画像具有一定匹配度']
+            : [t("该 Issue 与你当前填写的画像具有一定匹配度")]
 
       return {
         ...originalIssue,
@@ -160,8 +161,8 @@ export function validateRecommendationResult(
     total: scoredIssues.length,
     summary:
       userProfile.profileSetupStatus === 'completed'
-        ? String(parsed.summary || '已结合你的画像筛选 Issue')
-        : '用户未提供个性化画像，已按纯新手标准筛选 Issue。',
+        ? String(parsed.summary || t("已结合你的画像筛选 Issue"))
+        : t("用户未提供个性化画像，已按纯新手标准筛选 Issue。"),
   }
 }
 
@@ -182,7 +183,7 @@ export function validatePrDraftResult(
 
   return {
     title: String(parsed.title || `fix: ${issue.title}`),
-    description: String(parsed.description || '暂无描述'),
+    description: String(parsed.description || t("暂无描述")),
     type: ensureEnum(parsed.type, validTypes, 'fix'),
     relatedIssue: `Closes #${issue.number}`,
     changes: ensureStringArray(parsed.changes),
@@ -197,18 +198,18 @@ export function validateRoadmapResult(parsed: Record<string, unknown>): Roadmap 
   const phases = (parsed.phases as unknown[]) || []
 
   return {
-    title: String(parsed.title || '开源贡献学习路线图'),
-    description: String(parsed.description || '帮助你从零开始参与开源项目'),
-    totalEstimatedTime: String(parsed.totalEstimatedTime || '2-4 周'),
+    title: String(parsed.title || t("开源贡献学习路线图")),
+    description: String(parsed.description || t("帮助你从零开始参与开源项目")),
+    totalEstimatedTime: String(parsed.totalEstimatedTime || t("2-4 周")),
     phases: phases
       .filter((p): p is Record<string, unknown> => typeof p === 'object' && p !== null)
       .map((phase, idx) => ({
         phase: Number(phase.phase) || idx + 1,
-        title: String(phase.title || `第 ${idx + 1} 阶段`),
+        title: String(phase.title || t("第 {0} 阶段", [idx + 1])),
         goal: String(phase.goal || ''),
         learningItems: ensureStringArray(phase.learningItems),
         recommendedIssues: ensureStringArray(phase.recommendedIssues),
-        estimatedDuration: String(phase.estimatedDuration || '1 周'),
+        estimatedDuration: String(phase.estimatedDuration || t("1 周")),
         difficulty: ensureEnum(
           phase.difficulty,
           ['easy', 'medium', 'hard'],

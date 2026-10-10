@@ -216,7 +216,7 @@ export interface UserPreferences {
   /** 主题：亮色 / 暗色 / 跟随系统 */
   theme: 'light' | 'dark' | 'system'
   /** 界面语言 */
-  language: string
+  language: import('../../shared/locale').Locale
   /** 是否启用通知 */
   notifications: boolean
 }

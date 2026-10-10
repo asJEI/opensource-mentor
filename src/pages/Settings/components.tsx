@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState } from 'react'
 import clsx from 'clsx'
 import { Badge, Button, Card, Input } from '@/components/ui'
@@ -108,7 +109,7 @@ const ApiIcon = () => (
 )
 
 function maskSecret(secret?: string): string {
-  if (!secret) return '未配置'
+  if (!secret) return t("未配置")
   const suffix = secret.slice(-4)
   return `••••••••${suffix}`
 }
@@ -135,7 +136,7 @@ function ModeSelector({
         onClick={() => onChange('platform')}
       >
         <strong>{platformLabel}</strong>
-        <span>无需填写密钥，由当前部署环境提供</span>
+        <span>{t("无需填写密钥，由当前部署环境提供")}</span>
       </button>
       <button
         type="button"
@@ -144,7 +145,7 @@ function ModeSelector({
         onClick={() => onChange('custom')}
       >
         <strong>{customLabel}</strong>
-        <span>密钥仅在当前页面会话中使用，刷新后需重新输入</span>
+        <span>{t("密钥仅在当前页面会话中使用，刷新后需重新输入")}</span>
       </button>
     </div>
   )
@@ -154,11 +155,11 @@ type ConnectionStatus =
   'idle' | 'unconfigured' | 'testing' | 'success' | 'failure'
 
 const CONNECTION_STATUS_LABEL: Record<ConnectionStatus, string> = {
-  idle: '待测试',
-  unconfigured: '未配置',
-  testing: '测试中…',
-  success: '连接成功',
-  failure: '连接失败',
+  get idle() { return t("待测试") },
+  get unconfigured() { return t("未配置") },
+  get testing() { return t("测试中…") },
+  get success() { return t("连接成功") },
+  get failure() { return t("连接失败") },
 }
 
 function ConnectionStatusBadge({
@@ -197,17 +198,15 @@ function ConnectionStatusBadge({
 }
 
 const DEEPSEEK_MODELS = [
-  { value: 'deepseek-v4-flash', label: 'deepseek-v4-flash（推荐）' },
+  { value: 'deepseek-v4-flash', get label() { return t("deepseek-v4-flash（推荐）") } },
   { value: 'deepseek-v4-pro', label: 'deepseek-v4-pro' },
 ]
 
 const PROVIDER_HINTS: Record<AIProvider, string> = {
-  deepseek: '默认 Base URL 为 https://api.deepseek.com，一般无需修改。',
-  openai: '使用 OpenAI 官方 endpoint，主要填写 API Key 与模型。',
-  orcarouter:
-    'OrcaRouter 使用 OpenAI Compatible 接口，默认 Base URL 为 https://api.orcarouter.ai/v1，模型名通常形如 deepseek/deepseek-chat。',
-  'openai-compatible':
-    '适用于 OpenRouter、代理或本地兼容服务，需同时填写 Base URL、Key 与模型。',
+  get deepseek() { return t("默认 Base URL 为 https://api.deepseek.com，一般无需修改。") },
+  get openai() { return t("使用 OpenAI 官方 endpoint，主要填写 API Key 与模型。") },
+  get orcarouter() { return t("OrcaRouter 使用 OpenAI Compatible 接口，默认 Base URL 为 https://api.orcarouter.ai/v1，模型名通常形如 deepseek/deepseek-chat。") },
+  get 'openai-compatible'() { return t("适用于 OpenRouter、代理或本地兼容服务，需同时填写 Base URL、Key 与模型。") },
 }
 
 function defaultBaseUrl(provider: AIProvider): string {
@@ -249,8 +248,8 @@ const GitHubApiSettings = () => {
   const handleTest = async () => {
     if (githubConfig.mode === 'custom' && !token.trim()) {
       setStatus('unconfigured')
-      setStatusDetail('请先填写 GitHub Token')
-      showToast('error', '缺少 Token', '请先填写 GitHub Token')
+      setStatusDetail(t("请先填写 GitHub Token"))
+      showToast('error', t("缺少 Token"), t("请先填写 GitHub Token"))
       return
     }
     setTesting(true)
@@ -262,12 +261,12 @@ const GitHubApiSettings = () => {
       )
       setStatus('success')
       setStatusDetail(result.account || result.message)
-      showToast('success', 'GitHub 连接成功', result.message)
+      showToast('success', t("GitHub 连接成功"), result.message)
     } catch (error) {
-      const message = getConnectionErrorMessage(error, '请检查 Token')
+      const message = getConnectionErrorMessage(error, t("请检查 Token"))
       setStatus('failure')
       setStatusDetail(message)
-      showToast('error', 'GitHub 连接失败', message)
+      showToast('error', t("GitHub 连接失败"), message)
     } finally {
       setTesting(false)
     }
@@ -275,13 +274,13 @@ const GitHubApiSettings = () => {
 
   const handleSave = () => {
     if (!token.trim()) {
-      showToast('error', '无法保存', 'GitHub Token 不能为空')
+      showToast('error', t("无法保存"), t("GitHub Token 不能为空"))
       return
     }
     updateGitHubConfig({ mode: 'custom', token: token.trim() })
     setStatus('idle')
     setStatusDetail(undefined)
-    showToast('success', 'GitHub 配置已保存', '后续请求将使用你的 Token')
+    showToast('success', t("GitHub 配置已保存"), t("后续请求将使用你的 Token"))
   }
 
   const handleClear = () => {
@@ -290,7 +289,7 @@ const GitHubApiSettings = () => {
     setShowToken(false)
     setStatus('idle')
     setStatusDetail(undefined)
-    showToast('success', 'GitHub Token 已清除', '已切换回平台默认 API')
+    showToast('success', t("GitHub Token 已清除"), t("已切换回平台默认 API"))
   }
 
   return (
@@ -301,12 +300,12 @@ const GitHubApiSettings = () => {
           <span className="settings-card-icon">
             <ApiIcon />
           </span>
-          <span>GitHub 账号与 API</span>
+          <span>{t("GitHub 账号与 API")}</span>
           <Badge
             variant={isAuthenticated ? 'success' : 'default'}
             size="sm"
           >
-            {isAuthenticated ? '已连接账号' : '未登录'}
+            {isAuthenticated ? t("已连接账号") : t("未登录")}
           </Badge>
         </div>
       }
@@ -314,11 +313,9 @@ const GitHubApiSettings = () => {
       <div className="api-settings-body">
         <section className="settings-inline-panel">
           <div>
-            <h3>GitHub 账号</h3>
+            <h3>{t("GitHub 账号")}</h3>
             <p className="form-hint">
-              用于生成你的开发者画像：头像、名称、公开仓库、语言、PR / Issue
-              和第三方贡献线索。
-            </p>
+              {t("用于生成你的开发者画像：头像、名称、公开仓库、语言、PR / Issue 和第三方贡献线索。")}</p>
           </div>
           <div className="settings-account-preview">
             {profile.avatar ? (
@@ -327,38 +324,35 @@ const GitHubApiSettings = () => {
               <span>?</span>
             )}
             <div>
-              <strong>{profile.username || '尚未连接 GitHub'}</strong>
+              <strong>{profile.username || t("尚未连接 GitHub")}</strong>
               <small>
                 {githubProfile?.developerProfile
-                  ? `${githubProfile.developerProfile.level} · 能力判断把握度 ${Math.round(
+                  ? t("{0} · 能力判断把握度 {1}%", [githubProfile.developerProfile.level, Math.round(
                       githubProfile.developerProfile.confidence * 100,
-                    )}%`
+                    )])
                   : profileStatus === 'failed'
-                    ? '画像生成失败，可重新连接 GitHub'
+                    ? t("画像生成失败，可重新连接 GitHub")
                     : profileStatus === 'generating' || profileStatus === 'pending'
-                      ? '开发者画像正在后台生成'
+                      ? t("开发者画像正在后台生成")
                     : isAuthenticated
-                      ? '已读取公开资料'
-                      : '点击登录后生成结构化 Developer Profile'}
+                      ? t("已读取公开资料")
+                      : t("点击登录后生成结构化 Developer Profile")}
               </small>
             </div>
           </div>
           <div className="settings-actions api-settings-actions">
             <Button variant="primary" onClick={authService.startGitHubLogin}>
-              {isAuthenticated ? '重新连接 GitHub' : '使用 GitHub 登录'}
+              {isAuthenticated ? t("重新连接 GitHub") : t("使用 GitHub 登录")}
             </Button>
             {isAuthenticated && (
               <Button variant="ghost" onClick={logout}>
-                退出当前设备
-              </Button>
+                {t("退出当前设备")}</Button>
             )}
           </div>
         </section>
 
         <p className="form-hint api-section-lead">
-          账号登录只负责识别用户和生成画像；公共仓库分析默认继续使用平台
-          GitHub API 额度，普通用户无需配置自己的 Token。
-        </p>
+          {t("账号登录只负责识别用户和生成画像；公共仓库分析默认继续使用平台 GitHub API 额度，普通用户无需配置自己的 Token。")}</p>
 
         <ModeSelector
           value={githubConfig.mode}
@@ -369,14 +363,13 @@ const GitHubApiSettings = () => {
             )
             setStatusDetail(undefined)
           }}
-          platformLabel="平台 GitHub API（推荐）"
-          customLabel="高级：使用自己的 GitHub Token"
+          platformLabel={t("平台 GitHub API（推荐）")}
+          customLabel={t("高级：使用自己的 GitHub Token")}
         />
 
         {githubConfig.mode === 'platform' && (
           <p className="api-warning-note">
-            公共仓库请求由平台统一提供额度。即使你已登录 GitHub，也不需要额外填写个人 Token。
-          </p>
+            {t("公共仓库请求由平台统一提供额度。即使你已登录 GitHub，也不需要额外填写个人 Token。")}</p>
         )}
 
         {githubConfig.mode === 'custom' && (
@@ -391,20 +384,18 @@ const GitHubApiSettings = () => {
                 className="form-input"
                 value={token}
                 autoComplete="off"
-                placeholder="github_pat_... 或 ghp_..."
+                placeholder={t("github_pat_... 或 ghp_...")}
                 onChange={(event) => setToken(event.target.value)}
               />
               <Button
                 variant="secondary"
                 onClick={() => setShowToken((current) => !current)}
               >
-                {showToken ? '隐藏' : '显示'}
+                {showToken ? t("隐藏") : t("显示")}
               </Button>
             </div>
             <p className="form-hint">
-              当前保存值：{maskSecret(githubConfig.token)}。仅在需要调试或更高个人额度时使用；
-              不建议申请私有仓库权限。
-            </p>
+              {t("当前保存值：")}{maskSecret(githubConfig.token)}{t("。仅在需要调试或更高个人额度时使用； 不建议申请私有仓库权限。")}</p>
           </div>
         )}
 
@@ -413,27 +404,22 @@ const GitHubApiSettings = () => {
         <div className="settings-actions api-settings-actions">
           {githubConfig.mode === 'custom' && (
             <Button variant="primary" onClick={handleSave}>
-              保存 Token
-            </Button>
+              {t("保存 Token")}</Button>
           )}
           <Button variant="secondary" loading={testing} onClick={handleTest}>
-            测试连接
-          </Button>
+            {t("测试连接")}</Button>
           {githubConfig.token && (
             <Button
               variant="ghost"
               className="settings-reset-button"
               onClick={handleClear}
             >
-              清除 Token
-            </Button>
+              {t("清除 Token")}</Button>
           )}
         </div>
 
         <p className="api-security-note">
-          GitHub 登录不等于上传个人 Token。自定义 Token 只保存在当前浏览器，
-          经请求头临时发送，服务端不持久化。
-        </p>
+          {t("GitHub 登录不等于上传个人 Token。自定义 Token 只保存在当前浏览器， 经请求头临时发送，服务端不持久化。")}</p>
       </div>
     </Card>
   )
@@ -484,14 +470,14 @@ const AIProviderSettings = () => {
   }
 
   const validateDraft = (): string | null => {
-    if (!draft.apiKey?.trim()) return 'API Key 不能为空'
-    if (!draft.model.trim()) return '模型名称不能为空'
+    if (!draft.apiKey?.trim()) return t("API Key 不能为空")
+    if (!draft.model.trim()) return t("模型名称不能为空")
     if (draft.provider === 'openai-compatible') {
       if (!draft.baseUrl?.startsWith('https://')) {
-        return 'Base URL 必须使用 HTTPS'
+        return t("Base URL 必须使用 HTTPS")
       }
     } else if (draft.baseUrl && !draft.baseUrl.startsWith('https://')) {
-      return 'Base URL 必须使用 HTTPS'
+      return t("Base URL 必须使用 HTTPS")
     }
     return null
   }
@@ -506,7 +492,7 @@ const AIProviderSettings = () => {
         : false
       if (isProviderDefault) return true
       return window.confirm(
-        `API Key 将发送到 ${target.hostname}。请确认这是你信任的 AI 服务地址。`,
+        t("API Key 将发送到 {0}。请确认这是你信任的 AI 服务地址。", [target.hostname]),
       )
     } catch {
       return false
@@ -530,7 +516,7 @@ const AIProviderSettings = () => {
       if (error) {
         setStatus('unconfigured')
         setStatusDetail(error)
-        showToast('error', '配置不完整', error)
+        showToast('error', t("配置不完整"), error)
         return
       }
       if (!confirmCustomEndpoint(testConfig)) return
@@ -546,12 +532,12 @@ const AIProviderSettings = () => {
       }`
       setStatus('success')
       setStatusDetail(detail)
-      showToast('success', 'AI API 连接成功', detail)
+      showToast('success', t("AI API 连接成功"), detail)
     } catch (error) {
-      const message = getConnectionErrorMessage(error, '请检查 API 配置')
+      const message = getConnectionErrorMessage(error, t("请检查 API 配置"))
       setStatus('failure')
       setStatusDetail(message)
-      showToast('error', 'AI API 连接失败', message)
+      showToast('error', t("AI API 连接失败"), message)
     } finally {
       setTesting(false)
     }
@@ -567,14 +553,14 @@ const AIProviderSettings = () => {
     if (testConfig.mode === 'custom') {
       if (!testConfig.apiKey?.trim()) {
         setStatus('unconfigured')
-        setStatusDetail('请先填写 API Key')
-        showToast('error', '缺少 API Key', '读取模型列表需要当前服务商的 API Key')
+        setStatusDetail(t("请先填写 API Key"))
+        showToast('error', t("缺少 API Key"), t("读取模型列表需要当前服务商的 API Key"))
         return
       }
       if (testConfig.provider === 'openai-compatible' && !testConfig.baseUrl) {
         setStatus('unconfigured')
-        setStatusDetail('请先填写 Base URL')
-        showToast('error', '缺少 Base URL', 'OpenAI Compatible 需要 Base URL 才能读取模型')
+        setStatusDetail(t("请先填写 Base URL"))
+        showToast('error', t("缺少 Base URL"), t("OpenAI Compatible 需要 Base URL 才能读取模型"))
         return
       }
       if (!confirmCustomEndpoint(testConfig)) return
@@ -596,13 +582,13 @@ const AIProviderSettings = () => {
         }))
       }
       setStatus('success')
-      setStatusDetail(`已读取 ${result.models.length} 个模型`)
-      showToast('success', '模型列表已更新', `读取到 ${result.models.length} 个可选模型`)
+      setStatusDetail(t("已读取 {0} 个模型", [result.models.length]))
+      showToast('success', t("模型列表已更新"), t("读取到 {0} 个可选模型", [result.models.length]))
     } catch (error) {
-      const message = getConnectionErrorMessage(error, '请检查 API Key 或服务商余额')
+      const message = getConnectionErrorMessage(error, t("请检查 API Key 或服务商余额"))
       setStatus('failure')
       setStatusDetail(message)
-      showToast('error', '读取模型失败', message)
+      showToast('error', t("读取模型失败"), message)
     } finally {
       setLoadingModels(false)
     }
@@ -611,7 +597,7 @@ const AIProviderSettings = () => {
   const handleSave = () => {
     const error = validateDraft()
     if (error) {
-      showToast('error', '无法保存', error)
+      showToast('error', t("无法保存"), error)
       return
     }
     const savedConfig: AIProviderConfig = {
@@ -628,8 +614,8 @@ const AIProviderSettings = () => {
     setStatusDetail(undefined)
     showToast(
       'success',
-      'AI API 配置已保存',
-      '后续 AI 请求将使用自定义 Provider',
+      t("AI API 配置已保存"),
+      t("后续 AI 请求将使用自定义 Provider"),
     )
   }
 
@@ -641,7 +627,7 @@ const AIProviderSettings = () => {
     setShowAdvanced(false)
     setStatus('idle')
     setStatusDetail(undefined)
-    showToast('success', 'AI API 配置已清除', '已切换回平台默认 AI API')
+    showToast('success', t("AI API 配置已清除"), t("已切换回平台默认 AI API"))
   }
 
   return (
@@ -652,12 +638,12 @@ const AIProviderSettings = () => {
           <span className="settings-card-icon">
             <ApiIcon />
           </span>
-          <span>AI 服务</span>
+          <span>{t("AI 服务")}</span>
           <Badge
             variant={aiConfig.mode === 'custom' ? 'accent' : 'default'}
             size="sm"
           >
-            {aiConfig.mode === 'custom' ? '自定义 Provider' : '平台默认'}
+            {aiConfig.mode === 'custom' ? t("自定义 Provider") : t("平台默认")}
           </Badge>
         </div>
       }
@@ -666,15 +652,15 @@ const AIProviderSettings = () => {
         <ModeSelector
           value={aiConfig.mode}
           onChange={setMode}
-          platformLabel="平台默认 AI API"
-          customLabel="使用自己的 AI API"
+          platformLabel={t("平台默认 AI API")}
+          customLabel={t("使用自己的 AI API")}
         />
 
         {aiConfig.mode === 'custom' && (
           <div className="api-custom-fields api-field-grid">
             <Input
               type="select"
-              label="服务商"
+              label={t("服务商")}
               value={draft.provider}
               options={[
                 { value: 'deepseek', label: 'DeepSeek' },
@@ -711,18 +697,17 @@ const AIProviderSettings = () => {
                   variant="secondary"
                   onClick={() => setShowKey((current) => !current)}
                 >
-                  {showKey ? '隐藏' : '显示'}
+                  {showKey ? t("隐藏") : t("显示")}
                 </Button>
               </div>
               <p className="form-hint">
-                当前保存值：{maskSecret(aiConfig.apiKey)}
+                {t("当前保存值：")}{maskSecret(aiConfig.apiKey)}
               </p>
             </div>
 
             <div className="form-group">
               <label className="form-label" htmlFor="ai-model">
-                模型
-              </label>
+                {t("模型")}</label>
               <div className="model-select-row">
                 {modelOptions.length > 0 ? (
                   <select
@@ -787,12 +772,10 @@ const AIProviderSettings = () => {
                   loading={loadingModels}
                   onClick={handleLoadModels}
                 >
-                  读取模型
-                </Button>
+                  {t("读取模型")}</Button>
               </div>
               <p className="form-hint">
-                读取失败也可以手动填写模型名；模型列表只用于当前设置页选择，不会保存 API Key 到服务端。
-              </p>
+                {t("读取失败也可以手动填写模型名；模型列表只用于当前设置页选择，不会保存 API Key 到服务端。")}</p>
             </div>
 
             {draft.provider === 'openai-compatible' ? (
@@ -811,7 +794,7 @@ const AIProviderSettings = () => {
                   className="link-button"
                   onClick={() => setShowAdvanced((current) => !current)}
                 >
-                  {showAdvanced ? '收起高级设置' : '高级设置：Base URL'}
+                  {showAdvanced ? t("收起高级设置") : t("高级设置：Base URL")}
                 </button>
                 {showAdvanced && (
                   <Input
@@ -832,8 +815,7 @@ const AIProviderSettings = () => {
             {draft.baseUrl &&
               draft.baseUrl !== defaultBaseUrl(draft.provider) && (
                 <p className="api-warning-note">
-                  使用自定义 Base URL 时，API Key 会发送到该域名。请只填写你信任的 AI 服务地址。
-                </p>
+                  {t("使用自定义 Base URL 时，API Key 会发送到该域名。请只填写你信任的 AI 服务地址。")}</p>
               )}
           </div>
         )}
@@ -843,26 +825,22 @@ const AIProviderSettings = () => {
         <div className="settings-actions api-settings-actions">
           {aiConfig.mode === 'custom' && (
             <Button variant="primary" onClick={handleSave}>
-              保存 AI 配置
-            </Button>
+              {t("保存 AI 配置")}</Button>
           )}
           <Button variant="secondary" loading={testing} onClick={handleTest}>
-            测试连接
-          </Button>
+            {t("测试连接")}</Button>
           {(aiConfig.apiKey || aiConfig.mode === 'custom') && (
             <Button
               variant="ghost"
               className="settings-reset-button"
               onClick={handleClear}
             >
-              清除配置
-            </Button>
+              {t("清除配置")}</Button>
           )}
         </div>
 
         <p className="api-security-note">
-          服务商和模型选项保存在当前浏览器；密钥仅保留在当前页面会话内存中，刷新后需重新输入。请求时密钥会发送给你选择的 AI 服务商。
-        </p>
+          {t("服务商和模型选项保存在当前浏览器；密钥仅保留在当前页面会话内存中，刷新后需重新输入。请求时密钥会发送给你选择的 AI 服务商。")}</p>
       </div>
     </Card>
   )

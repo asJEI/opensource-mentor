@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { workspaceScope, type WorkspaceKind, type WorkspacePayloads } from '@shared/workspace'
 import { workspaceService } from '@/services/workspaceService'
 import { useUserStore } from '@/store/user'
@@ -29,7 +30,7 @@ export function captureWorkspace(): WorkspacePayloads {
     pr = usePrStore.getState(),
     review = useCodeReviewStore.getState()
   const steps = guide.steps.map(({ streamingPreview, ...step }) =>
-    streamingPreview ? { ...step, goal: '正在生成本章内容…', actionIntro: undefined } : step,
+    streamingPreview ? { ...step, goal: t("正在生成本章内容…"), actionIntro: undefined } : step,
   )
   return {
     selection: {
@@ -104,7 +105,7 @@ function apply(kind: WorkspaceKind, content: WorkspacePayloads[WorkspaceKind]) {
             ? {
                 ...step,
                 generationStatus: 'failed' as const,
-                generationError: '上次生成已中断，可重试本章',
+                generationError: t("上次生成已中断，可重试本章"),
               }
             : step,
         )
@@ -153,7 +154,7 @@ function apply(kind: WorkspaceKind, content: WorkspacePayloads[WorkspaceKind]) {
           status: data.status === 'running' || data.status === 'queued' ? 'failed' : data.status,
           error:
             data.status === 'running' || data.status === 'queued'
-              ? '上次审查未完成，请重新发起'
+              ? t("上次审查未完成，请重新发起")
               : data.error,
         })
         break

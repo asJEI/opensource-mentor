@@ -1,3 +1,6 @@
+import { t } from '@/i18n'
+import { useUserStore } from '@/store/user'
+import { localizedErrorMessage } from '@shared/errors'
 import {
   ErrorCode,
   messageForErrorCode,
@@ -26,7 +29,7 @@ export class ApiClientError extends Error {
     },
   ) {
     const code = normalizeErrorCode(options?.errorCode)
-    super(message.trim() || messageForErrorCode(code))
+    super(localizedErrorMessage(message.trim() || messageForErrorCode(code), code, useUserStore.getState().preferences.language))
     this.name = 'ApiClientError'
     this.errorCode = code
     this.status = options?.status
@@ -43,7 +46,7 @@ export function isApiClientError(error: unknown): error is ApiClientError {
  */
 export function getConnectionErrorMessage(
   error: unknown,
-  fallback = '连接失败，请检查配置后重试',
+  fallback = t("连接失败，请检查配置后重试"),
 ): string {
   if (!isApiClientError(error) && !(error instanceof Error)) {
     return fallback
@@ -55,49 +58,49 @@ export function getConnectionErrorMessage(
   if (error instanceof ApiClientError) {
     switch (error.errorCode) {
       case ErrorCode.AI_AUTH_ERROR:
-        return 'API Key 无效'
+        return t("API Key 无效")
       case ErrorCode.GITHUB_AUTH_ERROR:
-        return 'GitHub Token 无效或已过期'
+        return t("GitHub Token 无效或已过期")
       case ErrorCode.AI_TIMEOUT:
-        return 'API 请求超时'
+        return t("API 请求超时")
       case ErrorCode.AI_NETWORK_ERROR:
       case ErrorCode.GITHUB_NETWORK_ERROR:
-        return '无法连接服务商'
+        return t("无法连接服务商")
       case ErrorCode.AI_INVALID_BASE_URL:
-        return 'Base URL 无法访问'
+        return t("Base URL 无法访问")
       case ErrorCode.AI_RATE_LIMIT:
         if (/平台|BYOK|自己的 API Key/i.test(message)) return message
         return (
           message ||
-          'AI 服务商触发限流。请稍等 30～60 秒后重试；贡献指南可只重试失败章节。'
+          t("AI 服务商触发限流。请稍等 30～60 秒后重试；贡献指南可只重试失败章节。")
         )
       case ErrorCode.GITHUB_RATE_LIMIT:
-        return message.includes('重置')
+        return /重置|reset/i.test(message)
           ? message
-          : 'GitHub API 调用频率超限，建议配置 Token'
+          : t("GitHub API 调用频率超限，建议配置 Token")
       case ErrorCode.AI_NOT_CONFIGURED:
-        return '尚未配置可用的 AI API'
+        return t("尚未配置可用的 AI API")
       case ErrorCode.VALIDATION_ERROR:
-        return message || '配置不完整'
+        return message || t("配置不完整")
       default:
         break
     }
   }
 
   if (/model[_ ]?not[_ ]?found|does not exist|unknown model/i.test(lower)) {
-    return '模型不存在'
+    return t("模型不存在")
   }
   if (/invalid.?api.?key|incorrect.?api.?key|unauthorized|401/i.test(lower)) {
-    return 'API Key 无效'
+    return t("API Key 无效")
   }
   if (/timeout|timed out|aborted due to timeout/i.test(lower)) {
-    return 'API 请求超时'
+    return t("API 请求超时")
   }
   if (/enotfound|econnrefused|network|fetch failed|unreachable/i.test(lower)) {
-    return '无法连接服务商'
+    return t("无法连接服务商")
   }
   if (/base.?url|invalid url|ssl|certificate/i.test(lower)) {
-    return 'Base URL 无法访问'
+    return t("Base URL 无法访问")
   }
 
   if (!message) return fallback
@@ -108,7 +111,7 @@ export function getConnectionErrorMessage(
 }
 
 /** Resolve a display message from any thrown value. */
-export function getErrorMessage(error: unknown, fallback = '请求失败'): string {
+export function getErrorMessage(error: unknown, fallback = t("请求失败")): string {
   if (isApiClientError(error) || error instanceof Error) {
     return getConnectionErrorMessage(error, fallback)
   }

@@ -4,6 +4,7 @@ import type {
   StructuredDeveloperProfile,
 } from '@/types'
 import { bffGet, bffPatch, bffPost } from './request'
+import { useUserStore } from '@/store/user'
 
 export const GITHUB_OAUTH_PROFILE_STORAGE_KEY =
   'opensource-mentor:github-oauth-profile'
@@ -116,7 +117,7 @@ export function toServerUserState(
 
 export const authService = {
   startGitHubLogin() {
-    window.location.assign('/api/auth/github/start')
+    window.location.assign(`/api/auth/github/start?locale=${useUserStore.getState().preferences.language}`)
   },
 
   consumeGitHubOAuthProfile(): GitHubDeveloperProfile | null {

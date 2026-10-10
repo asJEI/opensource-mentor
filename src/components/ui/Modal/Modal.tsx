@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React, { useEffect, useCallback, useRef, useId } from 'react'
 import clsx from 'clsx'
 
@@ -96,7 +97,7 @@ export const Modal: React.FC<ModalProps> = ({
       className={clsx('modal-overlay', { active: visible })}
       onClick={handleOverlayClick}
     >
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : '对话框'} tabIndex={-1} className={clsx('modal', className)} style={modalStyle}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : t("对话框")} tabIndex={-1} className={clsx('modal', className)} style={modalStyle}>
         <div className="modal-header">
           <div className="modal-title-group">
             {icon && <div className="modal-icon">{icon}</div>}
@@ -109,7 +110,7 @@ export const Modal: React.FC<ModalProps> = ({
             type="button"
             className="modal-close"
             onClick={onClose}
-            aria-label="关闭"
+            aria-label={t("关闭")}
           >
             <svg
               viewBox="0 0 24 24"

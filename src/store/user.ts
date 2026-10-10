@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { detectLocale, isLocale } from '@shared/locale'
 import type {
   ContributionInterest,
   ContributionTimeBudget,
@@ -214,9 +215,9 @@ function normalizePreferences(value: unknown): UserPreferences {
   return {
     theme,
     language:
-      typeof preferences.language === 'string'
+      isLocale(preferences.language)
         ? preferences.language
-        : 'zh-CN',
+        : defaultPreferences.language,
     notifications:
       typeof preferences.notifications === 'boolean'
         ? preferences.notifications
@@ -250,7 +251,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
  */
 const defaultPreferences: UserPreferences = {
   theme: 'light',
-  language: 'zh-CN',
+  language: detectLocale(typeof navigator === 'undefined' ? 'en' : navigator.language),
   notifications: true,
 }
 

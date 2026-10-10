@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { ReviewStatus, ReviewProgress as ReviewProgressType, ReviewPhaseStatus } from '@/types/codeReview'
@@ -20,36 +21,36 @@ interface PhaseInfo {
 }
 
 const phases: PhaseInfo[] = [
-  { key: 'summary', label: '分析代码' },
-  { key: 'risk', label: '风险评估' },
-  { key: 'comments', label: '生成建议' },
+  { key: 'summary', get label() { return t("分析代码") } },
+  { key: 'risk', get label() { return t("风险评估") } },
+  { key: 'comments', get label() { return t("生成建议") } },
 ]
 
 const statusConfig: Record<ReviewStatus, { icon: string; title: string; subtitle: string }> = {
   idle: {
     icon: '🤖',
-    title: '准备就绪',
-    subtitle: '等待开始代码审查',
+    get title() { return t("准备就绪") },
+    get subtitle() { return t("等待开始代码审查") },
   },
   queued: {
     icon: '⏳',
-    title: '等待审查...',
-    subtitle: '你的代码正在排队中',
+    get title() { return t("等待审查...") },
+    get subtitle() { return t("你的代码正在排队中") },
   },
   running: {
     icon: '🤖',
-    title: 'AI 导师审查中...',
-    subtitle: '正在分析你的代码，请稍候',
+    get title() { return t("AI 导师审查中...") },
+    get subtitle() { return t("正在分析你的代码，请稍候") },
   },
   completed: {
     icon: '✅',
-    title: '审查完成',
-    subtitle: '下面按文件列出了问题、风险和建议，逐条看一遍',
+    get title() { return t("审查完成") },
+    get subtitle() { return t("下面按文件列出了问题、风险和建议，逐条看一遍") },
   },
   failed: {
     icon: '❌',
-    title: '审查失败',
-    subtitle: '出了点小问题，请重试',
+    get title() { return t("审查失败") },
+    get subtitle() { return t("出了点小问题，请重试") },
   },
 }
 
@@ -61,24 +62,24 @@ const getMentorMessage = (
   phaseStatuses: ReviewProgressType['phases']
 ): string => {
   if (status === 'completed') {
-    return '审查结果出来了，先看「严重」和「高」级别的问题，确认没有遗漏再提交 PR～'
+    return t("审查结果出来了，先看「严重」和「高」级别的问题，确认没有遗漏再提交 PR～")
   }
   if (status === 'failed') {
-    return '抱歉，审查出了点问题，要不要重试一下？'
+    return t("抱歉，审查出了点问题，要不要重试一下？")
   }
   if (status === 'queued' || status === 'idle') {
-    return '马上就好～让我先看看你改了哪些地方～'
+    return t("马上就好～让我先看看你改了哪些地方～")
   }
   if (phaseStatuses.summary === 'running') {
-    return '让我先看看你改了哪些地方～'
+    return t("让我先看看你改了哪些地方～")
   }
   if (phaseStatuses.risk === 'running') {
-    return '嗯，这里有几个地方需要注意...'
+    return t("嗯，这里有几个地方需要注意...")
   }
   if (phaseStatuses.comments === 'running') {
-    return '快好了，我在整理修改建议...'
+    return t("快好了，我在整理修改建议...")
   }
-  return '正在审查中...'
+  return t("正在审查中...")
 }
 
 const getPhaseClass = (phaseStatus: ReviewPhaseStatus): string => {
@@ -124,7 +125,7 @@ export const ReviewProgress: React.FC<ReviewProgressProps> = ({
       {/* 进度条 */}
       <div className="review-progress__bar-wrap">
         <div className="review-progress__bar-label">
-          <span>审查进度</span>
+          <span>{t("审查进度")}</span>
           <span className="review-progress__bar-percent">
             {progress.percent}%
           </span>

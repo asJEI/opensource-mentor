@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { RepositoryAnalysis, DifficultyLevel } from '@/types'
@@ -19,9 +20,9 @@ const difficultyToStars: Record<DifficultyLevel, number> = {
 }
 
 const difficultyLabels: Record<DifficultyLevel, string> = {
-  easy: '简单',
-  medium: '中等',
-  hard: '困难',
+  get easy() { return t("简单") },
+  get medium() { return t("中等") },
+  get hard() { return t("困难") },
 }
 
 /**
@@ -87,10 +88,9 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: 600 }}>AI 分析报告</div>
+            <div style={{ fontSize: '14px', fontWeight: 600 }}>{t("AI 分析报告")}</div>
             <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
-              基于 {analysis.techStack?.length || 0} 项技术栈分析
-            </div>
+              {t("基于")}{analysis.techStack?.length || 0} {t("项技术栈分析")}</div>
           </div>
         </div>
       }
@@ -102,7 +102,7 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({
       <div className="ai-metrics-row">
         <div className="ai-metric">
           <div className="difficulty-bar">{renderStars()}</div>
-          <div className="ai-metric-label">难度等级</div>
+          <div className="ai-metric-label">{t("难度等级")}</div>
           <div className="ai-metric-value">{difficultyLabels[analysis.difficulty]}</div>
         </div>
         <div className="ai-metric">
@@ -127,7 +127,7 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
           </div>
-          <div className="ai-metric-label">架构类型</div>
+          <div className="ai-metric-label">{t("架构类型")}</div>
           <div className="ai-metric-value" style={{ fontSize: '13px' }}>
             {analysis.architecture}
           </div>
@@ -146,10 +146,9 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({
           >
             {analysis.suggestedIssuesCount}
           </div>
-          <div className="ai-metric-label">推荐 Issue 数</div>
+          <div className="ai-metric-label">{t("推荐 Issue 数")}</div>
           <div className="ai-metric-value" style={{ fontSize: '12px', color: 'var(--muted)' }}>
-            适合新手
-          </div>
+            {t("适合新手")}</div>
         </div>
       </div>
 
@@ -164,8 +163,7 @@ export const AISummaryCard: React.FC<AISummaryCardProps> = ({
               color: 'var(--ink)',
             }}
           >
-            关键洞察
-          </div>
+            {t("关键洞察")}</div>
           {suggestedIssues.map((issue, index) => (
             <div
               key={index}

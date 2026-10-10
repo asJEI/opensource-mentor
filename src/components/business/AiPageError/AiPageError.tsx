@@ -1,3 +1,4 @@
+import { t, uiMessage } from '@/i18n'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui'
 
@@ -17,10 +18,10 @@ export interface AiPageErrorProps {
  * Avoids raw Axios / undefined dumps as the primary CTA surface.
  */
 export function AiPageError({
-  title = '出错了',
+  title = t("出错了"),
   message,
   onRetry,
-  retryLabel = '重试',
+  retryLabel = t("重试"),
   showSettingsLink = true,
   className,
   kicker = 'BLOCKED',
@@ -33,8 +34,8 @@ export function AiPageError({
         <span className="osm-kicker-dot" />
         {kicker}
       </span>
-      <h3 className="ai-page-error-title">{title}</h3>
-      <p className="ai-page-error-message">{message || '请稍后重试'}</p>
+      <h3 className="ai-page-error-title">{uiMessage(title)}</h3>
+      <p className="ai-page-error-message">{uiMessage(message) || t("请稍后重试")}</p>
       <div className="ai-page-error-actions">
         {onRetry ? (
           <Button variant="primary" onClick={onRetry}>
@@ -43,8 +44,7 @@ export function AiPageError({
         ) : null}
         {showSettingsLink ? (
           <Button variant="secondary" onClick={() => navigate('/settings')}>
-            检查偏好设置
-          </Button>
+            {t("检查偏好设置")}</Button>
         ) : null}
       </div>
     </div>

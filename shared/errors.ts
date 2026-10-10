@@ -31,6 +31,42 @@ export const ErrorCode = {
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
 
+export const ERROR_CODE_MESSAGES_EN: Record<ErrorCode, string> = {
+  AI_PROVIDER_ERROR: 'AI service is temporarily unavailable. Please try again later.',
+  AI_AUTH_ERROR: 'AI API Key is invalid or lacks permission.',
+  AI_RATE_LIMIT: 'AI rate limit reached. Wait and retry, or use your own API Key.',
+  AI_TIMEOUT: 'AI request timed out. Please try again later.',
+  AI_NETWORK_ERROR: 'Cannot connect to the AI provider. Please try again later.',
+  AI_NOT_CONFIGURED: 'Platform AI API is not configured.',
+  AI_INVALID_BASE_URL: 'Invalid AI Base URL.',
+  AI_INVALID_MODEL: 'AI model cannot be empty.',
+  GITHUB_AUTH_ERROR: 'GitHub Token is invalid or expired.',
+  GITHUB_RATE_LIMIT: 'GitHub API rate limit reached.',
+  GITHUB_FORBIDDEN: 'GitHub API access denied.',
+  GITHUB_NETWORK_ERROR: 'Cannot connect to GitHub.',
+  REPOSITORY_NOT_FOUND: 'Repository not found.',
+  NOT_FOUND: 'Resource not found.',
+  VALIDATION_ERROR: 'Invalid request parameters.',
+  INTERNAL_ERROR: 'Server error. Please try again later.',
+  REVIEW_FAILED: 'Review failed. Please try again later.',
+  AUTH_REQUIRED: 'Sign in with GitHub first, or configure your own AI API in Settings.',
+}
+
+/** Localize known error codes without changing codes, status, or response shapes. */
+export function localizedErrorMessage(message: string, code: string | undefined, locale: import('./locale').Locale): string {
+  if (locale !== 'en-US' || !/[\u4e00-\u9fff]/.test(message)) return message
+  // Some legacy routes predate machine-readable codes. Keep their meaning.
+  const legacy: Record<string, string> = {
+    '未登录': 'Sign in with GitHub first.',
+    '登录状态已失效': 'Your sign-in session has expired. Sign in again.',
+    '请求体必须是合法 JSON': 'Request body must be valid JSON.',
+    '请求体必须是 JSON 对象': 'Request body must be a JSON object.',
+    'Developer Profile 不存在': 'Developer profile not found.',
+    '更新 Developer Profile 失败': 'Failed to update developer profile.',
+  }
+  return legacy[message] ?? ERROR_CODE_MESSAGES_EN[normalizeErrorCode(code)]
+}
+
 /** User-facing copy keyed by error code (frontend / product layer). */
 export const ERROR_CODE_MESSAGES: Record<ErrorCode, string> = {
   AI_PROVIDER_ERROR: 'AI 服务暂时不可用，请稍后重试',

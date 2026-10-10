@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import type { RepoAnalysis, DifficultyLevel } from '@/types'
@@ -325,35 +326,35 @@ function isBeginnerFriendly(analysis: RepoAnalysis): boolean {
  */
 function getFriendlyLabel(level?: string): string {
   const map: Record<string, string> = {
-    'very-friendly': '非常友好',
-    friendly: '友好',
-    moderate: '适中',
-    challenging: '有挑战',
-    hard: '较难',
+    'very-friendly': t("非常友好"),
+    friendly: t("友好"),
+    moderate: t("适中"),
+    challenging: t("有挑战"),
+    hard: t("较难"),
   }
-  return map[level || ''] || '未知'
+  return map[level || ''] || t("未知")
 }
 
 /** 项目活跃度等级中文映射 */
 function getActivityLabel(level?: string): string {
   const map: Record<string, string> = {
-    'very-active': '非常活跃',
-    active: '活跃',
-    moderate: '一般',
-    low: '偏低',
-    inactive: '停滞',
+    'very-active': t("非常活跃"),
+    active: t("活跃"),
+    moderate: t("一般"),
+    low: t("偏低"),
+    inactive: t("停滞"),
   }
-  return map[level || ''] || '未知'
+  return map[level || ''] || t("未知")
 }
 
 /** 贡献领域难度中文映射 */
 function getAreaDifficultyLabel(difficulty?: string): string {
   const map: Record<string, string> = {
-    easy: '入门',
-    medium: '中等',
-    hard: '进阶',
+    easy: t("入门"),
+    medium: t("中等"),
+    hard: t("进阶"),
   }
-  return map[difficulty || ''] || '未知'
+  return map[difficulty || ''] || t("未知")
 }
 
 /** 大数字缩写：228431 → 228.4k，让统计条保持等宽对齐 */

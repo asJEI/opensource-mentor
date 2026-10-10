@@ -94,7 +94,7 @@ export async function explainIssue(
       topP: 0.9,
       responseFormat: { type: 'json_object' },
     })
-    return validateExplainResult(parseJsonSafely(content))
+    return localizeGenerated(validateExplainResult(parseJsonSafely(content)), client.locale ?? 'zh-CN')
   } catch (error) {
     if (error instanceof ApiError) throw error
     console.error(
@@ -106,3 +106,4 @@ export async function explainIssue(
     })
   }
 }
+import { localizeGenerated } from '../../shared/generatedLocale'

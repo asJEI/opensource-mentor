@@ -36,7 +36,7 @@ export async function generatePrDraft(
       topP: 0.9,
       responseFormat: { type: 'json_object' },
     })
-    return validatePrDraftResult(parseJsonSafely(content), issue)
+    return localizeGenerated(validatePrDraftResult(parseJsonSafely(content), issue), client.locale ?? 'zh-CN')
   } catch (error) {
     if (error instanceof ApiError) throw error
     console.error(
@@ -48,3 +48,4 @@ export async function generatePrDraft(
     })
   }
 }
+import { localizeGenerated } from '../../shared/generatedLocale'

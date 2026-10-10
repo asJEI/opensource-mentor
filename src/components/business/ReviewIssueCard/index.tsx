@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { ReviewIssue } from '@/types/codeReview'
@@ -17,11 +18,11 @@ export interface ReviewIssueCardProps {
 
 const categoryLabels: Record<string, string> = {
   bug: 'Bug',
-  performance: '性能',
-  security: '安全',
-  style: '风格',
-  'best-practice': '最佳实践',
-  other: '其他',
+  get performance() { return t("性能") },
+  get security() { return t("安全") },
+  get style() { return t("风格") },
+  get 'best-practice'() { return t("最佳实践") },
+  get other() { return t("其他") },
 }
 
 /**
@@ -110,7 +111,7 @@ export const ReviewIssueCard: React.FC<ReviewIssueCardProps> = ({
           <div className="review-issue-section">
             <div className="review-issue-section__header">
               <span className="review-issue-section__icon">📝</span>
-              <span>问题描述</span>
+              <span>{t("问题描述")}</span>
             </div>
             <div className="review-issue-section__content">
               {issue.description}
@@ -121,7 +122,7 @@ export const ReviewIssueCard: React.FC<ReviewIssueCardProps> = ({
           <div className="review-issue-section">
             <div className="review-issue-section__header">
               <span className="review-issue-section__icon">💻</span>
-              <span>你的代码</span>
+              <span>{t("你的代码")}</span>
             </div>
             <div className="review-issue-code">
               <div className="review-issue-code__header">
@@ -142,7 +143,7 @@ export const ReviewIssueCard: React.FC<ReviewIssueCardProps> = ({
           <div className="review-issue-section">
             <div className="review-issue-section__header">
               <span className="review-issue-section__icon">💡</span>
-              <span>修改建议</span>
+              <span>{t("修改建议")}</span>
             </div>
             <div className="review-issue-code review-issue-code--suggestion">
               <div className="review-issue-code__header">
@@ -150,8 +151,7 @@ export const ReviewIssueCard: React.FC<ReviewIssueCardProps> = ({
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  建议代码
-                </span>
+                  {t("建议代码")}</span>
               </div>
               <pre className="review-issue-code__pre">
                 <code className="review-issue-code__code">
@@ -172,7 +172,7 @@ export const ReviewIssueCard: React.FC<ReviewIssueCardProps> = ({
             <div className="review-issue-lesson">
               <div className="review-issue-lesson__title">
                 <span>🎓</span>
-                <span>导师小课堂：为什么要改？</span>
+                <span>{t("导师小课堂：为什么要改？")}</span>
               </div>
               <div className="review-issue-lesson__text">
                 {issue.whyItMatters}
@@ -193,8 +193,7 @@ export const ReviewIssueCard: React.FC<ReviewIssueCardProps> = ({
                 </svg>
               }
             >
-              复制建议代码
-            </Button>
+              {t("复制建议代码")}</Button>
           </div>
         </div>
       </div>

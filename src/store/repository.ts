@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { create } from 'zustand'
 import type {
   Repository,
@@ -229,7 +230,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
         })
       } catch (err) {
         if (requestId !== analysisRequestId) return
-        const message = getErrorMessage(err, '仓库分析失败，请稍后重试')
+        const message = getErrorMessage(err, t("仓库分析失败，请稍后重试"))
         set({ analysisStatus: 'error', analysisError: message })
       }
     },
@@ -262,7 +263,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
         })
       } catch (err) {
         if (requestId !== issuesRequestId) return
-        const message = getErrorMessage(err, '加载 Issue 列表失败，请稍后重试')
+        const message = getErrorMessage(err, t("加载 Issue 列表失败，请稍后重试"))
         set({ issuesStatus: 'error', issuesError: message })
       }
     },
@@ -293,7 +294,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
         })
       } catch (err) {
         if (requestId !== issuesRequestId) return
-        const message = getErrorMessage(err, '加载候选 Issue 失败，请稍后重试')
+        const message = getErrorMessage(err, t("加载候选 Issue 失败，请稍后重试"))
         set({
           candidateIssuesStatus: 'error',
           candidateIssuesError: message,
@@ -390,7 +391,7 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => {
         if (requestId !== explainRequestId) return
         set({
           explainStatus: 'error',
-          explainError: getErrorMessage(err, 'Issue 解释失败，请稍后重试'),
+          explainError: getErrorMessage(err, t("Issue 解释失败，请稍后重试")),
         })
       }
     },

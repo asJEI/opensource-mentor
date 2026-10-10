@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { create } from 'zustand'
 import type { ChatMessage, GuideMentorContext, Issue, Repository } from '@/types'
 import { aiService } from '@/services'
@@ -112,7 +113,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }))
     } catch (err) {
       if (generation !== chatGeneration) return
-      const message = getErrorMessage(err, '消息发送失败，请稍后重试')
+      const message = getErrorMessage(err, t("消息发送失败，请稍后重试"))
       set({ isStreaming: false, error: message })
     }
   },

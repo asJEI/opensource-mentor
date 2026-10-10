@@ -15,7 +15,7 @@ export type GuidePhaseTitle = (typeof GUIDE_PHASE_TITLES)[number]
 /** 单章生成专用 system，避免被通用解释 prompt 冲淡 */
 export const roadmapPhaseSystemPrompt = `你是 OpenSource Mentor 的贡献指南生成器。
 只输出一个合法 JSON 对象，不要 Markdown，不要代码围栏，不要额外说明。
-默认使用简体中文。
+遵循系统消息指定的用户语言偏好。
 
 7 章流程必须按顺序衔接：获取项目 → 环境准备 → 理解项目 → 复现 Issue → 修改 → 验证 → PR 提交。
 第 1 章只做 clone；第 2 章只做依赖安装与启动；第 3 章才阅读 README 与项目结构。
@@ -299,7 +299,7 @@ export function roadmapPhaseRepairPrompt(params: {
 - 必须有具体 goal、actionIntro（不要空泛套话）
 - actionSteps 至少 2 个对象；每项必须含 title、description，以及 expectedResult 或 commands
 - 第 4 章必须有 reproduce.steps（至少 2 条）
-- 保持简体中文，字段尽量短但可执行
+- 遵循系统消息指定的用户语言偏好，字段尽量短但可执行
 
 上一版输出：
 ${params.previousOutput.slice(0, 3500)}`
@@ -330,5 +330,5 @@ ${shared}
 必须返回 phases 数组，title 依次为：${GUIDE_PHASE_TITLES.join('、')}。
 每章必须包含 goal、actionIntro、actionSteps（至少 2 项）。
 第 4 章必须包含 reproduce。
-全部中文。严格 JSON。无证据不编造。`
+所有自然语言字段遵循系统消息指定的用户语言偏好。严格 JSON。无证据不编造。`
 }

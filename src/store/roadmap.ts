@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { create } from 'zustand'
 import type {
   Roadmap,
@@ -39,10 +40,10 @@ function createPlaceholderPhases(titles: string[]): RoadmapPhase[] {
     id: `phase-${idx}`,
     phase: idx + 1,
     title,
-    goal: '正在准备本章内容…',
+    goal: t("正在准备本章内容…"),
     learningItems: [],
     recommendedIssues: [],
-    estimatedDuration: '待确认',
+    estimatedDuration: t("待确认"),
     difficulty: 'medium',
     completionCriteria: [],
     resources: [],
@@ -84,7 +85,7 @@ function isPhaseContentReady(phase: RoadmapPhase | null | undefined): boolean {
 }
 
 function cacheKey(owner: string, repo: string, issueNumber: number) {
-  return `${STORAGE_PREFIX}${owner}/${repo}#${issueNumber}`
+  return `${STORAGE_PREFIX}${useUserStore.getState().preferences.language}:${owner}/${repo}#${issueNumber}`
 }
 
 type SharedGuideContext = {
@@ -273,7 +274,7 @@ async function generateOnePhase(params: {
       }
 
       if (!isPhaseContentReady({ ...phase, generationStatus: 'ready' })) {
-        throw new Error('本章生成结果为空')
+        throw new Error(t("本章生成结果为空"))
       }
       return phase
     } catch (error) {
@@ -288,7 +289,7 @@ async function generateOnePhase(params: {
       )
     }
   }
-  throw lastError instanceof Error ? lastError : new Error('本章生成失败')
+  throw lastError instanceof Error ? lastError : new Error(t("本章生成失败"))
 }
 
 export const useRoadmapStore = create<RoadmapState>((set, get) => ({
@@ -351,8 +352,8 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
             ? {
                 ...step,
                 generationStatus: 'failed' as RoadmapGenerationStatus,
-                generationError: '本章内容不完整，请重新生成',
-                goal: '本章内容不完整，请点击重新生成。',
+                generationError: t("本章内容不完整，请重新生成"),
+                goal: t("本章内容不完整，请点击重新生成。"),
               }
             : step,
         )
@@ -370,7 +371,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
             ? {
                 ...step,
                 generationStatus: 'failed' as RoadmapGenerationStatus,
-                generationError: '本章内容不完整',
+                generationError: t("本章内容不完整"),
               }
             : step,
         )
@@ -399,7 +400,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           ? readPersistedGuide(key)?.steps.filter(isPhaseContentReady) || []
           : []
 
-    const titles = DEFAULT_PHASE_TITLES
+    const titles = DEFAULT_PHASE_TITLES.map((title) => t(title))
     let steps = createPlaceholderPhases(titles).map((placeholder) => {
       const ready = existingReady.find((item) => item.phase === placeholder.phase)
       if (!ready) return placeholder
@@ -414,12 +415,12 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
     steps = steps.map((step) => {
       if (isPhaseContentReady(step)) return step
       if (firstMissing && step.phase === firstMissing.phase) {
-        return { ...step, generationStatus: 'generating', goal: '正在生成本章内容…' }
+        return { ...step, generationStatus: 'generating', goal: t("正在生成本章内容…") }
       }
       return {
         ...step,
         generationStatus: 'queued',
-        goal: step.goal?.includes('不完整') ? step.goal : '排队等待生成…',
+        goal: step.goal?.includes(t("不完整")) ? step.goal : t("排队等待生成…"),
       }
     })
 
@@ -437,10 +438,10 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         title:
           current.cacheKey === key && current.roadmap?.title
             ? current.roadmap.title
-            : `贡献指南：#${activeIssue.issueNumber} ${activeIssue.title}`,
+            : t("贡献指南：#{0} {1}", [activeIssue.issueNumber, activeIssue.title]),
         description:
-          '围绕当前 Issue 分步理解问题、准备环境、复现并提交 PR。第一章就绪即可阅读，其余章节后台继续生成。',
-        totalEstimatedTime: '待确认',
+          t("围绕当前 Issue 分步理解问题、准备环境、复现并提交 PR。第一章就绪即可阅读，其余章节后台继续生成。"),
+        totalEstimatedTime: t("待确认"),
         phases: steps,
         tips: current.roadmap?.tips || [],
         confidence: 0.7,
@@ -461,7 +462,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         roadmap: {
           title: prepared.title,
           description: prepared.description,
-          totalEstimatedTime: prepared.totalEstimatedTime || '待确认',
+          totalEstimatedTime: prepared.totalEstimatedTime || t("待确认"),
           phases: get().steps,
           tips: [],
           confidence: 0.7,
@@ -486,7 +487,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           generationStatus: 'generating',
           generationError: null,
           streamingPreview: undefined,
-          goal: '正在生成本章内容…',
+          goal: t("正在生成本章内容…"),
         })
         set({ steps, progress: calculateProgress(steps), isGeneratingMore: true })
 
@@ -499,7 +500,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           const preview = extractStreamingGuidePreview(accumulated)
           steps = patchPhase(get().steps, phaseNumber, {
             streamingPreview: accumulated,
-            goal: preview.goal || '正在生成本章内容…',
+            goal: preview.goal || t("正在生成本章内容…"),
             actionIntro: preview.actionIntro,
           })
           set({ steps })
@@ -536,11 +537,11 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           persistCurrent(get)
         } catch (phaseError) {
           if (get().generationToken !== token) return
-          const message = getErrorMessage(phaseError, '本章生成失败')
+          const message = getErrorMessage(phaseError, t("本章生成失败"))
           steps = patchPhase(get().steps, phaseNumber, {
             generationStatus: 'failed',
             generationError: message,
-            goal: '本章生成失败，可点击「重试本章」。',
+            goal: t("本章生成失败，可点击「重试本章」。"),
             learningItems: [],
           })
           set({ steps, progress: calculateProgress(steps) })
@@ -578,7 +579,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       persistCurrent(get)
     } catch (err) {
       if (get().generationToken !== token) return
-      const message = getErrorMessage(err, '贡献指南生成失败，请稍后重试')
+      const message = getErrorMessage(err, t("贡献指南生成失败，请稍后重试"))
       // 若已有可读章节，保留它们，只提示错误
       if (get().steps.some(isPhaseContentReady)) {
         set({ isLoading: false, isGeneratingMore: false })
@@ -616,7 +617,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         generationStatus: 'generating',
         generationError: null,
         streamingPreview: undefined,
-        goal: '正在重新生成本章…',
+        goal: t("正在重新生成本章…"),
         learningItems: [],
       }),
     })
@@ -631,7 +632,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       set({
         steps: patchPhase(get().steps, phaseNumber, {
           streamingPreview: accumulated,
-          goal: preview.goal || '正在重新生成本章…',
+          goal: preview.goal || t("正在重新生成本章…"),
           actionIntro: preview.actionIntro,
         }),
       })
@@ -687,11 +688,11 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       persistCurrent(get)
     } catch (error) {
       if (get().generationToken !== token) return
-      const message = getErrorMessage(error, '本章重试失败')
+      const message = getErrorMessage(error, t("本章重试失败"))
       const steps = patchPhase(get().steps, phaseNumber, {
         generationStatus: 'failed',
         generationError: message,
-        goal: '本章生成失败，可再次点击「重试本章」。',
+        goal: t("本章生成失败，可再次点击「重试本章」。"),
         learningItems: [],
       })
       set({

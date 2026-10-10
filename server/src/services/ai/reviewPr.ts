@@ -5,12 +5,14 @@ import {
   type RuleReviewResult,
 } from '../../../../shared/core/code-review'
 import type { AIRuntime } from './types'
+import { getRequestLocale } from '../../middlewares/localeContext'
 
 /** Execute a real grounded LLM review through the request-scoped runtime. */
 export async function reviewPr(
   params: RuleReviewInput,
   runtime: AIRuntime,
 ): Promise<RuleReviewResult> {
+  params = { ...params, locale: getRequestLocale() }
   if (!runtime.client) {
     return createRuleReview(params)
   }

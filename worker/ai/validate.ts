@@ -422,13 +422,13 @@ export function suggestNextSteps(reply: string): string[] {
   if (reply.includes('Issue') || reply.includes('issue')) {
     suggestions.push('查看相关的 Issue 详情')
   }
-  if (reply.includes('文档') || reply.includes('README')) {
+  if (/文档|README|documentation/i.test(reply)) {
     suggestions.push('阅读项目文档了解更多')
   }
-  if (reply.includes('代码') || reply.includes('源码')) {
+  if (/代码|源码|code|source/i.test(reply)) {
     suggestions.push('浏览相关代码文件')
   }
-  if (reply.includes('贡献') || reply.includes('PR')) {
+  if (/贡献|PR|contribut/i.test(reply)) {
     suggestions.push('尝试提交第一个 Pull Request')
   }
   suggestions.push('继续提问深入了解')

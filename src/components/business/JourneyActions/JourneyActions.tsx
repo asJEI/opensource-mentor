@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useNavigate } from 'react-router-dom'
 
 export interface JourneyPathItem {
@@ -17,8 +18,8 @@ export interface JourneyActionsProps {
  * Post-analysis multi-path guidance — keeps users in the contribution journey.
  */
 export function JourneyActions({
-  title = '接下来可以这样做',
-  description = '任选一条路径继续，菜单随时可切换。',
+  title = t("接下来可以这样做"),
+  description = t("任选一条路径继续，菜单随时可切换。"),
   paths,
 }: JourneyActionsProps) {
   const navigate = useNavigate()

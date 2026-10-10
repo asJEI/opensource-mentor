@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { ReviewStatus } from '@/types/codeReview'
@@ -18,23 +19,23 @@ export interface ReviewActionBarProps {
 const statusConfig: Record<ReviewStatus, { icon: string; text: string }> = {
   idle: {
     icon: '🤖',
-    text: '准备开始代码审查',
+    get text() { return t("准备开始代码审查") },
   },
   queued: {
     icon: '⏳',
-    text: 'AI 导师正在排队审查你的代码，请稍候...',
+    get text() { return t("AI 导师正在排队审查你的代码，请稍候...") },
   },
   running: {
     icon: '🤖',
-    text: 'AI 导师正在审查你的代码，请稍候...',
+    get text() { return t("AI 导师正在审查你的代码，请稍候...") },
   },
   completed: {
     icon: '🎉',
-    text: '审查完成，请对照下方问题与风险逐条确认后再提交 PR',
+    get text() { return t("审查完成，请对照下方问题与风险逐条确认后再提交 PR") },
   },
   failed: {
     icon: '❌',
-    text: '审查失败，请重试',
+    get text() { return t("审查失败，请重试") },
   },
 }
 
@@ -84,8 +85,7 @@ export const ReviewActionBar: React.FC<ReviewActionBarProps> = ({
             </svg>
           }
         >
-          生成 Pull Request 描述
-        </Button>
+          {t("生成 Pull Request 描述")}</Button>
         <Button
           variant="primary"
           size="md"
@@ -100,8 +100,7 @@ export const ReviewActionBar: React.FC<ReviewActionBarProps> = ({
             </svg>
           }
         >
-          查看修改建议
-        </Button>
+          {t("查看修改建议")}</Button>
       </div>
     </div>
   )

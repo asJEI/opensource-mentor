@@ -5,6 +5,7 @@ import { ApiError, success } from '../http'
 import { isRecord } from '../ai/json'
 import { resolveAIClient } from '../ai/resolveConfig'
 import { createLLMReview, createRuleReview } from './review'
+import { requestLocale } from '../../shared/locale'
 import {
   generateReviewId,
   type ReviewJobRecord,
@@ -247,6 +248,7 @@ export async function handleCreateReview(
   }
 
   const reviewInput = {
+    locale: requestLocale(request.headers.get('Accept-Language')),
     prUrl: source.prUrl,
     prTitle: source.prTitle,
     prBody: source.prBody,

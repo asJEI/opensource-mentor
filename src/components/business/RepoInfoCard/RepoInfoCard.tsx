@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { Repository } from '@/types'
@@ -148,8 +149,7 @@ export const RepoInfoCard: React.FC<RepoInfoCardProps> = ({
             </svg>
           }
         >
-          重新分析
-        </Button>
+          {t("重新分析")}</Button>
       </div>
     </div>
   )

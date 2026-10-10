@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
@@ -59,8 +60,8 @@ function GuideMasthead() {
           <span className="osm-kicker-dot" />
           CONTRIBUTION GUIDE
         </span>
-        <h1>贡献指南</h1>
-        <p>获取代码、搭好环境、理解 Issue、修改验证，直到提交 PR。</p>
+        <h1>{t("贡献指南")}</h1>
+        <p>{t("获取代码、搭好环境、理解 Issue、修改验证，直到提交 PR。")}</p>
       </div>
     </header>
   )
@@ -69,6 +70,7 @@ function GuideMasthead() {
 function normalizeSections(phases: RoadmapPhase[]) {
   return GUIDE_SECTIONS.map((section, index) => ({
     ...section,
+    title: t(section.title),
     id: `guide-section-${index + 1}`,
     phase:
       phases.find((item) => item.phase === index + 1) ||
@@ -107,8 +109,7 @@ function CommandBlock({
         }}
         icon={<CopyIcon />}
       >
-        复制命令
-      </Button>
+        {t("复制命令")}</Button>
     </div>
   )
 }
@@ -131,17 +132,17 @@ function ActionStepCard({
       {step.description && <p className="guide-step-desc">{step.description}</p>}
       <CommandBlock
         commands={step.commands || []}
-        onCopied={() => showToast('success', '已复制', '命令已复制到剪贴板')}
+        onCopied={() => showToast('success', t("已复制"), t("命令已复制到剪贴板"))}
       />
       {step.expectedResult && (
         <aside className="guide-callout">
-          <strong>完成标准</strong>
+          <strong>{t("完成标准")}</strong>
           <p>{step.expectedResult}</p>
         </aside>
       )}
       <label className="guide-checkbox">
         <input type="checkbox" checked={Boolean(step.completed)} onChange={onToggle} />
-        <span>{step.checkboxLabel || '标记为完成'}</span>
+        <span>{step.checkboxLabel || t("标记为完成")}</span>
       </label>
     </section>
   )
@@ -161,7 +162,7 @@ function FileRefsBlock({
   if (files.length === 0) return null
   return (
     <section className="guide-content-block">
-      <h3>建议先理解这 {files.length} 个文件</h3>
+      <h3>{t("建议先理解这")}{files.length} {t("个文件")}</h3>
       <div className="guide-file-list">
         {files.map((file) => {
           const url =
@@ -172,8 +173,7 @@ function FileRefsBlock({
               <code>{file.path}</code>
               <p>{file.reason}</p>
               <a href={url} target="_blank" rel="noreferrer">
-                在 GitHub 查看
-              </a>
+                {t("在 GitHub 查看")}</a>
             </article>
           )
         })}
@@ -193,7 +193,7 @@ function ReproduceBlock({
 }) {
   return (
     <section className={clsx('guide-reproduce', block.completed && 'completed')}>
-      <h3>{block.title || '复现 Issue'}</h3>
+      <h3>{block.title || t("复现 Issue")}</h3>
       <ol className="guide-reproduce-steps">
         {block.steps.map((step, index) => (
           <li key={`${step}-${index}`}>{step}</li>
@@ -201,7 +201,7 @@ function ReproduceBlock({
       </ol>
       {block.constructExample && (
         <aside className="guide-callout">
-          <strong>然后构造</strong>
+          <strong>{t("然后构造")}</strong>
           <pre>
             <code>{block.constructExample}</code>
           </pre>
@@ -211,13 +211,13 @@ function ReproduceBlock({
         <div className="guide-behavior-grid">
           {block.expectedBehavior && (
             <div>
-              <strong>预期：</strong>
+              <strong>{t("预期：")}</strong>
               <p>{block.expectedBehavior}</p>
             </div>
           )}
           {block.actualBehavior && (
             <div>
-              <strong>当前行为：</strong>
+              <strong>{t("当前行为：")}</strong>
               <p>{block.actualBehavior}</p>
             </div>
           )}
@@ -225,12 +225,11 @@ function ReproduceBlock({
       )}
       <label className="guide-checkbox">
         <input type="checkbox" checked={Boolean(block.completed)} onChange={onToggle} />
-        <span>{block.checkboxLabel || '我成功复现了问题'}</span>
+        <span>{block.checkboxLabel || t("我成功复现了问题")}</span>
       </label>
       <div className="guide-action-row">
         <Button variant="secondary" onClick={onMentor}>
-          复现失败？问 AI 导师
-        </Button>
+          {t("复现失败？问 AI 导师")}</Button>
       </div>
     </section>
   )
@@ -301,7 +300,7 @@ function GuideArticle({
 
     return (
       <article className="guide-reader">
-        <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
+        <div className="guide-reader-kicker">{t("贡献指南 /")}{section.number}</div>
         <h2>{title}</h2>
         <div className="guide-phase-streaming">
           {hasPreview ? (
@@ -323,13 +322,12 @@ function GuideArticle({
               )}
               <p className="guide-stream-hint">
                 <span className="guide-stream-pulse" />
-                正在写入完整步骤…
-              </p>
+                {t("正在写入完整步骤…")}</p>
             </>
           ) : (
             <div className="guide-phase-loading">
               <div className="ai-loading-spinner" />
-              <p>正在连接 AI 并开始生成本章…</p>
+              <p>{t("正在连接 AI 并开始生成本章…")}</p>
             </div>
           )}
         </div>
@@ -340,10 +338,10 @@ function GuideArticle({
   if (generationStatus === 'queued') {
     return (
       <article className="guide-reader">
-        <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
+        <div className="guide-reader-kicker">{t("贡献指南 /")}{section.number}</div>
         <h2>{title}</h2>
         <div className="guide-phase-loading">
-          <p>排队等待生成，可先阅读已完成的章节。</p>
+          <p>{t("排队等待生成，可先阅读已完成的章节。")}</p>
         </div>
       </article>
     )
@@ -352,15 +350,14 @@ function GuideArticle({
   if (generationStatus === 'failed' || !hasContent) {
     return (
       <article className="guide-reader">
-        <div className="guide-reader-kicker">贡献指南 / {section.number}</div>
+        <div className="guide-reader-kicker">{t("贡献指南 /")}{section.number}</div>
         <h2>{title}</h2>
         <p className="guide-reader-goal">
-          {phase?.generationError || '本章内容不完整。可只重试本章，不必整份重来。'}
+          {phase?.generationError || t("本章内容不完整。可只重试本章，不必整份重来。")}
         </p>
         <div className="guide-action-row">
           <Button variant="primary" onClick={onRetryPhase} loading={isRetrying}>
-            重试本章
-          </Button>
+            {t("重试本章")}</Button>
         </div>
       </article>
     )
@@ -369,14 +366,14 @@ function GuideArticle({
   return (
     <article className="guide-reader">
       <div className="guide-reader-kicker">
-        贡献指南 / {section.number}
-        {isCurrent ? ' · 当前阅读' : ''}
-        {isCompleted ? ' · 已完成' : ''}
+        {t("贡献指南 /")}{section.number}
+        {isCurrent ? t(" · 当前阅读") : ''}
+        {isCompleted ? t(" · 已完成") : ''}
       </div>
       <h2>{title}</h2>
       <p className="guide-reader-goal">{phase?.actionIntro || phase?.goal}</p>
       {phase?.estimatedDuration && (
-        <p className="guide-reader-meta">预计用时：{phase.estimatedDuration}</p>
+        <p className="guide-reader-meta">{t("预计用时：")}{phase.estimatedDuration}</p>
       )}
 
       {actionSteps.map((step, index) => (
@@ -394,13 +391,13 @@ function GuideArticle({
         <ReproduceBlock
           block={reproduce}
           onToggle={onToggleReproduce}
-          onMentor={() => onMentor('我在复现 Issue 上卡住了，请根据当前章节帮我排查。')}
+          onMentor={() => onMentor(t("我在复现 Issue 上卡住了，请根据当前章节帮我排查。"))}
         />
       )}
 
       {!hasStructured && learningItems.length > 0 && (
         <section className="guide-content-block">
-          <h3>本章要点</h3>
+          <h3>{t("本章要点")}</h3>
           <ul className="guide-bullet-list">
             {learningItems.map((item, index) => (
               <li key={`${item}-${index}`}>{item}</li>
@@ -411,46 +408,43 @@ function GuideArticle({
 
       {isLast && (
         <section className="guide-content-block guide-action-block">
-          <h3>提交前的最后两步</h3>
+          <h3>{t("提交前的最后两步")}</h3>
           <div className="guide-action-row">
-            <Button variant="secondary" onClick={onCodeReview}>去代码审查</Button>
-            <Button variant="primary" onClick={onPrGenerator}>去 PR 生成器</Button>
-            <Button variant="ghost" onClick={() => onMentor()}>问 AI 导师</Button>
+            <Button variant="secondary" onClick={onCodeReview}>{t("去代码审查")}</Button>
+            <Button variant="primary" onClick={onPrGenerator}>{t("去 PR 生成器")}</Button>
+            <Button variant="ghost" onClick={() => onMentor()}>{t("问 AI 导师")}</Button>
           </div>
         </section>
       )}
 
       {!isLast && (
         <section className="guide-content-block guide-action-block">
-          <h3>卡住了？</h3>
-          <p>AI 导师会自动带上当前 Issue、章节和已完成进度，不用从头解释。</p>
+          <h3>{t("卡住了？")}</h3>
+          <p>{t("AI 导师会自动带上当前 Issue、章节和已完成进度，不用从头解释。")}</p>
           <div className="guide-action-row">
             <Button
               variant="secondary"
               onClick={() =>
-                onMentor(`我在「${title}」这一章卡住了，请结合当前步骤继续指导我。`)
+                onMentor(t("我在「{0}」这一章卡住了，请结合当前步骤继续指导我。", [title]))
               }
             >
-              问 AI 导师
-            </Button>
+              {t("问 AI 导师")}</Button>
           </div>
         </section>
       )}
 
       <div className="guide-reader-footer">
         <Button variant="secondary" onClick={onPrevious} disabled={isFirst}>
-          上一章
-        </Button>
+          {t("上一章")}</Button>
         <Button
           variant={isCompleted ? 'secondary' : 'primary'}
           onClick={onComplete}
           icon={<CheckIcon />}
         >
-          {isCompleted ? '已标记完成' : '标记本章完成'}
+          {isCompleted ? t("已标记完成") : t("标记本章完成")}
         </Button>
         <Button variant="primary" onClick={onNext} disabled={isLast} icon={<ArrowRightIcon />}>
-          下一章
-        </Button>
+          {t("下一章")}</Button>
       </div>
     </article>
   )
@@ -535,7 +529,8 @@ const Roadmap = () => {
     }
   }, [steps, hasAutoFocused])
 
-  const sections = useMemo(() => normalizeSections(steps), [steps])
+  const locale = useUserStore((state) => state.preferences.language)
+  const sections = useMemo(() => normalizeSections(steps), [steps, locale])
   const activeSection = sections[activeIndex] || sections[0]
   const completedCount = sections.filter((section) => section.phase?.status === 'completed').length
   const readyCount = sections.filter((section) => {
@@ -553,9 +548,9 @@ const Roadmap = () => {
   )
   const generatingLabel =
     generatingIndex >= 0
-      ? `${generatingIndex + 1} / ${sections.length || 7} · 生成中`
+      ? t("{0} / {1} · 生成中", [generatingIndex + 1, sections.length || 7])
       : isGeneratingMore
-        ? `${readyCount} / ${sections.length || 7} · 生成中`
+        ? t("{0} / {1} · 生成中", [readyCount, sections.length || 7])
         : null
   const hasShell = steps.length > 0
   const issueTitle = activeContributionIssue
@@ -589,7 +584,7 @@ const Roadmap = () => {
   const handleComplete = () => {
     if (!activeSection?.phase?.id || activeSection.phase.generationStatus !== 'ready') return
     updateStepStatus(activeSection.phase.id, 'completed')
-    showToast('success', '已记录进度', `「${activeSection.title}」已完成`)
+    showToast('success', t("已记录进度"), t("「{0}」已完成", [activeSection.title]))
     if (activeIndex < sections.length - 1) setActiveIndex((index) => index + 1)
   }
 
@@ -598,15 +593,15 @@ const Roadmap = () => {
 
   if (!activeContributionIssue) {
     return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
+      <AppLayout breadcrumbs={[{ label: t("学习中心") }, { label: t("贡献指南") }]}>
         <div className="app-page active roadmap-shell">
           <GuideMasthead />
           <AiPageError
             kicker="NO ISSUE SELECTED"
-            title="请先选择一个 Issue"
-            message="贡献指南必须围绕你当前选择的 Issue 生成。"
+            title={t("请先选择一个 Issue")}
+            message={t("贡献指南必须围绕你当前选择的 Issue 生成。")}
             onRetry={() => navigate('/issues')}
-            retryLabel="去选择 Issue"
+            retryLabel={t("去选择 Issue")}
             showSettingsLink={false}
           />
         </div>
@@ -616,16 +611,16 @@ const Roadmap = () => {
 
   if (error && !hasShell) {
     return (
-      <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
+      <AppLayout breadcrumbs={[{ label: t("学习中心") }, { label: t("贡献指南") }]}>
         <div className="app-page active roadmap-shell">
           <GuideMasthead />
           <AiPageError
             className="roadmap-error"
             kicker="LOAD FAILED"
-            title="贡献指南加载失败"
+            title={t("贡献指南加载失败")}
             message={error}
             onRetry={handleRetryAll}
-            retryLabel="重新加载"
+            retryLabel={t("重新加载")}
           />
         </div>
       </AppLayout>
@@ -633,7 +628,7 @@ const Roadmap = () => {
   }
 
   return (
-    <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: '贡献指南' }]}>
+    <AppLayout breadcrumbs={[{ label: t("学习中心") }, { label: t("贡献指南") }]}>
       <div className="app-page active roadmap-shell">
         <header className="guide-header">
           <div>
@@ -641,37 +636,33 @@ const Roadmap = () => {
               <span className="osm-kicker-dot" />
               CONTRIBUTION GUIDE
             </span>
-            <h1>{roadmap?.title || `围绕 ${issueTitle} 的贡献指南`}</h1>
+            <h1>{roadmap?.title || t("围绕 {0} 的贡献指南", [issueTitle])}</h1>
             <p>
-              围绕「{issueTitle}」按可执行步骤推进。第一章就绪即可先做，后续章节后台继续生成。
-            </p>
+              {t("围绕「")}{issueTitle}{t("」按可执行步骤推进。第一章就绪即可先做，后续章节后台继续生成。")}</p>
           </div>
           <div className="guide-header-actions">
             <span className="guide-progress-meta">
-              {readyCount}/{sections.length || 7} 已就绪
-              {failedCount > 0 ? ` · ${failedCount} 失败` : ''}
-              {completedCount > 0 ? ` · ${completedCount} 已完成` : ''}
+              {readyCount}/{sections.length || 7} {t("已就绪")}{failedCount > 0 ? t(" · {0} 失败", [failedCount]) : ''}
+              {completedCount > 0 ? t(" · {0} 已完成", [completedCount]) : ''}
             </span>
             {failedCount > 0 && (
               <Button variant="primary" onClick={() => retryFailedPhases()} loading={isGeneratingMore}>
-                重试失败章节
-              </Button>
+                {t("重试失败章节")}</Button>
             )}
             <Button variant="secondary" onClick={handleRetryAll} loading={isLoading} icon={<RefreshIcon />}>
-              全部重新生成
-            </Button>
+              {t("全部重新生成")}</Button>
           </div>
         </header>
 
         {(isLoading || isGeneratingMore) && (
           <div className="guide-stream-status">
             {isLoading
-              ? '正在读取仓库文档与 Issue 上下文…'
-              : generatingLabel || '生成中'}
+              ? t("正在读取仓库文档与 Issue 上下文…")
+              : generatingLabel || t("生成中")}
           </div>
         )}
 
-        <nav className="guide-stepper" aria-label="章节进度">
+        <nav className="guide-stepper" aria-label={t("章节进度")}>
           {sections.map((section, index) => {
             const status = section.phase?.generationStatus || 'queued'
             const completed = section.phase?.status === 'completed'
@@ -701,7 +692,7 @@ const Roadmap = () => {
         <div className="contribution-workspace">
         <div className="guide-layout">
           <aside className="guide-sidebar">
-            <div className="guide-sidebar-title">章节目录</div>
+            <div className="guide-sidebar-title">{t("章节目录")}</div>
             <nav className="guide-nav">
               {sections.map((section, index) => (
                 <button

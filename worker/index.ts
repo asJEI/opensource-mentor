@@ -4,6 +4,7 @@
  */
 
 import { redactSecrets } from '../shared/byok'
+import { requestLocale } from '../shared/locale'
 import {
   handleAnalyzeRepo,
   handleChat,
@@ -279,7 +280,7 @@ export default {
         `[api] ${request.method} ${url.pathname} failed:`,
         redactSecrets(error instanceof Error ? error.message : 'unknown error'),
       )
-      return toErrorResponse(error)
+      return toErrorResponse(error, requestLocale(request.headers.get('Accept-Language')))
     }
   },
 } satisfies ExportedHandler<PlatformEnv>

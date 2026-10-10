@@ -1,4 +1,6 @@
 import { redactSecrets } from '../../shared/byok'
+import { isLocale, requestLocale } from '../../shared/locale'
+import { localizeGenerated } from '../../shared/generatedLocale'
 import { parseJsonSafely } from '../ai/json'
 import type { AIClient } from '../ai/client'
 import { resolveAIClient } from '../ai/resolveConfig'
@@ -14,6 +16,7 @@ const GITHUB_WEB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_ACCESS_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 const GITHUB_API_VERSION = '2022-11-28'
 const OAUTH_STATE_COOKIE = 'osm_github_oauth_state'
+const OAUTH_LOCALE_COOKIE = 'osm_github_oauth_locale'
 
 type GitHubUserResponse = {
   id: number
@@ -559,7 +562,7 @@ async function generateStructuredDeveloperProfile(
             },
             {
               role: 'user',
-              content: `基于以下 GitHub 事实和规则初判，输出这个 JSON Schema：{"level":"beginner|intermediate|advanced","confidence":0.0,"languages":[{"name":"TypeScript","level":"beginner|intermediate|advanced","confidence":0.0}],"frameworks":["React","Node.js"],"domains":["frontend","backend","ai","devops"],"open_source_experience":"none|beginner|experienced","strengths":[],"possible_weaknesses":[],"evidence":[],"github_summary":""}。\n\n要求：保守判断；不要因为 repo 数量多、fork 多、tutorial/demo 多、star 多或代码量大就判断 advanced；优先使用第三方仓库 PR、持续贡献、近期活跃非 fork 项目和可观察的工程复杂度作为证据。“可能的弱项”只能表达为公开 GitHub 数据中“尚未观察到”的能力，不得当作用户真实缺陷。evidence 使用简体中文短句并指明对应事实。\n\n事实：${JSON.stringify(facts)}`,
+              content: `基于以下 GitHub 事实和规则初判，输出这个 JSON Schema：{"level":"beginner|intermediate|advanced","confidence":0.0,"languages":[{"name":"TypeScript","level":"beginner|intermediate|advanced","confidence":0.0}],"frameworks":["React","Node.js"],"domains":["frontend","backend","ai","devops"],"open_source_experience":"none|beginner|experienced","strengths":[],"possible_weaknesses":[],"evidence":[],"github_summary":""}。\n\n要求：保守判断；不要因为 repo 数量多、fork 多、tutorial/demo 多、star 多或代码量大就判断 advanced；优先使用第三方仓库 PR、持续贡献、近期活跃非 fork 项目和可观察的工程复杂度作为证据。“可能的弱项”只能表达为公开 GitHub 数据中“尚未观察到”的能力，不得当作用户真实缺陷。evidence 使用用户语言偏好的短句并指明对应事实。\n\n事实：${JSON.stringify(facts)}`,
             },
           ],
         }),
@@ -838,7 +841,14 @@ async function refreshDeveloperProfileInBackground(params: {
       const resolved = await diagnostics.measure(
         'developer_profile.resolve_ai',
         () =>
-          resolveAIClient(env, request, {}, {
+          resolveAIClient(env, new Request(request, {
+            headers: (() => {
+              const headers = new Headers(request.headers)
+              const locale = getCookie(request, OAUTH_LOCALE_COOKIE)
+              if (isLocale(locale)) headers.set('Accept-Language', locale)
+              return headers
+            })(),
+          }), {}, {
             allowUnauthenticatedPlatform: true,
           }),
       )
@@ -847,11 +857,11 @@ async function refreshDeveloperProfileInBackground(params: {
       // measure() already recorded resolve_ai failure; fall back to rule-based profile.
     }
 
-    profile.developerProfile = await generateStructuredDeveloperProfile(
+    profile.developerProfile = localizeGenerated(await generateStructuredDeveloperProfile(
       profile,
       aiClient,
       diagnostics,
-    )
+    ), requestLocale(getCookie(request, OAUTH_LOCALE_COOKIE) || request.headers.get('Accept-Language')))
 
     await updateOAuthDeveloperProfileSnapshot(
       env,
@@ -918,12 +928,16 @@ export function handleGitHubOAuthStart(
   authorizeUrl.searchParams.set('state', state)
   authorizeUrl.searchParams.set('allow_signup', 'true')
 
-  return redirect(authorizeUrl.toString(), {
+  const response = redirect(authorizeUrl.toString(), {
     headers: {
       'Set-Cookie': serializeCookie(request, OAUTH_STATE_COOKIE, state, 600),
       'Cache-Control': 'no-store',
     },
   })
+  const selectedLocale = new URL(request.url).searchParams.get('locale')
+  response.headers.append('Set-Cookie', serializeCookie(request, OAUTH_LOCALE_COOKIE,
+    isLocale(selectedLocale) ? selectedLocale : requestLocale(request.headers.get('Accept-Language')), 600))
+  return response
 }
 
 export async function handleGitHubOAuthCallback(

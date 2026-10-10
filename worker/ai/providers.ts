@@ -14,6 +14,7 @@ import { ApiError } from '../http'
 export type AIProvider = PlatformLlmProvider
 
 export type AIConfig = {
+  locale?: import('../../shared/locale').Locale
   provider: AIProvider
   apiKey: string
   model: string

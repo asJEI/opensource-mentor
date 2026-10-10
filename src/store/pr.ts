@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { create } from 'zustand'
 import type { PrType, PrDraft } from '@/types'
 import { aiService } from '@/services'
@@ -76,7 +77,7 @@ export const usePrStore = create<PrState>((set, get) => ({
     const issueNum = issueNumber || (linkedIssue ? parseInt(linkedIssue, 10) : 0)
 
     if (!issueNum) {
-      set({ error: '请输入关联的 Issue 编号' })
+      set({ error: t("请输入关联的 Issue 编号") })
       return
     }
 
@@ -95,7 +96,7 @@ export const usePrStore = create<PrState>((set, get) => ({
       set({ prDraft: draft, isGenerating: false })
     } catch (err) {
       if (generation !== prGeneration) return
-      const message = getErrorMessage(err, 'PR 生成失败，请稍后重试')
+      const message = getErrorMessage(err, t("PR 生成失败，请稍后重试"))
       set({ isGenerating: false, error: message })
     }
   },

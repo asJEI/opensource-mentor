@@ -45,11 +45,11 @@ export async function recommendIssues(
       topP: 0.9,
       responseFormat: { type: 'json_object' },
     })
-    return validateRecommendationResult(
+    return localizeGenerated(validateRecommendationResult(
       parseJsonSafely(content),
       issues,
       userProfile,
-    )
+    ), client.locale ?? 'zh-CN')
   } catch (error) {
     if (error instanceof ApiError) throw error
     console.error(
@@ -61,3 +61,4 @@ export async function recommendIssues(
     })
   }
 }
+import { localizeGenerated } from '../../shared/generatedLocale'

@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import LanguageSwitcher from '@/i18n/LanguageSwitcher'
 
 export interface BreadcrumbItem {
   label: string
@@ -30,6 +31,7 @@ const AppHeader = ({ breadcrumbs = [] }: AppHeaderProps) => {
           })}
         </nav>
       </div>
+      <LanguageSwitcher />
     </header>
   )
 }

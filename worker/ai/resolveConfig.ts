@@ -16,6 +16,7 @@ import { ApiError } from '../http'
 import { createAIClient, type AIClient } from './client'
 import { PROVIDER_DEFAULT_BASE_URL } from './providers'
 import { readSession } from '../auth/session'
+import { requestLocale } from '../../shared/locale'
 
 export interface RequestAIProviderConfig {
   mode: 'platform' | 'custom'
@@ -166,6 +167,7 @@ export async function resolveAIClient(
     return {
       isCustom: true,
       client: createAIClient({
+        locale: requestLocale(request.headers.get('Accept-Language')),
         provider: requestConfig.provider,
         apiKey: requestConfig.apiKey!,
         baseUrl: requestConfig.baseUrl,
@@ -214,6 +216,7 @@ export async function resolveAIClient(
   return {
     isCustom: false,
     client: createAIClient({
+      locale: requestLocale(request.headers.get('Accept-Language')),
       provider: platform.defaultLlmProvider,
       apiKey: platform.platformLlmApiKey,
       baseUrl: platform.defaultLlmBaseUrl,

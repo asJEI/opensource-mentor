@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import type React from 'react'
 import clsx from 'clsx'
 import type { PrType } from '@/types'
@@ -21,9 +22,9 @@ interface TypeOption {
 }
 
 const typeOptions: TypeOption[] = [
-  { type: 'bug', name: 'Bug Fix', desc: '修复已知问题或错误', token: 'fix' },
-  { type: 'feature', name: 'Feature', desc: '新增功能或特性改进', token: 'feat' },
-  { type: 'docs', name: 'Docs', desc: '文档更新或补充说明', token: 'docs' },
+  { type: 'bug', name: 'Bug Fix', get desc() { return t("修复已知问题或错误") }, token: 'fix' },
+  { type: 'feature', name: 'Feature', get desc() { return t("新增功能或特性改进") }, token: 'feat' },
+  { type: 'docs', name: 'Docs', get desc() { return t("文档更新或补充说明") }, token: 'docs' },
 ]
 
 /**

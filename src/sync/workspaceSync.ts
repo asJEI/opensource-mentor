@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import {
   validWorkspaceContent,
   isWorkspaceScope,
@@ -156,7 +157,7 @@ export class WorkspaceSync {
       if (generation !== this.generation) return false
       for (const doc of remote) {
         if (!validWorkspaceContent(doc.kind, doc.content))
-          throw new Error('云端进度格式不兼容，请联系维护者')
+          throw new Error(t("云端进度格式不兼容，请联系维护者"))
         const key = keyOf(scope, doc.kind)
         // A read started before a local commit may arrive after that commit.
         if ((this.documents[key]?.revision || 0) > doc.revision) continue
@@ -169,7 +170,7 @@ export class WorkspaceSync {
       return true
     } catch (error) {
       if (generation === this.generation)
-        this.report('error', error instanceof Error ? error.message : '无法恢复进度')
+        this.report('error', error instanceof Error ? error.message : t("无法恢复进度"))
       return false
     }
   }
@@ -177,7 +178,7 @@ export class WorkspaceSync {
     if (!this.user) return
     const clean = JSON.parse(JSON.stringify(content)) as WorkspacePayloads[K]
     if (!validWorkspaceContent(kind, clean)) {
-      this.report('error', '进度内容不完整，尚未保存')
+      this.report('error', t("进度内容不完整，尚未保存"))
       return
     }
     const key = keyOf(scope, kind)
@@ -197,7 +198,7 @@ export class WorkspaceSync {
     this.persist()
     this.report(
       this.conflict ? 'conflict' : 'saving',
-      this.conflict ? '其他页面已更新，请选择保留哪一份内容' : null,
+      this.conflict ? t("其他页面已更新，请选择保留哪一份内容") : null,
     )
     clearTimeout(this.timer)
     this.timer = setTimeout(() => {
@@ -232,8 +233,8 @@ export class WorkspaceSync {
       if (generation !== this.generation) return
       if (error instanceof WorkspaceConflict) {
         this.conflict = { pending: this.queue[0], remote: error.remote }
-        this.report('conflict', '其他页面已更新，请选择保留哪一份内容')
-      } else this.report('error', error instanceof Error ? error.message : '保存失败，请重试')
+        this.report('conflict', t("其他页面已更新，请选择保留哪一份内容"))
+      } else this.report('error', error instanceof Error ? error.message : t("保存失败，请重试"))
     } finally {
       if (generation === this.generation) this.running = false
     }

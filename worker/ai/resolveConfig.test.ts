@@ -23,6 +23,19 @@ function createEnv(limitSuccess = true): {
 }
 
 describe('resolveAIClient', () => {
+  it('propagates the locale header for both platform and BYOK clients', async () => {
+    const { env } = createEnv()
+    const platform = await resolveAIClient(env,
+      new Request('https://mentor.example/api/ai/chat', { headers: { 'Accept-Language': 'en-US' } }),
+      {}, { allowUnauthenticatedPlatform: true })
+    expect(platform.client.locale).toBe('en-US')
+    const custom = await resolveAIClient(env,
+      new Request('https://mentor.example/api/ai/chat', { headers: {
+        'Accept-Language': 'zh-CN', [BYOK_HEADERS.aiMode]: 'custom',
+        [BYOK_HEADERS.aiProvider]: 'deepseek', [BYOK_HEADERS.aiModel]: 'test', [BYOK_HEADERS.aiKey]: 'test-only',
+      } }), {})
+    expect(custom.client.locale).toBe('zh-CN')
+  })
   it('ignores request provider overrides in platform mode', async () => {
     const { env, limit } = createEnv()
     const request = new Request('https://mentor.example/api/ai/chat', {

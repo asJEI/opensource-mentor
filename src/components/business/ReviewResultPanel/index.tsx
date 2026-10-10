@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { ReviewResult, ReviewTab, ReviewSeverity } from '@/types/codeReview'
@@ -26,10 +27,10 @@ interface TabConfig {
 }
 
 const tabConfigs: TabConfig[] = [
-  { key: 'critical', icon: '🔴', label: '严重问题' },
-  { key: 'improvement', icon: '🟡', label: '改进建议' },
-  { key: 'praise', icon: '🟢', label: '做得好的' },
-  { key: 'tips', icon: 'ℹ️', label: '小提示' },
+  { key: 'critical', icon: '🔴', get label() { return t("严重问题") } },
+  { key: 'improvement', icon: '🟡', get label() { return t("改进建议") } },
+  { key: 'praise', icon: '🟢', get label() { return t("做得好的") } },
+  { key: 'tips', icon: 'ℹ️', get label() { return t("小提示") } },
 ]
 
 /** 严重程度排序权重 */
@@ -87,8 +88,8 @@ export const ReviewResultPanel: React.FC<ReviewResultPanelProps> = ({
         if (criticalIssues.length === 0) {
           return renderEmpty(
             '🎉',
-            '没有严重问题',
-            '太棒了！你的代码中没有发现严重问题，继续保持～'
+            t("没有严重问题"),
+            t("太棒了！你的代码中没有发现严重问题，继续保持～")
           )
         }
         return (
@@ -108,8 +109,8 @@ export const ReviewResultPanel: React.FC<ReviewResultPanelProps> = ({
         if (improvementIssues.length === 0) {
           return renderEmpty(
             '✨',
-            '没有改进建议',
-            '你的代码已经很完善了，没有需要改进的地方～'
+            t("没有改进建议"),
+            t("你的代码已经很完善了，没有需要改进的地方～")
           )
         }
         return (
@@ -129,8 +130,8 @@ export const ReviewResultPanel: React.FC<ReviewResultPanelProps> = ({
         if (result.praises.length === 0) {
           return renderEmpty(
             '🌟',
-            '暂无表扬',
-            '继续努力，写出更优秀的代码吧！'
+            t("暂无表扬"),
+            t("继续努力，写出更优秀的代码吧！")
           )
         }
         return (
@@ -147,7 +148,7 @@ export const ReviewResultPanel: React.FC<ReviewResultPanelProps> = ({
                 <div className="praise-card__desc">{praise.description}</div>
                 <div className="praise-card__code">{praise.codeSnippet}</div>
                 <div className="praise-card__why">
-                  <strong>💡 为什么做得好：</strong> {praise.whyItMatters}
+                  <strong>{t("💡 为什么做得好：")}</strong> {praise.whyItMatters}
                 </div>
               </div>
             ))}
@@ -158,8 +159,8 @@ export const ReviewResultPanel: React.FC<ReviewResultPanelProps> = ({
         if (result.tips.length === 0) {
           return renderEmpty(
             '💡',
-            '暂无小提示',
-            '之后会有更多实用的编程技巧分享给你～'
+            t("暂无小提示"),
+            t("之后会有更多实用的编程技巧分享给你～")
           )
         }
         return (

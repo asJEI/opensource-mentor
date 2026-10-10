@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { AppLayout } from '@/components/layout'
@@ -20,25 +21,25 @@ import {
 } from './components'
 
 const goalOptions: Array<{ value: OpenSourceGoal; label: string; legacyGoal: LearningGoal }> = [
-  { value: 'ship_first_pr', label: '完成我的第一个 PR', legacyGoal: 'first_contribution' },
-  { value: 'improve_skills', label: '提升技术能力', legacyGoal: 'improve_engineering' },
-  { value: 'build_github_profile', label: '建设我的 GitHub 作品履历', legacyGoal: 'find_beginner_friendly_issues' },
-  { value: 'contribute_liked_projects', label: '参与我喜欢的项目', legacyGoal: 'learn_new_technology' },
-  { value: 'long_term_contributor', label: '成为长期贡献者', legacyGoal: 'improve_engineering' },
+  { value: 'ship_first_pr', get label() { return t("完成我的第一个 PR") }, legacyGoal: 'first_contribution' },
+  { value: 'improve_skills', get label() { return t("提升技术能力") }, legacyGoal: 'improve_engineering' },
+  { value: 'build_github_profile', get label() { return t("建设我的 GitHub 作品履历") }, legacyGoal: 'find_beginner_friendly_issues' },
+  { value: 'contribute_liked_projects', get label() { return t("参与我喜欢的项目") }, legacyGoal: 'learn_new_technology' },
+  { value: 'long_term_contributor', get label() { return t("成为长期贡献者") }, legacyGoal: 'improve_engineering' },
 ]
 
 const timeOptions: Array<{ value: ContributionTimeBudget; label: string }> = [
-  { value: 'lt_1h', label: '少于 1 小时' },
-  { value: '1_3h', label: '1–3 小时' },
-  { value: '3_6h', label: '3–6 小时' },
-  { value: 'weekend', label: '一个周末' },
-  { value: 'no_preference', label: '暂时无偏好' },
+  { value: 'lt_1h', get label() { return t("少于 1 小时") } },
+  { value: '1_3h', get label() { return t("1–3 小时") } },
+  { value: '3_6h', get label() { return t("3–6 小时") } },
+  { value: 'weekend', get label() { return t("一个周末") } },
+  { value: 'no_preference', get label() { return t("暂时无偏好") } },
 ]
 
 const guidanceOptions: Array<{ value: GuidancePreference; label: string }> = [
-  { value: 'step_by_step', label: '一步一步带我做' },
-  { value: 'hints_when_stuck', label: '卡住时给我提示' },
-  { value: 'find_good_issues', label: '只帮我找到好 Issue' },
+  { value: 'step_by_step', get label() { return t("一步一步带我做") } },
+  { value: 'hints_when_stuck', get label() { return t("卡住时给我提示") } },
+  { value: 'find_good_issues', get label() { return t("只帮我找到好 Issue") } },
 ]
 
 const languageAliases: Record<string, ProgrammingLanguage> = {
@@ -54,13 +55,13 @@ const languageAliases: Record<string, ProgrammingLanguage> = {
 }
 
 const domainLabels: Record<string, string> = {
-  frontend: '前端',
-  backend: '后端',
+  get frontend() { return t("前端") },
+  get backend() { return t("后端") },
   ai: 'AI',
   devops: 'DevOps',
-  docs: '文档',
-  documentation: '文档',
-  testing: '测试',
+  get docs() { return t("文档") },
+  get documentation() { return t("文档") },
+  get testing() { return t("测试") },
 }
 
 type PreferenceDraft = {
@@ -87,7 +88,7 @@ function inferProgrammingLanguages(techStack: string[]): ProgrammingLanguage[] {
 function getOptionLabel<T extends string>(
   value: T | '',
   options: Array<{ value: T; label: string }>,
-  fallback = '未填写',
+  fallback = t("未填写"),
 ): string {
   if (!value) return fallback
   return options.find((option) => option.value === value)?.label ?? value
@@ -102,7 +103,7 @@ function getDetectedTechStack(githubProfile: GitHubDeveloperProfile | null): str
 }
 
 function confidenceLabel(confidence?: number): string {
-  if (typeof confidence !== 'number') return '暂无'
+  if (typeof confidence !== 'number') return t("暂无")
   return `${Math.round(confidence * 100)}%`
 }
 
@@ -111,10 +112,10 @@ function generationStatusMeta(status: DeveloperProfileStatus | null): {
   variant: 'default' | 'success' | 'warning' | 'danger' | 'info'
 } | null {
   if (!status) return null
-  if (status === 'ready') return { label: '画像已就绪', variant: 'success' }
-  if (status === 'failed') return { label: '画像生成失败', variant: 'danger' }
-  if (status === 'generating') return { label: '画像生成中', variant: 'info' }
-  return { label: '等待生成画像', variant: 'warning' }
+  if (status === 'ready') return { label: t("画像已就绪"), variant: 'success' }
+  if (status === 'failed') return { label: t("画像生成失败"), variant: 'danger' }
+  if (status === 'generating') return { label: t("画像生成中"), variant: 'info' }
+  return { label: t("等待生成画像"), variant: 'warning' }
 }
 
 const Settings = () => {
@@ -150,9 +151,9 @@ const Settings = () => {
   const developerProfile = githubProfile?.developerProfile
   const generationStatus = generationStatusMeta(profileStatus)
   const statusLabel = {
-    not_started: '待补充',
-    completed: '已完成',
-    skipped: '已跳过',
+    not_started: t("待补充"),
+    completed: t("已完成"),
+    skipped: t("已跳过"),
   }[profile.profileSetupStatus]
 
   const statusVariant =
@@ -224,16 +225,16 @@ const Settings = () => {
           guidancePreference: draft.guidancePreference,
         })
         applyServerUserState(toServerUserState(me, githubProfile))
-        showToast('success', '偏好已同步', '已保存到服务端 Developer Profile')
+        showToast('success', t("偏好已同步"), t("已保存到服务端 Developer Profile"))
       } catch {
-        showToast('error', '保存失败', '服务端暂时无法保存偏好，请稍后重试')
+        showToast('error', t("保存失败"), t("服务端暂时无法保存偏好，请稍后重试"))
         setSaving(false)
         return
       }
       setSaving(false)
     } else {
       completeProfileSetup(nextProfile)
-      showToast('success', '偏好已保存', '访客偏好已保存到当前浏览器')
+      showToast('success', t("偏好已保存"), t("访客偏好已保存到当前浏览器"))
     }
 
     completeProfileSetup(nextProfile)
@@ -241,14 +242,14 @@ const Settings = () => {
   }
 
   const handleReset = () => {
-    if (!window.confirm('确定要重置本地偏好吗？GitHub 登录信息不会被清除。')) return
+    if (!window.confirm(t("确定要重置本地偏好吗？GitHub 登录信息不会被清除。"))) return
     resetProfile()
     setIsEditing(false)
-    showToast('success', '偏好已重置', '已清空本地贡献偏好，保留 GitHub 账号信息')
+    showToast('success', t("偏好已重置"), t("已清空本地贡献偏好，保留 GitHub 账号信息"))
   }
 
   return (
-    <AppLayout breadcrumbs={[{ label: '设置' }, { label: '偏好设置' }]}>
+    <AppLayout breadcrumbs={[{ label: t("设置") }, { label: t("偏好设置") }]}>
       <div className="page-header">
         <div className="page-title-row">
           <div>
@@ -256,10 +257,9 @@ const Settings = () => {
               <span className="osm-kicker-dot" />
               PREFERENCES
             </span>
-            <h1 className="page-title">偏好设置</h1>
+            <h1 className="page-title">{t("偏好设置")}</h1>
             <p className="page-subtitle">
-              管理 GitHub 公开画像和贡献偏好，让后续 Issue 匹配更贴近你的当前目标。
-            </p>
+              {t("管理 GitHub 公开画像和贡献偏好，让后续 Issue 匹配更贴近你的当前目标。")}</p>
           </div>
         </div>
       </div>
@@ -272,7 +272,7 @@ const Settings = () => {
               <span className="settings-card-icon">
                 <ProfileIcon />
               </span>
-              <span>贡献偏好与画像</span>
+              <span>{t("贡献偏好与画像")}</span>
               {generationStatus && (
                 <Badge variant={generationStatus.variant} size="sm">
                   {generationStatus.label}
@@ -288,8 +288,8 @@ const Settings = () => {
             <div className="profile-editor">
               <section className="profile-field">
                 <div className="profile-field-heading">
-                  <h2>开源目标</h2>
-                  <span>单选</span>
+                  <h2>{t("开源目标")}</h2>
+                  <span>{t("单选")}</span>
                 </div>
                 <div className="experience-option-list">
                   {goalOptions.map((option) => (
@@ -319,12 +319,12 @@ const Settings = () => {
 
               <section className="profile-field">
                 <div className="profile-field-heading">
-                  <h2>想使用的技术栈</h2>
-                  <span>来自 GitHub 预选，可编辑</span>
+                  <h2>{t("想使用的技术栈")}</h2>
+                  <span>{t("来自 GitHub 预选，可编辑")}</span>
                 </div>
                 {detectedTechStack.length > 0 && (
                   <p className="form-hint">
-                    GitHub 识别：{detectedTechStack.join('、')}
+                    {t("GitHub 识别：")}{detectedTechStack.join('、')}
                   </p>
                 )}
                 <div className="profile-tech-stack-list">
@@ -344,7 +344,7 @@ const Settings = () => {
                   <input
                     className="form-input"
                     value={customTech}
-                    placeholder="例如：TypeScript、React、Python、Node.js"
+                    placeholder={t("例如：TypeScript、React、Python、Node.js")}
                     onChange={(event) => setCustomTech(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
@@ -354,15 +354,14 @@ const Settings = () => {
                     }}
                   />
                   <Button variant="secondary" onClick={addCustomTech}>
-                    添加
-                  </Button>
+                    {t("添加")}</Button>
                 </div>
               </section>
 
               <section className="profile-field">
                 <div className="profile-field-heading">
-                  <h2>下一次贡献时间</h2>
-                  <span>单选</span>
+                  <h2>{t("下一次贡献时间")}</h2>
+                  <span>{t("单选")}</span>
                 </div>
                 <div className="profile-option-grid">
                   {timeOptions.map((option) => (
@@ -393,8 +392,8 @@ const Settings = () => {
 
               <section className="profile-field">
                 <div className="profile-field-heading">
-                  <h2>指导方式</h2>
-                  <span>单选</span>
+                  <h2>{t("指导方式")}</h2>
+                  <span>{t("单选")}</span>
                 </div>
                 <div className="profile-option-grid">
                   {guidanceOptions.map((option) => (
@@ -424,21 +423,18 @@ const Settings = () => {
 
               <div className="settings-actions">
                 <Button variant="primary" loading={saving} onClick={handleSave}>
-                  保存偏好
-                </Button>
+                  {t("保存偏好")}</Button>
                 <Button variant="secondary" onClick={() => setIsEditing(false)}>
-                  取消
-                </Button>
+                  {t("取消")}</Button>
               </div>
             </div>
           ) : (
             <div className="profile-summary">
               <section className="settings-inline-panel">
                 <div>
-                  <h3>GitHub 账号</h3>
+                  <h3>{t("GitHub 账号")}</h3>
                   <p className="form-hint">
-                    登录后读取头像、名称、公开仓库、语言、PR / Issue 等公开资料。
-                  </p>
+                    {t("登录后读取头像、名称、公开仓库、语言、PR / Issue 等公开资料。")}</p>
                 </div>
                 <div className="settings-account-preview">
                   {profile.avatar ? (
@@ -447,37 +443,37 @@ const Settings = () => {
                     <span>?</span>
                   )}
                   <div>
-                    <strong>{profile.username || '尚未连接 GitHub'}</strong>
-                    <small>{profile.bio || githubProfile?.profile.htmlUrl || '未读取公开资料'}</small>
+                    <strong>{profile.username || t("尚未连接 GitHub")}</strong>
+                    <small>{profile.bio || githubProfile?.profile.htmlUrl || t("未读取公开资料")}</small>
                   </div>
                 </div>
               </section>
 
               <details className="profile-summary-details">
-                <summary>查看画像与贡献偏好</summary>
+                <summary>{t("查看画像与贡献偏好")}</summary>
               <dl className="profile-summary-grid">
                 <div>
-                  <dt>能力判断</dt>
+                  <dt>{t("能力判断")}</dt>
                   <dd>
                     {developerProfile
-                      ? `${developerProfile.level} · 把握度 ${confidenceLabel(
+                      ? t("{0} · 把握度 {1}", [developerProfile.level, confidenceLabel(
                           developerProfile.confidence,
-                        )}`
+                        )])
                       : profileStatus === 'failed'
-                        ? '画像生成失败，可重新连接 GitHub'
+                        ? t("画像生成失败，可重新连接 GitHub")
                         : profileStatus === 'generating' || profileStatus === 'pending'
-                          ? '开发者画像生成中'
-                          : '等待 GitHub 画像生成'}
+                          ? t("开发者画像生成中")
+                          : t("等待 GitHub 画像生成")}
                   </dd>
                 </div>
                 <div>
-                  <dt>开源经验</dt>
+                  <dt>{t("开源经验")}</dt>
                   <dd>
-                    {developerProfile?.open_source_experience ?? '暂无判断'}
+                    {developerProfile?.open_source_experience ?? t("暂无判断")}
                   </dd>
                 </div>
                 <div>
-                  <dt>常用语言</dt>
+                  <dt>{t("常用语言")}</dt>
                   <dd>
                     {developerProfile?.languages
                       .map(
@@ -491,49 +487,49 @@ const Settings = () => {
                         .slice(0, 5)
                         .map((item) => item.name)
                         .join('、') ||
-                      '暂无'}
+                      t("暂无")}
                   </dd>
                 </div>
                 <div>
-                  <dt>技术栈 / 框架</dt>
+                  <dt>{t("技术栈 / 框架")}</dt>
                   <dd>
                     {developerProfile?.frameworks.join('、') ||
                       profile.preferredTechStack.join('、') ||
-                      '暂无'}
+                      t("暂无")}
                   </dd>
                 </div>
                 <div>
-                  <dt>领域方向</dt>
+                  <dt>{t("领域方向")}</dt>
                   <dd>
                     {developerProfile?.domains
                       .map((domain) => domainLabels[domain] ?? domain)
-                      .join('、') || '暂无'}
+                      .join('、') || t("暂无")}
                   </dd>
                 </div>
                 <div>
-                  <dt>公开仓库</dt>
+                  <dt>{t("公开仓库")}</dt>
                   <dd>
                     {typeof githubProfile?.profile.publicRepos === 'number'
-                      ? `${githubProfile.profile.publicRepos} 个`
-                      : '暂无'}
+                      ? t("{0} 个", [githubProfile.profile.publicRepos])
+                      : t("暂无")}
                   </dd>
                 </div>
                 <div>
-                  <dt>你的开源目标</dt>
+                  <dt>{t("你的开源目标")}</dt>
                   <dd>{getOptionLabel(profile.openSourceGoal, goalOptions)}</dd>
                 </div>
                 <div>
-                  <dt>想使用的技术栈</dt>
-                  <dd>{profile.preferredTechStack.join('、') || '未填写'}</dd>
+                  <dt>{t("想使用的技术栈")}</dt>
+                  <dd>{profile.preferredTechStack.join('、') || t("未填写")}</dd>
                 </div>
                 <div>
-                  <dt>下一次贡献时间</dt>
+                  <dt>{t("下一次贡献时间")}</dt>
                   <dd>
                     {getOptionLabel(profile.contributionTimeBudget, timeOptions)}
                   </dd>
                 </div>
                 <div>
-                  <dt>指导方式</dt>
+                  <dt>{t("指导方式")}</dt>
                   <dd>
                     {getOptionLabel(profile.guidancePreference, guidanceOptions)}
                   </dd>
@@ -549,18 +545,16 @@ const Settings = () => {
 
               <div className="settings-actions">
                 <Button variant="primary" onClick={beginEditing}>
-                  编辑偏好
-                </Button>
+                  {t("编辑偏好")}</Button>
                 <Button variant="secondary" onClick={authService.startGitHubLogin}>
-                  {isAuthenticated ? '重新读取 GitHub' : '连接 GitHub'}
+                  {isAuthenticated ? t("重新读取 GitHub") : t("连接 GitHub")}
                 </Button>
                 <Button
                   variant="ghost"
                   className="settings-reset-button"
                   onClick={handleReset}
                 >
-                  重置本地偏好
-                </Button>
+                  {t("重置本地偏好")}</Button>
               </div>
             </div>
           )}

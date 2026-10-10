@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { create } from 'zustand'
 import type {
   ReviewStatus,
@@ -103,11 +104,11 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       const { baseOwner, baseRepo, baseRef, headOwner, headRepo, headRef } =
         compareInput
       if (!baseOwner.trim() || !baseRepo.trim()) {
-        set({ error: '请填写上游仓库 owner/repo' })
+        set({ error: t("请填写上游仓库 owner/repo") })
         return
       }
       if (!headOwner.trim() || !headRef.trim()) {
-        set({ error: '请填写你的 GitHub 用户名与分支名' })
+        set({ error: t("请填写你的 GitHub 用户名与分支名") })
         return
       }
       payload = {
@@ -121,7 +122,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       }
     } else {
       if (!prUrl.trim()) {
-        set({ error: '请输入 PR 链接' })
+        set({ error: t("请输入 PR 链接") })
         return
       }
       payload = { mode: 'pr', prUrl: prUrl.trim() }
@@ -170,7 +171,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       set({ _pollTimer: timer })
     } catch (err) {
       if (generation !== reviewGeneration) return
-      const message = getErrorMessage(err, '创建审查任务失败，请稍后重试')
+      const message = getErrorMessage(err, t("创建审查任务失败，请稍后重试"))
       set({ status: 'failed', error: message, _pollTimer: null })
     }
   },
@@ -214,7 +215,7 @@ export const useCodeReviewStore = create<CodeReviewState>((set, get) => ({
       }
     } catch (err) {
       if (generation !== reviewGeneration) return
-      const message = getErrorMessage(err, '获取审查状态失败')
+      const message = getErrorMessage(err, t("获取审查状态失败"))
       set({ error: message })
     }
   },

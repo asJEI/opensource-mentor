@@ -1,3 +1,4 @@
+import { t } from './locale'
 import { config } from '../../config'
 import type {
   Repository,
@@ -49,7 +50,7 @@ export async function recommendIssues(
     if (!runtime.isCustom && config.nodeEnv === 'development') {
       return mockRecommendIssues(repository, issues, userProfile)
     }
-    throw new AppError('AI 服务暂时不可用，请稍后重试', 503)
+    throw new AppError(t("AI 服务暂时不可用，请稍后重试"), 503)
   }
 }
 
@@ -76,7 +77,7 @@ export function mockRecommendIssues(
     hasPersonalProfile &&
     repositoryLanguage !== undefined &&
     userProfile.programmingLanguages.includes(repositoryLanguage)
-  const languageLabel = repository.language || '当前仓库语言'
+  const languageLabel = repository.language || t("当前仓库语言")
 
   const scored = issues.map((issue, index) => {
     const issueText = [
@@ -102,10 +103,10 @@ export function mockRecommendIssues(
       label: string
       keywords: string[]
     }> = [
-      { value: 'frontend', label: '前端', keywords: ['frontend', 'react', 'vue', 'css', ' ui '] },
-      { value: 'backend', label: '后端', keywords: ['backend', 'server', 'api', 'database'] },
-      { value: 'documentation', label: '文档', keywords: ['documentation', 'docs', 'readme'] },
-      { value: 'testing', label: '测试', keywords: ['test', 'testing', 'coverage'] },
+      { value: 'frontend', label: t("前端"), keywords: ['frontend', 'react', 'vue', 'css', ' ui '] },
+      { value: 'backend', label: t("后端"), keywords: ['backend', 'server', 'api', 'database'] },
+      { value: 'documentation', label: t("文档"), keywords: ['documentation', 'docs', 'readme'] },
+      { value: 'testing', label: t("测试"), keywords: ['test', 'testing', 'coverage'] },
       { value: 'devops', label: 'DevOps', keywords: ['devops', 'ci', 'docker', 'workflow'] },
       { value: 'ai', label: 'AI', keywords: [' ai ', 'llm', 'model', 'prompt'] },
     ]
@@ -172,34 +173,34 @@ export function mockRecommendIssues(
 
     const reasons: string[] = []
     if (!hasPersonalProfile) {
-      reasons.push('这是一个适合开源新手的 Issue。')
+      reasons.push(t("这是一个适合开源新手的 Issue。"))
     }
     if (hasLanguageMatch) {
-      reasons.push(`该仓库主要使用 ${languageLabel}，与你填写的编程语言匹配`)
+      reasons.push(t("该仓库主要使用 {0}，与你填写的编程语言匹配", [languageLabel]))
     }
     if (matchedInterest) {
-      reasons.push(`属于你感兴趣的${matchedInterest.label}方向`)
+      reasons.push(t("属于你感兴趣的{0}方向", [matchedInterest.label]))
     }
     if (
       hasPersonalProfile &&
       userProfile.goals.includes('first_contribution') &&
       difficulty === 'easy'
     ) {
-      reasons.push('难度符合你完成第一次开源贡献的目标')
+      reasons.push(t("难度符合你完成第一次开源贡献的目标"))
     }
     if (
       hasPersonalProfile &&
       userProfile.goals.includes('improve_engineering') &&
       (hasBugLabel || issueText.includes('test'))
     ) {
-      reasons.push('包含调试或测试实践，有助于提升工程能力')
+      reasons.push(t("包含调试或测试实践，有助于提升工程能力"))
     }
-    if (hasGoodFirstLabel) reasons.push('标有 good first issue 标签，官方推荐新人入手')
-    if (hasDocLabel) reasons.push('文档类改动，门槛较低，适合新人')
-    if (hasHelpLabel) reasons.push('维护者标记为需要帮助，欢迎贡献')
-    if (isRecent) reasons.push('近期有更新，活跃度较高')
-    if (hasComments) reasons.push('有讨论记录，可以参考其他人的思路')
-    if (reasons.length === 0) reasons.push('难度适中，有学习价值')
+    if (hasGoodFirstLabel) reasons.push(t("标有 good first issue 标签，官方推荐新人入手"))
+    if (hasDocLabel) reasons.push(t("文档类改动，门槛较低，适合新人"))
+    if (hasHelpLabel) reasons.push(t("维护者标记为需要帮助，欢迎贡献"))
+    if (isRecent) reasons.push(t("近期有更新，活跃度较高"))
+    if (hasComments) reasons.push(t("有讨论记录，可以参考其他人的思路"))
+    if (reasons.length === 0) reasons.push(t("难度适中，有学习价值"))
 
     return {
       ...issue,
@@ -231,7 +232,7 @@ export function mockRecommendIssues(
     items: scored,
     total: scored.length,
     summary: hasPersonalProfile
-      ? `已结合你的编程语言、开发经验、兴趣和学习目标，从 ${issues.length} 个 Issue 中完成匹配。`
-      : `用户未提供个性化画像，已从 ${issues.length} 个 Issue 中按纯新手标准筛选任务。`,
+      ? t("已结合你的编程语言、开发经验、兴趣和学习目标，从 {0} 个 Issue 中完成匹配。", [issues.length])
+      : t("用户未提供个性化画像，已从 {0} 个 Issue 中按纯新手标准筛选任务。", [issues.length]),
   }
 }

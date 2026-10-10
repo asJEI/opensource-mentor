@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
@@ -41,10 +42,10 @@ function summarizeBody(body: string, maxLength = 260): string {
 }
 
 function formatDate(value: string): string {
-  if (!value) return '未知'
+  if (!value) return t("未知")
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '未知'
-  return date.toLocaleDateString('zh-CN', {
+  if (Number.isNaN(date.getTime())) return t("未知")
+  return date.toLocaleDateString(useUserStore.getState().preferences.language, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -52,68 +53,68 @@ function formatDate(value: string): string {
 }
 
 function localizeDifficulty(raw?: string | null): string {
-  if (!raw?.trim()) return '难度未知'
+  if (!raw?.trim()) return t("难度未知")
   const value = raw.trim().toLowerCase()
   const map: Record<string, string> = {
-    beginner: '入门',
-    'beginner+': '入门+',
-    easy: '入门',
-    intermediate: '中等',
-    medium: '中等',
-    advanced: '进阶',
-    hard: '进阶',
-    expert: '专家',
+    beginner: t("入门"),
+    'beginner+': t("入门+"),
+    easy: t("入门"),
+    intermediate: t("中等"),
+    medium: t("中等"),
+    advanced: t("进阶"),
+    hard: t("进阶"),
+    expert: t("专家"),
   }
   return map[value] || raw.trim()
 }
 
 function localizeEstimatedTime(raw?: string | null): string {
-  if (!raw?.trim()) return '时间未知'
+  if (!raw?.trim()) return t("时间未知")
   const value = raw.trim()
   if (/[\u4e00-\u9fff]/.test(value)) return value
   const lower = value.toLowerCase()
-  if (/weekend/.test(lower)) return '约一个周末'
-  if (/few hours|couple of hours|2-4\s*h|2–4\s*h/.test(lower)) return '约几小时'
-  if (/half.?day/.test(lower)) return '约半天'
-  if (/\b1-3h\b|1–3h/.test(lower)) return '约 1-3 小时'
-  if (/\b3-6h\b|3–6h/.test(lower)) return '约 3-6 小时'
-  if (/\b6-12h\b|6–12h/.test(lower)) return '约 6-12 小时'
-  if (/\bday\b|1 day|one day/.test(lower)) return '约一天'
-  if (/week\b|1 week|one week/.test(lower)) return '约一周'
+  if (/weekend/.test(lower)) return t("约一个周末")
+  if (/few hours|couple of hours|2-4\s*h|2–4\s*h/.test(lower)) return t("约几小时")
+  if (/half.?day/.test(lower)) return t("约半天")
+  if (/\b1-3h\b|1–3h/.test(lower)) return t("约 1-3 小时")
+  if (/\b3-6h\b|3–6h/.test(lower)) return t("约 3-6 小时")
+  if (/\b6-12h\b|6–12h/.test(lower)) return t("约 6-12 小时")
+  if (/\bday\b|1 day|one day/.test(lower)) return t("约一天")
+  if (/week\b|1 week|one week/.test(lower)) return t("约一周")
   const range = lower.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*h/)
-  if (range) return `约 ${range[1]}-${range[2]} 小时`
+  if (range) return t("约 {0}-{1} 小时", [range[1], range[2]])
   if (/hour|\bh\b/.test(lower)) {
     const hours = value.match(/\d+(?:\.\d+)?/)?.[0]
-    return hours ? `约 ${hours} 小时` : '约数小时'
+    return hours ? t("约 {0} 小时", [hours]) : t("约数小时")
   }
   return value
 }
 
 function localizeScope(raw?: string | null): string {
-  if (!raw?.trim()) return '未知'
+  if (!raw?.trim()) return t("未知")
   const value = raw.trim().toLowerCase()
-  if (value === 'small') return '较小'
-  if (value === 'medium') return '中等'
-  if (value === 'large') return '较大'
+  if (value === 'small') return t("较小")
+  if (value === 'medium') return t("中等")
+  if (value === 'large') return t("较大")
   return raw.trim()
 }
 
 function availabilityLabel(issue: CandidateIssue): string {
   const status = issue.availability?.status
-  if (status === 'assigned') return '已分配'
-  if (status === 'claimed') return '已有认领记录'
-  if (status === 'has_linked_pr') return '已有相关 PR'
-  if (status === 'ask_first' || issue.availability?.shouldAskFirst) return '建议先确认'
-  if (status === 'possibly_outdated') return '先核验现状'
-  if (status === 'uncertain') return '状态待确认'
-  return status === 'ready_to_start' ? '未发现认领记录' : '状态待确认'
+  if (status === 'assigned') return t("已分配")
+  if (status === 'claimed') return t("已有认领记录")
+  if (status === 'has_linked_pr') return t("已有相关 PR")
+  if (status === 'ask_first' || issue.availability?.shouldAskFirst) return t("建议先确认")
+  if (status === 'possibly_outdated') return t("先核验现状")
+  if (status === 'uncertain') return t("状态待确认")
+  return status === 'ready_to_start' ? t("未发现认领记录") : t("状态待确认")
 }
 
 function availabilityDescription(issue: CandidateIssue): string {
   if (issue.availability?.reasons?.length) {
     return issue.availability.reasons.join(' ')
   }
-  return issue.claimHint || '当前没有发现已分配、已认领或已有 PR 的明确信号。'
+  return issue.claimHint || t("当前没有发现已分配、已认领或已有 PR 的明确信号。")
 }
 
 function looksLikeEnglishSummary(text: string): boolean {
@@ -145,6 +146,7 @@ const CandidateIssueCard = ({
   saved: boolean
   onSave: () => void
 }) => {
+  const locale = useUserStore((state) => state.preferences.language)
   const analysis = issue.analysis
   const technologies = analysis?.technologies?.length
     ? analysis.technologies
@@ -152,19 +154,19 @@ const CandidateIssueCard = ({
   const shortReason =
     issue.whyThisFitsYou?.[0] ||
     (issue.recommendationFallback
-      ? 'AI 分析暂时不可用，已根据 GitHub 基础字段推荐。'
+      ? t("AI 分析暂时不可用，已根据 GitHub 基础字段推荐。")
       : analysisStatus === 'loading' || analysisStatus === 'idle'
-        ? '正在分析匹配度…'
-      : 'AI 暂未给出匹配理由，展开可查看 Issue 详情后自行判断。')
+        ? t("正在分析匹配度…")
+      : t("AI 暂未给出匹配理由，展开可查看 Issue 详情后自行判断。"))
   const contributionAccess =
     issue.contributionAccess ||
-    (issue.claimHint?.includes('认领') ? 'claim_required' : 'direct_submit')
+    (/认领|claim/i.test(issue.claimHint || '') ? 'claim_required' : 'direct_submit')
   const claimHint =
     availabilityDescription(issue) ||
     issue.claimHint ||
     (contributionAccess === 'claim_required'
-      ? '开始动手前，请先按仓库要求在 Issue 下评论认领，并等待维护者审核或指派。'
-      : '当前看不需要额外认领，可直接按 Issue 完成修改并提交 PR。')
+      ? t("开始动手前，请先按仓库要求在 Issue 下评论认领，并等待维护者审核或指派。")
+      : t("当前看不需要额外认领，可直接按 Issue 完成修改并提交 PR。"))
   const availabilityText = availabilityLabel(issue)
 
   return (
@@ -205,17 +207,17 @@ const CandidateIssueCard = ({
           )}
         </span>
       </button>
-      <button type="button" className="issue-save" aria-pressed={saved} aria-label={saved ? '取消收藏任务' : '收藏任务到此浏览器'} title={saved ? '取消收藏' : '收藏到此浏览器'} onClick={onSave}><span aria-hidden="true">{saved ? '★' : '☆'}</span></button>
+      <button type="button" className="issue-save" aria-pressed={saved} aria-label={saved ? t("取消收藏任务") : t("收藏任务到此浏览器")} title={saved ? t("取消收藏") : t("收藏到此浏览器")} onClick={onSave}><span aria-hidden="true">{saved ? '★' : '☆'}</span></button>
 
       {expanded && (
         <div className="issue-expanded-panel">
           <div className="issue-expanded-grid">
             <section>
-              <h3>贡献方式</h3>
+              <h3>{t("贡献方式")}</h3>
               <p>
                 <strong>
                   {contributionAccess === 'claim_required'
-                    ? '建议先确认'
+                    ? t("建议先确认")
                     : availabilityText}
                 </strong>
                 {' · '}
@@ -223,28 +225,27 @@ const CandidateIssueCard = ({
               </p>
               {issue.availability?.linkedPullRequests?.length ? (
                 <p>
-                  已发现关联 PR：
-                  {issue.availability.linkedPullRequests
+                  {t("已发现关联 PR：")}{issue.availability.linkedPullRequests
                     .map((pr) => `#${pr.number} ${pr.title}`)
                     .join('；')}
                 </p>
               ) : null}
             </section>
             <section>
-              <h3>Issue 简介</h3>
+              <h3>{t("Issue 简介")}</h3>
               <p>
                 {analysisStatus === 'loading'
-                  ? '正在生成中文简介…'
+                  ? t("正在生成中文简介…")
                   : analysis?.summary &&
-                      !looksLikeEnglishSummary(analysis.summary)
+                      (locale === 'en-US' || !looksLikeEnglishSummary(analysis.summary))
                     ? analysis.summary
                     : analysis?.summary
-                      ? '正在准备中文简介…'
+                      ? t("正在准备中文简介…")
                       : issue.title}
               </p>
             </section>
             <section>
-              <h3>为什么适合你</h3>
+              <h3>{t("为什么适合你")}</h3>
               <ul className="issue-fit-list">
                 {(issue.whyThisFitsYou?.length
                   ? issue.whyThisFitsYou
@@ -255,31 +256,31 @@ const CandidateIssueCard = ({
               </ul>
             </section>
             <section>
-              <h3>你可能会接触的技术</h3>
+              <h3>{t("你可能会接触的技术")}</h3>
               <p>
                 {technologies.length
                   ? technologies.join(' · ')
-                  : '暂无明确技术栈'}
+                  : t("暂无明确技术栈")}
               </p>
             </section>
             <section>
-              <h3>仓库基本信息</h3>
+              <h3>{t("仓库基本信息")}</h3>
               <p>
                 <a href={issue.repository.url} target="_blank" rel="noreferrer">
                   {issue.repository.fullName}
                 </a>
                 {' · '}
-                Star {issue.repository.stars ?? '未知'} · Fork{' '}
-                {issue.repository.forks ?? '未知'} · 开放 Issues{' '}
-                {issue.repository.openIssues ?? '未知'} · 更新于{' '}
+                Star {issue.repository.stars ?? t("未知")} · Fork{' '}
+                {issue.repository.forks ?? t("未知")} {t("· 开放 Issues")}{' '}
+                {issue.repository.openIssues ?? t("未知")} {t("· 更新于")}{' '}
                 {formatDate(issue.repository.updatedAt || issue.updatedAt)}
               </p>
             </section>
             <section>
-              <h3>匹配信息</h3>
+              <h3>{t("匹配信息")}</h3>
               <p>
                 {localizeDifficulty(analysis?.difficulty)} ·{' '}
-                {localizeEstimatedTime(analysis?.estimatedTime)} · 范围{' '}
+                {localizeEstimatedTime(analysis?.estimatedTime)} {t("· 范围")}{' '}
                 {localizeScope(analysis?.scopeAssessment)}
               </p>
             </section>
@@ -288,16 +289,14 @@ const CandidateIssueCard = ({
           <div className="issue-expanded-footer">
             <div className="issue-source-actions">
               <a href={issue.issueUrl} target="_blank" rel="noreferrer">
-                在 GitHub 查看 ↗
-              </a>
+                {t("在 GitHub 查看 ↗")}</a>
               <details className="issue-source-summary">
-                <summary>查看原始描述摘要</summary>
+                <summary>{t("查看原始描述摘要")}</summary>
                 <p>{summarizeBody(issue.body)}</p>
               </details>
             </div>
             <Button variant="primary" onClick={onStart}>
-              开始贡献
-            </Button>
+              {t("开始贡献")}</Button>
           </div>
         </div>
       )}
@@ -309,6 +308,7 @@ const Issues = () => {
   const navigate = useNavigate()
   const showToast = useToastStore((state) => state.showToast)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
+  const locale = useUserStore((state) => state.preferences.language)
   const sessionChecked = useAppStore((state) => state.sessionChecked)
   const profile = useUserStore((state) => state.profile)
   const issues = useRepositoryStore((state) => state.candidateIssues)
@@ -343,7 +343,7 @@ const Issues = () => {
     const next = savedIds.includes(id) ? savedIds.filter((item) => item !== id) : [...savedIds, id]
     setSavedIds(next)
     try { localStorage.setItem('osm.saved-issue-ids.v1', JSON.stringify(next)) }
-    catch { showToast('error', '无法保存收藏', '浏览器存储不可用，本次选择仅在此页面有效') }
+    catch { showToast('error', t("无法保存收藏"), t("浏览器存储不可用，本次选择仅在此页面有效")) }
   }
   const clearFilters = () => { setLanguageFilter(''); setDifficultyFilter(''); setSavedOnly(false) }
   const languages = [...new Set(issues.map((issue) => issue.language).filter((value): value is string => Boolean(value)))].sort()
@@ -366,14 +366,14 @@ const Issues = () => {
     if (status === 'success') {
       const scopeLabel =
         activeScope.type === 'issue'
-          ? `已评估 ${activeScope.owner}/${activeScope.repo}#${activeScope.number}`
+          ? t("已评估 {0}/{1}#{2}", [activeScope.owner, activeScope.repo, activeScope.number])
           : activeScope.type === 'repo'
-            ? `已筛选 ${activeScope.owner}/${activeScope.repo} 下的候选 Issue`
-            : `已筛选出 ${issues.length} 个候选 Issue`
-      showToast('success', '候选 Issue 已加载', scopeLabel)
+            ? t("已筛选 {0}/{1} 下的候选 Issue", [activeScope.owner, activeScope.repo])
+            : t("已筛选出 {0} 个候选 Issue", [issues.length])
+      showToast('success', t("候选 Issue 已加载"), scopeLabel)
     }
     if (status === 'error' && error) {
-      showToast('error', '候选 Issue 加载失败', error)
+      showToast('error', t("候选 Issue 加载失败"), error)
     }
   }, [activeScope, error, issues.length, showToast, status])
 
@@ -391,7 +391,7 @@ const Issues = () => {
         cursor += 1
         if (!issue) continue
         const needsChineseRefresh = Boolean(
-          issue.analysis?.summary &&
+          locale === 'zh-CN' && issue.analysis?.summary &&
             looksLikeEnglishSummary(issue.analysis.summary),
         )
         if (issue.analysis && !needsChineseRefresh) continue
@@ -412,7 +412,7 @@ const Issues = () => {
     return () => {
       cancelled = true
     }
-  }, [analysisStatusByIssue, analyzeCandidateIssue, issues, status])
+  }, [analysisStatusByIssue, analyzeCandidateIssue, issues, status, locale])
 
   const languageText = useMemo(() => {
     if (activeScope.type === 'issue') {
@@ -423,15 +423,15 @@ const Issues = () => {
     }
     if (meta?.languages.length) return meta.languages.join('、')
     if (profile.preferredTechStack.length) return profile.preferredTechStack.join('、')
-    return '通用 good first issue / help wanted'
-  }, [activeScope, meta?.languages, profile.preferredTechStack])
+    return t("通用 good first issue / help wanted")
+  }, [activeScope, meta?.languages, profile.preferredTechStack, locale])
 
   const handleStart = (issue: CandidateIssue) => {
     startContribution(issue)
     showToast(
       'success',
-      '已锁定这个 Issue',
-      `正在分析 ${issue.repository.fullName}#${issue.issueNumber} 所在的仓库，稍后可在贡献指南继续`,
+      t("已锁定这个 Issue"),
+      t("正在分析 {0}#{1} 所在的仓库，稍后可在贡献指南继续", [issue.repository.fullName, issue.issueNumber]),
     )
     navigate('/dashboard')
   }
@@ -449,7 +449,7 @@ const Issues = () => {
     const parsed = parseGitHubIssueOrRepoInput(trimmed)
     if (!parsed) {
       setSearchError(
-        '请输入有效的仓库链接（如 owner/repo）或 Issue 链接（如 owner/repo#123）',
+        t("请输入有效的仓库链接（如 owner/repo）或 Issue 链接（如 owner/repo#123）"),
       )
       return
     }
@@ -496,13 +496,13 @@ const Issues = () => {
     meta?.warnings.filter((warning) => warning.includes('AI')) ?? []
   const listTitle =
     activeScope.type === 'issue'
-      ? '指定 Issue 评估'
+      ? t("指定 Issue 评估")
       : activeScope.type === 'repo'
-        ? '仓库内候选'
-        : '为你推荐'
+        ? t("仓库内候选")
+        : t("为你推荐")
 
   return (
-    <AppLayout breadcrumbs={[{ label: '发现任务' }]}>
+    <AppLayout breadcrumbs={[{ label: t("发现任务") }]}>
       <div className="app-page active">
         <div className="page-header">
           <div className="page-title-row">
@@ -511,10 +511,9 @@ const Issues = () => {
                 <span className="osm-kicker-dot" />
                 ISSUE FEED
               </span>
-              <h1 className="page-title">发现你的下一次贡献</h1>
+              <h1 className="page-title">{t("发现你的下一次贡献")}</h1>
               <p className="page-subtitle">
-                从适合你的技术、时间和目标出发，找到值得开始的任务。
-              </p>
+                {t("从适合你的技术、时间和目标出发，找到值得开始的任务。")}</p>
             </div>
             <span className="repo-pill">
               <CodeIcon />
@@ -524,14 +523,14 @@ const Issues = () => {
         </div>
 
         {!sessionChecked && !isAuthenticated ? (
-          <div className="workbench-loading" role="status"><span className="btn-spinner" /> 正在恢复登录状态…</div>
+          <div className="workbench-loading" role="status"><span className="btn-spinner" /> {t("正在恢复登录状态…")}</div>
         ) : !isAuthenticated ? (
           <AiPageError
             kicker="AUTH REQUIRED"
-            title="需要先登录 GitHub"
-            message="候选 Issue 依据你的 GitHub 公开画像筛选，请先回到首页用 GitHub 登录。未登录时也可以先到「仓库分析」试用。"
+            title={t("需要先登录 GitHub")}
+            message={t("候选 Issue 依据你的 GitHub 公开画像筛选，请先回到首页用 GitHub 登录。未登录时也可以先到「仓库分析」试用。")}
             onRetry={() => navigate('/')}
-            retryLabel="回到首页登录"
+            retryLabel={t("回到首页登录")}
           />
         ) : (
           <>
@@ -550,8 +549,8 @@ const Issues = () => {
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && !event.nativeEvent.isComposing) handleSearch()
                     }}
-                    placeholder="粘贴仓库链接或 Issue 链接，例如 owner/repo 或 owner/repo#123"
-                    aria-label="搜索仓库或 Issue"
+                    placeholder={t("粘贴仓库链接或 Issue 链接，例如 owner/repo 或 owner/repo#123")}
+                    aria-label={t("搜索仓库或 Issue")}
                   />
                 </div>
                 <Button
@@ -559,18 +558,15 @@ const Issues = () => {
                   onClick={handleSearch}
                   disabled={isLoading}
                 >
-                  {isLoading ? '搜索中…' : '搜索'}
+                  {isLoading ? t("搜索中…") : t("搜索")}
                 </Button>
                 {activeScope.type !== 'profile' ? (
                   <Button variant="ghost" onClick={handleClearSearch} disabled={isLoading}>
-                    清除
-                  </Button>
+                    {t("清除")}</Button>
                 ) : null}
               </div>
               <p className="issues-search-hint">
-                留空搜索：按你的画像跨仓库推荐。输入仓库链接：只筛这个仓库下合适的开放
-                Issue。输入 Issue 链接：只评估这一个 Issue。
-              </p>
+                {t("留空搜索：按你的画像跨仓库推荐。输入仓库链接：只筛这个仓库下合适的开放 Issue。输入 Issue 链接：只评估这一个 Issue。")}</p>
               {searchError ? (
                 <p className="issues-search-error">{searchError}</p>
               ) : null}
@@ -581,24 +577,24 @@ const Issues = () => {
                 <div className="ai-loading-spinner" />
                 <div className="ai-loading-title">
                   {activeScope.type === 'issue'
-                    ? '正在评估指定 Issue...'
+                    ? t("正在评估指定 Issue...")
                     : activeScope.type === 'repo'
-                      ? '正在筛选仓库候选 Issue...'
-                      : '正在获取候选 Issue...'}
+                      ? t("正在筛选仓库候选 Issue...")
+                      : t("正在获取候选 Issue...")}
                 </div>
                 <div className="ai-loading-desc">
                   {activeScope.type === 'issue'
-                    ? `正在拉取并评估 ${activeScope.owner}/${activeScope.repo}#${activeScope.number}`
+                    ? t("正在拉取并评估 {0}/{1}#{2}", [activeScope.owner, activeScope.repo, activeScope.number])
                     : activeScope.type === 'repo'
-                      ? `正在从 ${activeScope.owner}/${activeScope.repo} 拉取合适的 Issue`
-                      : '正在从 GitHub 拉取 good first issue / help wanted 候选项'}
+                      ? t("正在从 {0}/{1} 拉取合适的 Issue", [activeScope.owner, activeScope.repo])
+                      : t("正在从 GitHub 拉取 good first issue / help wanted 候选项")}
                 </div>
               </div>
             ) : status === 'error' ? (
               <AiPageError
                 kicker="LOAD FAILED"
-                title="加载候选 Issue 失败"
-                message={error || '请稍后重试'}
+                title={t("加载候选 Issue 失败")}
+                message={error || t("请稍后重试")}
                 onRetry={() => {
                   if (activeScope.type === 'issue') {
                     void loadCandidateIssues({
@@ -630,19 +626,18 @@ const Issues = () => {
                 </div>
 
                 {issues.length > 0 && (
-                  <div className="issue-filters" aria-label="筛选当前结果">
-                    <label>语言<select value={languageFilter} onChange={(event) => setLanguageFilter(event.target.value)}><option value="">全部语言</option>{languages.map((language) => <option key={language}>{language}</option>)}</select></label>
-                    <label>难度<select value={difficultyFilter} onChange={(event) => setDifficultyFilter(event.target.value)}><option value="">全部难度</option>{difficulties.map((difficulty) => <option key={difficulty}>{difficulty}</option>)}</select></label>
-                    <span role="status">显示 {visibleIssues.length} / {issues.length} 项</span>
-                    <label><input type="checkbox" checked={savedOnly} onChange={(event) => setSavedOnly(event.target.checked)} />只看本批收藏</label>
-                    {(languageFilter || difficultyFilter || savedOnly) && <button type="button" className="btn btn-ghost" onClick={clearFilters}>清除筛选</button>}
+                  <div className="issue-filters" aria-label={t("筛选当前结果")}>
+                    <label>{t("语言")}<select value={languageFilter} onChange={(event) => setLanguageFilter(event.target.value)}><option value="">{t("全部语言")}</option>{languages.map((language) => <option key={language}>{language}</option>)}</select></label>
+                    <label>{t("难度")}<select value={difficultyFilter} onChange={(event) => setDifficultyFilter(event.target.value)}><option value="">{t("全部难度")}</option>{difficulties.map((difficulty) => <option key={difficulty}>{difficulty}</option>)}</select></label>
+                    <span role="status">{t("显示")}{visibleIssues.length} / {issues.length} {t("项")}</span>
+                    <label><input type="checkbox" checked={savedOnly} onChange={(event) => setSavedOnly(event.target.checked)} />{t("只看本批收藏")}</label>
+                    {(languageFilter || difficultyFilter || savedOnly) && <button type="button" className="btn btn-ghost" onClick={clearFilters}>{t("清除筛选")}</button>}
                   </div>
                 )}
 
                 {aiFallbackWarnings.length ? (
                   <div className="issue-subtle-notice">
-                    部分推荐暂时使用基础信息生成，稍后刷新可能会更完整。
-                  </div>
+                    {t("部分推荐暂时使用基础信息生成，稍后刷新可能会更完整。")}</div>
                 ) : null}
 
                 <div className="issues-list candidate-issues-list">
@@ -664,14 +659,14 @@ const Issues = () => {
                       />
                     ))
                   ) : issues.length > 0 ? (
-                    <div className="workbench-empty"><h2>没有符合筛选条件的任务</h2><button type="button" className="btn btn-secondary" onClick={clearFilters}>清除筛选</button></div>
+                    <div className="workbench-empty"><h2>{t("没有符合筛选条件的任务")}</h2><button type="button" className="btn btn-secondary" onClick={clearFilters}>{t("清除筛选")}</button></div>
                   ) : (
                     <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
                       {activeScope.type === 'repo'
-                        ? `在 ${activeScope.owner}/${activeScope.repo} 中暂未找到标记为适合新手的开放 Issue，可以换一个仓库再试。`
+                        ? t("在 {0}/{1} 中暂未找到标记为适合新手的开放 Issue，可以换一个仓库再试。", [activeScope.owner, activeScope.repo])
                         : activeScope.type === 'issue'
-                          ? '未能评估该 Issue，请确认链接指向一个开放的 Issue 后重试。'
-                          : '暂时没有匹配到候选 Issue。为了保证质量，这里只收录带 good first issue / help wanted 等标签的任务；可以在上方粘贴一个你想参与的仓库链接，或到偏好设置补充技术栈后重试。'}
+                          ? t("未能评估该 Issue，请确认链接指向一个开放的 Issue 后重试。")
+                          : t("暂时没有匹配到候选 Issue。为了保证质量，这里只收录带 good first issue / help wanted 等标签的任务；可以在上方粘贴一个你想参与的仓库链接，或到偏好设置补充技术栈后重试。")}
                     </div>
                   )}
                 </div>

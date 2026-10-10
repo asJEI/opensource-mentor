@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import type { RecommendedIssue, IssueExplain, DifficultyLevel } from '@/types'
 import { Modal, Button } from '@/components/ui'
@@ -22,9 +23,9 @@ export interface IssueExplainModalProps {
 }
 
 const difficultyLabelMap: Record<DifficultyLevel, string> = {
-  easy: '简单',
-  medium: '中等',
-  hard: '困难',
+  get easy() { return t("简单") },
+  get medium() { return t("中等") },
+  get hard() { return t("困难") },
 }
 
 const difficultyColorMap: Record<DifficultyLevel, string> = {
@@ -53,29 +54,27 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
   // 优先使用新版 matchDetails，其次使用旧版 breakdown
   const matchItems = matchDetails
     ? [
-        { label: '难度匹配', value: matchDetails.difficultyMatch },
-        { label: '技能匹配', value: matchDetails.skillMatch },
-        { label: '影响价值', value: matchDetails.impactScore },
-        { label: '活跃程度', value: matchDetails.activityScore },
-        { label: '新人友好', value: matchDetails.beginnerFriendlyScore },
+        { label: t("难度匹配"), value: matchDetails.difficultyMatch },
+        { label: t("技能匹配"), value: matchDetails.skillMatch },
+        { label: t("影响价值"), value: matchDetails.impactScore },
+        { label: t("活跃程度"), value: matchDetails.activityScore },
+        { label: t("新人友好"), value: matchDetails.beginnerFriendlyScore },
       ]
     : breakdown
       ? [
-          { label: '技能匹配', value: breakdown.skillMatch },
-          { label: '难度匹配', value: breakdown.difficultyMatch },
-          { label: '兴趣匹配', value: breakdown.interestMatch },
-          { label: '经验匹配', value: breakdown.contributionMatch },
+          { label: t("技能匹配"), value: breakdown.skillMatch },
+          { label: t("难度匹配"), value: breakdown.difficultyMatch },
+          { label: t("兴趣匹配"), value: breakdown.interestMatch },
+          { label: t("经验匹配"), value: breakdown.contributionMatch },
         ]
       : []
 
   const footer = (
     <>
       <Button variant="secondary" onClick={onClose}>
-        关闭
-      </Button>
+        {t("关闭")}</Button>
       <Button variant="primary" onClick={onStart}>
-        去代码审查
-      </Button>
+        {t("去代码审查")}</Button>
     </>
   )
 
@@ -83,7 +82,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
     <Modal
       visible={visible}
       onClose={onClose}
-      title="AI 为什么推荐这个 Issue？"
+      title={t("AI 为什么推荐这个 Issue？")}
       subtitle={issue ? `#${issue.number} ${issue.title}` : ''}
       className={className}
       footer={footer}
@@ -99,8 +98,8 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
       {loading && !explain ? (
         <div className="ai-loading active">
           <div className="ai-loading-spinner" />
-          <div className="ai-loading-title">AI 正在分析...</div>
-          <div className="ai-loading-desc">正在生成推荐理由和修改建议</div>
+          <div className="ai-loading-title">{t("AI 正在分析...")}</div>
+          <div className="ai-loading-desc">{t("正在生成推荐理由和修改建议")}</div>
         </div>
       ) : error ? (
         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--danger)' }}>
@@ -116,8 +115,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                综合匹配度分析
-              </div>
+                {t("综合匹配度分析")}</div>
               <div className="match-breakdown">
                 {matchItems.map((item) => (
                   <div key={item.label} className="match-item">
@@ -142,8 +140,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
-                推荐理由
-              </div>
+                {t("推荐理由")}</div>
               <div className="reason-content">
                 <ul>
                   {issue.recommendationReasons.map((reason, i) => (
@@ -161,8 +158,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
               </svg>
-              Issue 概述
-            </div>
+              {t("Issue 概述")}</div>
             <div className="reason-content">
               <p style={{ fontSize: '13px', color: 'var(--ink-2)', lineHeight: '1.7' }}>
                 {explain.summary}
@@ -177,12 +173,11 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              难度与时间预估
-            </div>
+              {t("难度与时间预估")}</div>
             <div className="reason-content">
               <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                 <div>
-                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>难度等级：</span>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{t("难度等级：")}</span>
                   <span
                     style={{
                       fontWeight: 600,
@@ -193,7 +188,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>预估时间：</span>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{t("预估时间：")}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ink-1)' }}>
                     {explain.estimatedTime}
                   </span>
@@ -210,8 +205,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
                   <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
                 </svg>
-                需要了解的知识
-              </div>
+                {t("需要了解的知识")}</div>
               <div className="reason-content">
                 <ul>
                   {explain.knowledge.map((item, i) => (
@@ -230,8 +224,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                   <polyline points="16 18 22 12 16 6" />
                   <polyline points="8 6 2 12 8 18" />
                 </svg>
-                解决步骤
-              </div>
+                {t("解决步骤")}</div>
               <div className="reason-content">
                 <ol style={{ paddingLeft: '20px', margin: 0 }}>
                   {explain.steps.map((step, i) => (
@@ -261,8 +254,7 @@ export const IssueExplainModal: React.FC<IssueExplainModalProps> = ({
                   <path d="M10 22h4" />
                   <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
                 </svg>
-                实用提示
-              </div>
+                {t("实用提示")}</div>
               <div className="reason-content">
                 <ul>
                   {explain.tips.map((tip, i) => (

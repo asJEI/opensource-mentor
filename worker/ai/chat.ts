@@ -50,7 +50,7 @@ export async function chatWithMentor(
     return {
       message: reply,
       relatedIssues: extractIssueNumbers(reply),
-      suggestedNextSteps: suggestNextSteps(reply),
+      suggestedNextSteps: localizeGenerated(suggestNextSteps(reply), client.locale ?? 'zh-CN'),
       confidence: Math.min(0.95, 0.5 + reply.length / 2000),
     }
   } catch (error) {
@@ -64,3 +64,4 @@ export async function chatWithMentor(
     })
   }
 }
+import { localizeGenerated } from '../../shared/generatedLocale'

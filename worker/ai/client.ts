@@ -5,6 +5,7 @@
  */
 
 import { redactSecrets } from '../../shared/byok'
+import { localizedMessages } from '../../shared/locale'
 import { ErrorCode } from '../../shared/errors'
 import { ApiError } from '../http'
 import { listAIModels, type AIModelOption } from './models'
@@ -19,6 +20,7 @@ export type { AIConfig, AIProvider }
 export type AIClientConfig = AIConfig
 
 export interface AIClient {
+  readonly locale?: import('../../shared/locale').Locale
   readonly provider: AIProvider
   readonly model: string
   readonly baseUrl: string
@@ -188,6 +190,7 @@ export function createAIClient(config: AIConfig): AIClient {
   const completionsUrl = resolveChatCompletionsUrl(baseUrl)
 
   return {
+    locale: config.locale ?? 'zh-CN',
     provider: config.provider,
     model,
     baseUrl,
@@ -213,7 +216,7 @@ export function createAIClient(config: AIConfig): AIClient {
             },
             body: JSON.stringify({
               model,
-              messages: params.messages,
+              messages: localizedMessages(params.messages, config.locale ?? 'zh-CN'),
               temperature: params.temperature ?? 0.7,
               top_p: params.topP ?? 0.9,
               ...(typeof params.maxTokens === 'number'
@@ -264,7 +267,7 @@ export function createAIClient(config: AIConfig): AIClient {
             },
             body: JSON.stringify({
               model,
-              messages: params.messages,
+              messages: localizedMessages(params.messages, config.locale ?? 'zh-CN'),
               temperature: params.temperature ?? 0.7,
               top_p: params.topP ?? 0.9,
               stream: true,

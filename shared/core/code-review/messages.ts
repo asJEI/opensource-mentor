@@ -1,0 +1,46 @@
+import type { Locale } from '../../locale'
+
+const en: Record<string, string> = {
+  '样式改动较大，建议检查复用边界': 'Large style changes: check reuse boundaries',
+  '{0} 新增 {1} 行样式。': '{0} adds {1} lines of styles.',
+  '优先复用已有设计变量和通用样式。': 'Reuse existing design tokens and common styles first.',
+  '重复样式会增加维护成本。': 'Duplicate styles increase maintenance cost.',
+  '建议覆盖边界和异常场景': 'Cover edge cases and failure scenarios',
+  '{0} 包含测试改动。': '{0} includes test changes.',
+  '补充失败路径测试。': 'Add tests for failure paths.',
+  '失败路径测试能降低回归风险。': 'Failure-path tests reduce regression risk.',
+  '单文件改动较大，建议拆分职责': 'Large changes in one file: consider separating responsibilities',
+  '建议确认类型与错误边界': 'Check types and error boundaries',
+  '{0} 新增 {1} 行、删除 {2} 行。': '{0} adds {1} lines and deletes {2} lines.',
+  '检查函数职责、输入校验和错误处理。': 'Check function responsibilities, input validation, and error handling.',
+  '边界明确的单元更容易测试和维护。': 'Units with clear boundaries are easier to test and maintain.',
+  '新增 {0} 行，建议拆分审查。': '{0} lines added. Consider splitting the review.',
+  '拆成目标单一的小 PR。': 'Split into smaller PRs with one objective each.',
+  '大 PR 更难完整审查和安全回滚。': 'Large PRs are harder to review fully and roll back safely.',
+  '修改了 {0} 个代码文件。': '{0} code files changed.',
+  '运行完整测试并补充失败路径。': 'Run the full test suite and cover failure paths.',
+  '跨文件改动扩大了回归范围。': 'Changes across files increase the regression surface.',
+  '本次改动范围适中。': 'The scope of these changes is moderate.',
+  '合并后关注运行指标。': 'Monitor runtime metrics after merging.',
+  '规则未发现明显的范围风险。': 'The rules found no obvious scope risks.',
+  '包含测试改动': 'Includes test changes',
+  '已同步修改 {0}。': '{0} was updated along with the changes.',
+  '测试为重构提供安全网。': 'Tests provide a safety net for refactoring.',
+  '包含文档改动': 'Includes documentation changes',
+  '同步文档能降低维护成本。': 'Keeping documentation current reduces maintenance cost.',
+  '核心业务逻辑': 'Core logic', 'UI 样式': 'UI styles', '测试套件': 'Test suite',
+  '文档': 'Documentation', '配置': 'Configuration', '其他模块': 'Other modules',
+  '规则审查报告：{0}': 'Rule review report: {0}', 'PR 审查': 'PR review',
+  '该 PR 修改 {0} 个文件，新增 {1} 行，删除 {2} 行。以下结论来自确定性规则检查，不代表 LLM 语义审查。': 'This PR changes {0} files, adds {1} lines, and deletes {2} lines. These findings come from deterministic rules, not an LLM semantic review.',
+  '{0} {1}（+{2} -{3}）': '{0} {1} (+{2} -{3})',
+  '新增': 'Added', '删除': 'Removed', '修改': 'Modified',
+  '改动范围较大，建议拆分并增加人工审查。': 'The changes are broad. Split them and add manual review.',
+  '未从改动规模中发现明显的高风险架构信号。': 'The change size does not indicate an obvious high architectural risk.',
+  '规则引擎只提供基础工程提示，请结合项目上下文人工复核。': 'The rule engine provides basic engineering hints. Review them manually using project context.',
+  '规则审查适合发现规模和结构信号；安全、正确性和业务语义仍需人工或 LLM 深度审查。': 'Rule review identifies scope and structural signals. Security, correctness, and business behavior still require deeper manual or LLM review.',
+}
+
+export function reviewText(locale: Locale, key: string, values: readonly unknown[] = []): string {
+  return (locale === 'en-US' ? en[key] ?? key : key).replace(/\{(\d+)\}/g,
+    (match, index: string) => Number(index) < values.length ? String(values[Number(index)]) : match)
+}

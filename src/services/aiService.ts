@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { bffPost, createBffHeaders } from './request'
 import { ApiClientError } from './errors'
 import { BYOK_HEADERS } from '@shared/byok'
@@ -301,7 +302,7 @@ class AiService {
     })
 
     if (!response.ok) {
-      let message = `流式生成失败 (${response.status})`
+      let message = t("流式生成失败 ({0})", [response.status])
       try {
         const body = (await response.json()) as {
           message?: string
@@ -319,7 +320,7 @@ class AiService {
     }
 
     if (!response.body) {
-      throw new ApiClientError('流式响应为空', { status: 502 })
+      throw new ApiClientError(t("流式响应为空"), { status: 502 })
     }
 
     const reader = response.body.getReader()
@@ -357,7 +358,7 @@ class AiService {
         }
 
         if (event.type === 'error') {
-          throw new ApiClientError(event.message || '本章生成失败', {
+          throw new ApiClientError(event.message || t("本章生成失败"), {
             status: 502,
             errorCode: 'AI_PROVIDER_ERROR',
           })
@@ -365,7 +366,7 @@ class AiService {
       }
     }
 
-    throw new ApiClientError('流式响应意外结束', { status: 502 })
+    throw new ApiClientError(t("流式响应意外结束"), { status: 502 })
   }
 
   /**
@@ -518,7 +519,7 @@ class AiService {
           description: step?.description || '',
           commands: Array.isArray(step?.commands) ? step.commands : [],
           expectedResult: step?.expectedResult || '',
-          checkboxLabel: step?.checkboxLabel || '我已经完成',
+          checkboxLabel: step?.checkboxLabel || t("我已经完成"),
           completed: false,
         }))
       : []
@@ -527,7 +528,7 @@ class AiService {
           .filter((item: any) => item?.path)
           .map((item: any) => ({
             path: String(item.path),
-            reason: String(item.reason || '建议阅读'),
+            reason: String(item.reason || t("建议阅读")),
             githubUrl: typeof item.githubUrl === 'string' ? item.githubUrl : undefined,
           }))
       : []
@@ -538,7 +539,7 @@ class AiService {
           constructExample: phase.reproduce.constructExample || '',
           expectedBehavior: phase.reproduce.expectedBehavior || '',
           actualBehavior: phase.reproduce.actualBehavior || '',
-          checkboxLabel: phase.reproduce.checkboxLabel || '我成功复现了问题',
+          checkboxLabel: phase.reproduce.checkboxLabel || t("我成功复现了问题"),
           completed: false,
         }
       : null

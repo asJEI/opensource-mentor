@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { RecommendedIssue, DifficultyLevel } from '@/types'
@@ -14,9 +15,9 @@ export interface IssueRowProps {
 }
 
 const difficultyLabelMap: Record<DifficultyLevel, string> = {
-  easy: '新手友好',
-  medium: '中等难度',
-  hard: '较有挑战',
+  get easy() { return t("新手友好") },
+  get medium() { return t("中等难度") },
+  get hard() { return t("较有挑战") },
 }
 
 /** 获取推荐分数（优先使用新版 recommendationScore，回退到旧版 matchScore） */
@@ -53,11 +54,11 @@ export const IssueRow: React.FC<IssueRowProps> = ({
     const date = new Date(dateStr)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays === 0) return '今天'
-    if (diffDays === 1) return '昨天'
-    if (diffDays < 7) return `${diffDays} 天前`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} 周前`
-    return `${Math.floor(diffDays / 30)} 个月前`
+    if (diffDays === 0) return t("今天")
+    if (diffDays === 1) return t("昨天")
+    if (diffDays < 7) return t("{0} 天前", [diffDays])
+    if (diffDays < 30) return t("{0} 周前", [Math.floor(diffDays / 7)])
+    return t("{0} 个月前", [Math.floor(diffDays / 30)])
   }
 
   return (
@@ -103,8 +104,7 @@ export const IssueRow: React.FC<IssueRowProps> = ({
         </div>
         <div className="issue-meta">
           <span>
-            由 <span>{issue.author}</span> 于 {formatDate(issue.createdAt)} 创建
-          </span>
+            {t("由")}<span>{issue.author}</span> {t("于")}{formatDate(issue.createdAt)} {t("创建")}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <svg
               viewBox="0 0 24 24"
@@ -126,7 +126,7 @@ export const IssueRow: React.FC<IssueRowProps> = ({
       <div className="issue-ai-info">
         <div className="ai-confidence">
           <span className="confidence-score">{getScore(issue)}</span>
-          <span className="confidence-label">匹配度</span>
+          <span className="confidence-label">{t("匹配度")}</span>
         </div>
         <div className="ai-tags">
           <span className={clsx('ai-tag', `difficulty-${getDifficulty(issue)}`)}>
@@ -140,8 +140,7 @@ export const IssueRow: React.FC<IssueRowProps> = ({
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
-            约 {getEstimatedTime(issue)} 小时
-          </span>
+            {t("约")}{getEstimatedTime(issue)} {t("小时")}</span>
         </div>
         <button
           type="button"
@@ -153,8 +152,7 @@ export const IssueRow: React.FC<IssueRowProps> = ({
             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
-          为什么推荐
-        </button>
+          {t("为什么推荐")}</button>
       </div>
     </div>
   )

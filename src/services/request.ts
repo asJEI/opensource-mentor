@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import axios from 'axios'
 import type {
   AxiosInstance,
@@ -7,6 +8,7 @@ import type {
 } from 'axios'
 import { BYOK_HEADERS } from '@shared/byok'
 import { useSettingsStore } from '@/store/settings'
+import { useUserStore } from '@/store/user'
 import { ApiClientError, getErrorMessage } from './errors'
 
 /**
@@ -36,6 +38,7 @@ export function createBffHeaders(
 ): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept-Language': useUserStore.getState().preferences.language,
     ...(initial || {}),
   }
   const { githubConfig, aiConfig } = useSettingsStore.getState()
@@ -90,7 +93,7 @@ bffService.interceptors.response.use(
     }
     const errorCode = payload?.errorCode || payload?.githubErrorCode
     return Promise.reject(
-      new ApiClientError(payload?.message || '请求失败', {
+      new ApiClientError(payload?.message || t("请求失败"), {
         errorCode,
         status: response.status,
         rateLimitReset: payload?.rateLimitReset,
@@ -101,7 +104,7 @@ bffService.interceptors.response.use(
     const status = error.response?.status as number | undefined
     const data = error.response?.data as ApiResponse | undefined
     const errorCode = data?.errorCode || data?.githubErrorCode
-    const message = data?.message || error.message || '请求失败'
+    const message = data?.message || error.message || t("请求失败")
 
     // Never log request config / Authorization / API keys — message only.
     if (status) {

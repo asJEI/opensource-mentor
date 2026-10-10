@@ -4,6 +4,20 @@ import { getRequestAIConfig } from '../../middlewares'
 import type { AIProviderConfig } from '../../types'
 import { AppError } from '../../utils/errors'
 import type { AIRuntime } from './types'
+import { getRequestLocale } from '../../middlewares/localeContext'
+import { localizedMessages } from '../../../../shared/locale'
+
+/** Capture the locale per client, including background review jobs. */
+function withLocale(client: AxiosInstance): AxiosInstance {
+  const locale = getRequestLocale()
+  client.interceptors.request.use((request) => {
+    if (request.data && Array.isArray(request.data.messages)) {
+      request.data = { ...request.data, messages: localizedMessages(request.data.messages, locale) }
+    }
+    return request
+  })
+  return client
+}
 
 export function createPlatformClient(): {
   client: AxiosInstance | null
@@ -26,14 +40,14 @@ export function createPlatformClient(): {
 }
 
 export function createClient(providerConfig: AIProviderConfig): AxiosInstance {
-  return axios.create({
+  return withLocale(axios.create({
     baseURL: providerConfig.baseUrl!.replace(/\/+$/, ''),
     timeout: config.llm.timeout,
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${providerConfig.apiKey}`,
     },
-  })
+  }))
 }
 
 export function getRuntime(platformClient: AxiosInstance | null): AIRuntime {
@@ -46,7 +60,7 @@ export function getRuntime(platformClient: AxiosInstance | null): AIRuntime {
     }
   }
   return {
-    client: platformClient,
+    client: platformClient ? withLocale(axios.create(platformClient.defaults)) : null,
     model: config.llm.model,
     isCustom: false,
   }

@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { AppLayout } from '@/components/layout'
@@ -88,7 +89,7 @@ const PrGenerator = () => {
 
   const handleGenerate = async () => {
     if (!summary.trim()) {
-      showToast('warning', '请填写改动描述', '改动描述是生成 PR 的必要信息')
+      showToast('warning', t("请填写改动描述"), t("改动描述是生成 PR 的必要信息"))
       return
     }
 
@@ -98,14 +99,14 @@ const PrGenerator = () => {
 
     const state = usePrStore.getState()
     if (state.error) {
-      showToast('error', '生成失败', state.error)
+      showToast('error', t("生成失败"), state.error)
     } else if (state.prDraft) {
-      showToast('success', 'PR 草稿已生成', 'AI 已为你生成专业的 PR 描述')
+      showToast('success', t("PR 草稿已生成"), t("AI 已为你生成专业的 PR 描述"))
     }
   }
 
   const handleCopy = (_text: string, label: string) => {
-    showToast('success', '已复制', `${label} 已复制到剪贴板`)
+    showToast('success', t("已复制"), t("{0} 已复制到剪贴板", [label]))
   }
 
   // 计算结果面板状态
@@ -120,7 +121,7 @@ const PrGenerator = () => {
   return (
     <AppLayout
       breadcrumbs={[
-        { label: 'PR 生成器' },
+        { label: t("PR 生成器") },
       ]}
     >
       <div className="app-page active">
@@ -132,34 +133,34 @@ const PrGenerator = () => {
                 <span className="osm-kicker-dot" />
                 PULL REQUEST
               </span>
-              <h1 className="page-title">PR 生成器</h1>
-              <p className="page-subtitle">根据你的改动生成 PR 标题、描述和关联 Issue，让维护者更容易 review</p>
+              <h1 className="page-title">{t("PR 生成器")}</h1>
+              <p className="page-subtitle">{t("根据你的改动生成 PR 标题、描述和关联 Issue，让维护者更容易 review")}</p>
             </div>
             <span className="repo-pill">
               <CodeIcon />
-              {currentOwner && currentRepo ? `${currentOwner}/${currentRepo}` : '尚未选择仓库'}
+              {currentOwner && currentRepo ? `${currentOwner}/${currentRepo}` : t("尚未选择仓库")}
             </span>
           </div>
         </div>
 
         {(!currentOwner || !currentRepo) && (
           <section className="pr-context-empty">
-            <div><strong>先选择这次贡献的仓库</strong><p>选定任务后，仓库和关联 Issue 会自动带入。</p></div>
-            <Link to="/issues">去发现任务 →</Link>
+            <div><strong>{t("先选择这次贡献的仓库")}</strong><p>{t("选定任务后，仓库和关联 Issue 会自动带入。")}</p></div>
+            <Link to="/issues">{t("去发现任务 →")}</Link>
           </section>
         )}
         {/* 左右两栏布局 */}
         <div className="generator-grid">
           {/* 左侧：Commit Summary Card */}
           <Card
-            title="改动信息"
+            title={t("改动信息")}
             icon={<FileTextIcon />}
             className="commit-summary-card"
           >
             {/* PR 类型选择 */}
             <div className="form-group">
               <label className="form-label">
-                PR 类型 <span className="required">*</span>
+                {t("PR 类型")}<span className="required">*</span>
               </label>
               <PrTypeSelector value={prType} onChange={handleTypeSelect} />
             </div>
@@ -167,34 +168,34 @@ const PrGenerator = () => {
             {/* 描述 textarea */}
             <div className="form-group">
               <label className="form-label" htmlFor="pr-summary">
-                改动描述 <span className="required">*</span>
+                {t("改动描述")}<span className="required">*</span>
               </label>
               <textarea
                 id="pr-summary"
                 className="form-textarea"
-                placeholder="简要描述你的改动内容，AI 将基于此生成专业的 PR..."
+                placeholder={t("简要描述你的改动内容，AI 将基于此生成专业的 PR...")}
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 rows={5}
               />
-              <div className="form-hint">描述越详细，生成的 PR 质量越高</div>
+              <div className="form-hint">{t("描述越详细，生成的 PR 质量越高")}</div>
             </div>
 
             {/* 关联 Issue input */}
             <div className="form-group">
-              <label className="form-label" htmlFor="pr-linked-issue">关联 Issue <span className="required">*</span></label>
+              <label className="form-label" htmlFor="pr-linked-issue">{t("关联 Issue")}<span className="required">*</span></label>
               <input
                 id="pr-linked-issue"
                 type="text"
                 className="form-input"
-                placeholder="输入 Issue 编号，如：1234"
+                placeholder={t("输入 Issue 编号，如：1234")}
                 value={linkedIssue}
                 onChange={(e) => setLinkedIssue(e.target.value)}
               />
               <div className="form-hint">
                 {activeContributionIssue
-                  ? `已从当前任务自动带入，PR 会包含 Closes #${activeContributionIssue.issueNumber}`
-                  : '选定 Issue 后会自动带入，也可手动输入'}
+                  ? t("已从当前任务自动带入，PR 会包含 Closes #{0}", [activeContributionIssue.issueNumber])
+                  : t("选定 Issue 后会自动带入，也可手动输入")}
               </div>
             </div>
 
@@ -232,20 +233,18 @@ const PrGenerator = () => {
               {isGenerating ? (
                 <>
                   <span className="btn-spinner" />
-                  生成中...
-                </>
+                  {t("生成中...")}</>
               ) : (
                 <>
                   <SparklesIcon />
-                  生成 PR 草稿
-                </>
+                  {t("生成 PR 草稿")}</>
               )}
             </button>
           </Card>
 
           {/* 右侧：AI 生成结果 Card */}
           <Card
-            title="AI 生成结果"
+            title={t("AI 生成结果")}
             icon={<SparklesIcon />}
             className="pr-result-card"
           >
@@ -265,20 +264,16 @@ const PrGenerator = () => {
           <div className="next-step-card">
             <div className="next-step-content">
               <div className="next-step-badge">
-                草稿已生成 · 尚未提交
-              </div>
-              <div className="next-step-title">PR 草稿已就绪</div>
+                {t("草稿已生成 · 尚未提交")}</div>
+              <div className="next-step-title">{t("PR 草稿已就绪")}</div>
               <div className="next-step-desc">
-                复制上方标题和描述，到 GitHub 发起 Pull Request。
-                提交前请再确认一次仓库的贡献规范（CONTRIBUTING、commit 格式、PR 模板）。
-              </div>
+                {t("复制上方标题和描述，到 GitHub 发起 Pull Request。 提交前请再确认一次仓库的贡献规范（CONTRIBUTING、commit 格式、PR 模板）。")}</div>
             </div>
             <button
               className="next-step-btn"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
-              返回顶部
-              <svg
+              {t("返回顶部")}<svg
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"

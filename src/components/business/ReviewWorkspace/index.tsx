@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useMemo, useState, type ReactNode } from 'react'
 import type {
   ReviewChangedFile,
@@ -97,7 +98,7 @@ export default function ReviewWorkspace({
       <div className="review-workspace__toolbar">
         <div className="review-workspace__toolbar-left">
           <div className="review-workspace__title">
-            {result.summary.title || 'AI 代码审查'}
+            {result.summary.title || t("AI 代码审查")}
           </div>
           {sourceLabel ? (
             <div className="review-workspace__source">{sourceLabel}</div>
@@ -110,8 +111,7 @@ export default function ReviewWorkspace({
               className="btn btn-primary btn-sm"
               onClick={onOpenCreatePr}
             >
-              去开合并申请
-            </button>
+              {t("去开合并申请")}</button>
           ) : null}
           {onGeneratePrDesc ? (
             <button
@@ -119,8 +119,7 @@ export default function ReviewWorkspace({
               className="btn btn-secondary btn-sm"
               onClick={onGeneratePrDesc}
             >
-              生成 PR 描述
-            </button>
+              {t("生成 PR 描述")}</button>
           ) : null}
         </div>
       </div>
@@ -128,11 +127,11 @@ export default function ReviewWorkspace({
       <div className="review-workspace__body">
         <aside className="review-workspace__files">
           <div className="review-workspace__pane-header">
-            变更文件 ({sortedFiles.length})
+            {t("变更文件 (")}{sortedFiles.length})
           </div>
           <div className="review-workspace__file-list">
             {sortedFiles.length === 0 ? (
-              <div className="review-workspace__empty">暂无变更文件</div>
+              <div className="review-workspace__empty">{t("暂无变更文件")}</div>
             ) : (
               sortedFiles.map((file) => (
                 <FileRow
@@ -150,7 +149,7 @@ export default function ReviewWorkspace({
         <section className="review-workspace__diff">
           <div className="review-workspace__pane-header review-workspace__pane-header--split">
             <span className="review-workspace__diff-path">
-              {selectedFile || '选择左侧文件查看 Diff'}
+              {selectedFile || t("选择左侧文件查看 Diff")}
             </span>
             {fileIssues.length > 0 ? (
               <button
@@ -158,17 +157,16 @@ export default function ReviewWorkspace({
                 className="review-workspace__ghost-btn"
                 onClick={() => setShowComments((v) => !v)}
               >
-                {showComments ? '隐藏评论' : '显示评论'} ({fileIssues.length})
+                {showComments ? t("隐藏评论") : t("显示评论")} ({fileIssues.length})
               </button>
             ) : null}
           </div>
           <div className="review-workspace__diff-scroll">
             {!selectedFile ? (
-              <div className="review-workspace__empty">请选择文件</div>
+              <div className="review-workspace__empty">{t("请选择文件")}</div>
             ) : hunks.length === 0 ? (
               <div className="review-workspace__empty">
-                该文件无 Diff 内容（可能是二进制或过大文件）
-              </div>
+                {t("该文件无 Diff 内容（可能是二进制或过大文件）")}</div>
             ) : (
               hunks.map((hunk, hunkIndex) => (
                 <div
@@ -212,7 +210,7 @@ export default function ReviewWorkspace({
 
             {showComments && fileIssues.length > 0 ? (
               <div className="review-diff-comments">
-                <div className="review-diff-comments__title">本文件审查评论</div>
+                <div className="review-diff-comments__title">{t("本文件审查评论")}</div>
                 {fileIssues.map((issue) => (
                   <div key={issue.id} className="review-diff-comment">
                     <div className="review-diff-comment__meta">
@@ -237,30 +235,30 @@ export default function ReviewWorkspace({
         </section>
 
         <aside className="review-workspace__panel">
-          <div className="review-workspace__pane-header">AI 审查</div>
+          <div className="review-workspace__pane-header">{t("AI 审查")}</div>
           <div className="review-workspace__panel-scroll">
             <div className="review-score">
               <div className="review-score__ring" style={{ ['--score' as string]: score }}>
                 <span>{score}%</span>
               </div>
               <div>
-                <div className="review-score__label">审查通过度</div>
+                <div className="review-score__label">{t("审查通过度")}</div>
                 <div className="review-score__hint">
-                  严重 {result.stats.critical} · 高 {result.stats.high} · 中{' '}
+                  {t("严重")}{result.stats.critical} {t("· 高")}{result.stats.high} {t("· 中")}{' '}
                   {result.stats.medium}
                 </div>
               </div>
             </div>
 
             <PanelSection
-              title="变更总结"
+              title={t("变更总结")}
               open={openSummary}
               onToggle={() => setOpenSummary((v) => !v)}
             >
               <p className="review-panel-text">{result.summary.summary}</p>
               {result.summary.keyChanges.length > 0 ? (
                 <>
-                  <div className="review-panel-subtitle">核心变更</div>
+                  <div className="review-panel-subtitle">{t("核心变更")}</div>
                   <ul className="review-panel-list">
                     {result.summary.keyChanges.map((item) => (
                       <li key={item}>{item}</li>
@@ -270,7 +268,7 @@ export default function ReviewWorkspace({
               ) : null}
               {result.summary.affectedSystems.length > 0 ? (
                 <>
-                  <div className="review-panel-subtitle">影响模块</div>
+                  <div className="review-panel-subtitle">{t("影响模块")}</div>
                   <div className="review-panel-tags">
                     {result.summary.affectedSystems.map((item) => (
                       <span key={item}>{item}</span>
@@ -280,7 +278,7 @@ export default function ReviewWorkspace({
               ) : null}
               {result.summary.architecturalImpact ? (
                 <>
-                  <div className="review-panel-subtitle">架构影响</div>
+                  <div className="review-panel-subtitle">{t("架构影响")}</div>
                   <p className="review-panel-text">
                     {result.summary.architecturalImpact}
                   </p>
@@ -289,12 +287,12 @@ export default function ReviewWorkspace({
             </PanelSection>
 
             <PanelSection
-              title={`风险 (${result.risks.risks.length})`}
+              title={t("风险 ({0})", [result.risks.risks.length])}
               open={openRisks}
               onToggle={() => setOpenRisks((v) => !v)}
             >
               {result.risks.risks.length === 0 ? (
-                <p className="review-panel-text">未发现显著风险</p>
+                <p className="review-panel-text">{t("未发现显著风险")}</p>
               ) : (
                 result.risks.risks.map((risk, index) => (
                   <div key={`${risk.description}-${index}`} className="review-risk-card">
@@ -309,7 +307,7 @@ export default function ReviewWorkspace({
                     <p>{risk.description}</p>
                     {risk.recommendation ? (
                       <div className="review-risk-card__tip">
-                        建议：{risk.recommendation}
+                        {t("建议：")}{risk.recommendation}
                       </div>
                     ) : null}
                     {risk.affectedFiles[0] ? (
@@ -318,7 +316,7 @@ export default function ReviewWorkspace({
                         className="review-workspace__link-btn"
                         onClick={() => onSelectFile(risk.affectedFiles[0])}
                       >
-                        回溯文件：{risk.affectedFiles[0]}
+                        {t("回溯文件：")}{risk.affectedFiles[0]}
                       </button>
                     ) : null}
                   </div>
@@ -327,12 +325,12 @@ export default function ReviewWorkspace({
             </PanelSection>
 
             <PanelSection
-              title={`问题 (${result.issues.length})`}
+              title={t("问题 ({0})", [result.issues.length])}
               open={openIssues}
               onToggle={() => setOpenIssues((v) => !v)}
             >
               {result.issues.length === 0 ? (
-                <p className="review-panel-text">暂无问题</p>
+                <p className="review-panel-text">{t("暂无问题")}</p>
               ) : (
                 result.issues.map((issue) => (
                   <button
@@ -359,7 +357,7 @@ export default function ReviewWorkspace({
             </PanelSection>
 
             {result.tips.length > 0 ? (
-              <PanelSection title={`小提示 (${result.tips.length})`} open>
+              <PanelSection title={t("小提示 ({0})", [result.tips.length])} open>
                 <ul className="review-panel-list">
                   {result.tips.map((tip) => (
                     <li key={tip}>{tip}</li>

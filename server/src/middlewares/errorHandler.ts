@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express'
 import { ZodError } from 'zod'
 import { error } from '../utils/response'
 import { AppError, GitHubError } from '../utils/errors'
+import { localizedErrorMessage } from '../../../shared/errors'
+import { requestLocale } from '../../../shared/locale'
 
 /**
  * 全局异常处理中间件
@@ -20,7 +22,7 @@ export function errorHandler(
     const responseData: Record<string, unknown> = {
       success: false,
       data: null,
-      message: err.message,
+      message: localizedErrorMessage(err.message, err.errorCode, requestLocale(req.header('Accept-Language'))),
       code: err.code,
     }
 
@@ -44,7 +46,9 @@ export function errorHandler(
   // Zod 参数校验错误
   if (err instanceof ZodError) {
     const messages = err.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ')
-    res.status(400).json(error(`参数校验失败: ${messages}`, 400))
+    res.status(400).json(error(requestLocale(req.header('Accept-Language')) === 'en-US'
+      ? `Invalid request parameters: ${err.errors.map((e) => e.path.join('.')).join(', ')}`
+      : `参数校验失败: ${messages}`, 400))
     return
   }
 
@@ -56,17 +60,18 @@ export function errorHandler(
       axiosErr.response?.data?.message ||
       axiosErr.response?.statusText ||
       '第三方 API 调用失败'
-    res.status(status).json(error(`上游服务错误: ${message}`, status))
+    res.status(status).json(error(requestLocale(req.header('Accept-Language')) === 'en-US' ? `Upstream service error: ${message}` : `上游服务错误: ${message}`, status))
     return
   }
 
   // 其他未知错误
-  res.status(500).json(error(err.message || '服务器内部错误', 500))
+  res.status(500).json(error(localizedErrorMessage(err.message || '服务器内部错误', undefined, requestLocale(req.header('Accept-Language'))), 500))
 }
 
 /**
  * 404 处理中间件
  */
 export function notFoundHandler(req: Request, res: Response) {
-  res.status(404).json(error(`接口不存在: ${req.method} ${req.path}`, 404))
+  res.status(404).json(error(requestLocale(req.header('Accept-Language')) === 'en-US'
+    ? `Endpoint not found: ${req.method} ${req.path}` : `接口不存在: ${req.method} ${req.path}`, 404))
 }

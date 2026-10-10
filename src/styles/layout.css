@@ -3,6 +3,18 @@
    ============================================ */
 
 /* ---------- Landing Navbar ---------- */
+.language-switcher {
+  max-width: 140px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid var(--ln-1, #ddd);
+  border-radius: 6px;
+  background: var(--bg, #fff);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+.app-header > .language-switcher { margin-left: auto; }
 .nav {
   position: fixed;
   top: 0;

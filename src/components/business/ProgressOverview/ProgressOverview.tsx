@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import type { RoadmapProgress } from '@/types'
@@ -38,42 +39,39 @@ export const ProgressOverview: React.FC<ProgressOverviewProps> = ({
   const isCompleted = completedSteps === totalSteps
 
   const stats = [
-    { label: '已完成', value: completedSteps, dotClass: '' },
-    { label: '进行中', value: isCompleted ? 0 : 1, dotClass: 'current' },
-    { label: '待完成', value: totalSteps - completedSteps - (isCompleted ? 0 : 1), dotClass: 'pending' },
+    { label: t("已完成"), value: completedSteps, dotClass: '' },
+    { label: t("进行中"), value: isCompleted ? 0 : 1, dotClass: 'current' },
+    { label: t("待完成"), value: totalSteps - completedSteps - (isCompleted ? 0 : 1), dotClass: 'pending' },
   ]
 
   const getTitle = () => {
-    if (isCompleted) return '恭喜！全部完成'
-    if (isStarted) return `第 ${currentStep + 1} 步进行中`
-    return '准备开始你的开源之旅'
+    if (isCompleted) return t("恭喜！全部完成")
+    if (isStarted) return t("第 {0} 步进行中", [currentStep + 1])
+    return t("准备开始你的开源之旅")
   }
 
   const getDesc = () => {
-    if (isCompleted) return '你已完成所有学习步骤，继续保持对开源的热情！'
-    if (isStarted) return `共 ${totalSteps} 个步骤，按照计划逐步推进`
-    return `共 ${totalSteps} 个步骤，预计需要一定时间完成`
+    if (isCompleted) return t("你已完成所有学习步骤，继续保持对开源的热情！")
+    if (isStarted) return t("共 {0} 个步骤，按照计划逐步推进", [totalSteps])
+    return t("共 {0} 个步骤，预计需要一定时间完成", [totalSteps])
   }
 
   const renderActionButton = () => {
     if (isCompleted) {
       return onReset ? (
         <Button variant="secondary" onClick={onReset}>
-          重新开始
-        </Button>
+          {t("重新开始")}</Button>
       ) : null
     }
     if (isStarted) {
       return onNext ? (
         <Button variant="primary" onClick={onNext}>
-          继续下一步
-        </Button>
+          {t("继续下一步")}</Button>
       ) : null
     }
     return onStart ? (
       <Button variant="primary" onClick={onStart}>
-        立即开始
-      </Button>
+        {t("立即开始")}</Button>
     ) : null
   }
 

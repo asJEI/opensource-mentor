@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import type { ReactNode } from 'react'
 import Sidebar from '../Sidebar'
 import AppHeader from '../AppHeader'
@@ -27,7 +28,7 @@ const AppLayout = ({ children, breadcrumbs }: AppLayoutProps) => {
         <AppHeader breadcrumbs={breadcrumbs} />
         <TaskContext />
         <WorkspaceSyncStatus />
-        <div className="app-content">{restoring ? <p role="status">正在恢复账户与贡献进度…</p> : children}</div>
+        <div className="app-content">{restoring ? <p role="status">{t("正在恢复账户与贡献进度…")}</p> : children}</div>
       </main>
       <ProfileOnboarding />
     </div>

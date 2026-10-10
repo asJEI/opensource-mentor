@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import React from 'react'
 import clsx from 'clsx'
 import { Badge } from '@/components/ui'
@@ -89,8 +90,7 @@ export const IssueContextCard: React.FC<IssueContextCardProps> = ({
               <circle cx="12" cy="12" r="6" />
               <circle cx="12" cy="12" r="2" />
             </svg>
-            你正在贡献
-          </span>
+            {t("你正在贡献")}</span>
         </div>
       </div>
     </div>

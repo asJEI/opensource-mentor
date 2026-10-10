@@ -1,15 +1,16 @@
+import { t } from '@/i18n'
 const footerLinks = {
   product: [
-    { label: 'Issue 推荐', href: '/issues' },
-    { label: '仓库分析', href: '/dashboard' },
-    { label: '贡献指南', href: '/roadmap' },
-    { label: 'AI 导师', href: '/ai-mentor' },
-    { label: '代码审查', href: '/code-review' },
-    { label: 'PR 生成器', href: '/pr-generator' },
+    { get label() { return t("Issue 推荐") }, href: '/issues' },
+    { get label() { return t("仓库分析") }, href: '/dashboard' },
+    { get label() { return t("贡献指南") }, href: '/roadmap' },
+    { get label() { return t("AI 导师") }, href: '/ai-mentor' },
+    { get label() { return t("代码审查") }, href: '/code-review' },
+    { get label() { return t("PR 生成器") }, href: '/pr-generator' },
   ],
   resources: [
-    { label: '项目源码', href: 'https://github.com/asJEI/opensource-mentor' },
-    { label: '报告问题', href: 'https://github.com/asJEI/opensource-mentor/issues' },
+    { get label() { return t("项目源码") }, href: 'https://github.com/asJEI/opensource-mentor' },
+    { get label() { return t("报告问题") }, href: 'https://github.com/asJEI/opensource-mentor/issues' },
   ],
 }
 
@@ -42,12 +43,11 @@ const Footer = () => {
               <span>OpenSource Mentor</span>
             </a>
             <p>
-              用 AI 助力你的开源之旅。智能分析仓库、推荐 Issue、生成 PR，让开源贡献更高效、更有成就感。
-            </p>
+              {t("用 AI 助力你的开源之旅。智能分析仓库、推荐 Issue、生成 PR，让开源贡献更高效、更有成就感。")}</p>
           </div>
 
           <div className="footer-col">
-            <h4>产品</h4>
+            <h4>{t("产品")}</h4>
             <ul>
               {footerLinks.product.map((link) => (
                 <li key={link.label}>
@@ -58,7 +58,7 @@ const Footer = () => {
           </div>
 
           <div className="footer-col">
-            <h4>资源</h4>
+            <h4>{t("资源")}</h4>
             <ul>
               {footerLinks.resources.map((link) => (
                 <li key={link.label}>

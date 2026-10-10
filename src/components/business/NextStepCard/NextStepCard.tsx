@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useNavigate } from 'react-router-dom'
 
 export interface NextStepCardProps {
@@ -44,7 +45,7 @@ export function NextStepCard({
     <div className="next-step-card">
       <div className="next-step-content">
         <div className="next-step-badge">
-          步骤 {currentStep} / {totalSteps}
+          {t("步骤")}{currentStep} / {totalSteps}
         </div>
         <div className="next-step-title">{title}</div>
         <div className="next-step-desc">{description}</div>

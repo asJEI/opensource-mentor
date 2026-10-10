@@ -1,11 +1,13 @@
+import { t } from '@/i18n'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { authService } from '@/services'
+import LanguageSwitcher from '@/i18n/LanguageSwitcher'
 
 const navLinks = [
-  { label: '流程', href: '#how-it-works' },
-  { label: '能力', href: '#features' },
-  { label: '产品预览', href: '#preview' },
+  { get label() { return t("流程") }, href: '#how-it-works' },
+  { get label() { return t("能力") }, href: '#features' },
+  { get label() { return t("产品预览") }, href: '#preview' },
 ]
 
 const Navbar = () => {
@@ -61,9 +63,9 @@ const Navbar = () => {
       </div>
 
       <div className="nav-right">
+        <LanguageSwitcher />
         <button className="btn btn-primary btn-sm nav-github-login" onClick={handleStartFree}>
-          GitHub 登录
-        </button>
+          {t("GitHub 登录")}</button>
       </div>
     </nav>
   )

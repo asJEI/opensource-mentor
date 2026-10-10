@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import clsx from 'clsx'
@@ -126,7 +127,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      useToastStore.getState().showToast('error', '未能复制', '请选中回复后手动复制')
+      useToastStore.getState().showToast('error', t("未能复制"), t("请选中回复后手动复制"))
     }
   }
 
@@ -152,7 +153,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="chat-message__content">
         <div className="chat-message__header">
           <span className="chat-message__role">
-            {isUser ? '你' : 'AI 导师'}
+            {isUser ? t("你") : t("AI 导师")}
           </span>
           <span className="chat-message__time">
             {formatTime(message.timestamp)}
@@ -165,9 +166,9 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           <button
             className="chat-message__copy"
             onClick={handleCopy}
-            title="复制内容"
+            title={t("复制内容")}
           >
-            {copied ? '已复制' : <CopyIcon />}
+            {copied ? t("已复制") : <CopyIcon />}
           </button>
         )}
       </div>
@@ -184,7 +185,7 @@ function TypingIndicator() {
       </div>
       <div className="chat-message__content">
         <div className="chat-message__header">
-          <span className="chat-message__role">AI 导师</span>
+          <span className="chat-message__role">{t("AI 导师")}</span>
         </div>
         <div className="chat-message__bubble chat-message__bubble--typing">
           <div className="typing-dots">
@@ -202,16 +203,16 @@ function formatGuideSummary(ctx: GuideMentorContext) {
   const issue =
     ctx.issueNumber != null
       ? `#${ctx.issueNumber}${ctx.issueTitle ? ` ${ctx.issueTitle}` : ''}`
-      : '未指定 Issue'
+      : t("未指定 Issue")
   const completed =
     ctx.completedPhases.length > 0
       ? ctx.completedPhases.map((p) => p.phase).join('、')
-      : '暂无'
+      : t("暂无")
   return {
     issue,
-    phase: `第 ${ctx.phaseNumber} 章「${ctx.phaseTitle}」`,
+    phase: t("第 {0} 章「{1}」", [ctx.phaseNumber, ctx.phaseTitle]),
     completed,
-    step: ctx.currentStepTitle || '未指定具体步骤',
+    step: ctx.currentStepTitle || t("未指定具体步骤"),
   }
 }
 
@@ -225,7 +226,7 @@ function WelcomeState({
 }) {
   const currentOwner = useRepositoryStore((s) => s.currentOwner)
   const currentRepoName = useRepositoryStore((s) => s.currentRepoName)
-  const repoName = currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : '尚未选择仓库'
+  const repoName = currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : t("尚未选择仓库")
   const summary = guideContext ? formatGuideSummary(guideContext) : null
 
   return (
@@ -234,38 +235,33 @@ function WelcomeState({
         <span className="osm-kicker-dot" />
         {summary ? 'GUIDE CONTEXT LOADED' : 'CONTEXT READY'}
       </span>
-      <h2>你好，我是 AI 导师</h2>
+      <h2>{t("你好，我是 AI 导师")}</h2>
       {summary ? (
         <p>
-          我已经知道你在{' '}
+          {t("我已经知道你在")}{' '}
           <strong>
             {guideContext!.owner}/{guideContext!.repo}
           </strong>{' '}
-          上解决 <strong>{summary.issue}</strong>，当前位于 {summary.phase}
-          （已完成章节：{summary.completed}），当前步骤是「{summary.step}」。
-          直接问卡住的地方即可，不用重新解释背景。
-        </p>
+          {t("上解决")}<strong>{summary.issue}</strong>{t("，当前位于")}{summary.phase}
+          {t("（已完成章节：")}{summary.completed}{t("），当前步骤是「")}{summary.step}{t("」。 直接问卡住的地方即可，不用重新解释背景。")}</p>
       ) : (
         <p>
-          我会围绕当前选中的仓库 <strong>{repoName}</strong> 回答问题，
-          包括技术栈、贡献流程、Issue 拆解和代码审查建议。
-          想换一个项目，请先到「Issue 推荐」或「仓库分析」重新选择。
-        </p>
+          {t("我会围绕当前选中的仓库")}<strong>{repoName}</strong> {t("回答问题， 包括技术栈、贡献流程、Issue 拆解和代码审查建议。 想换一个项目，请先到「Issue 推荐」或「仓库分析」重新选择。")}</p>
       )}
       <div className="chat-welcome__quick">
         <div className="osm-section-head">
-          <span className="osm-section-label">从这里开始问</span>
+          <span className="osm-section-label">{t("从这里开始问")}</span>
           <span className="osm-section-rule" />
         </div>
         <div className="chat-welcome__quick-list">
           {(summary
             ? [
-                '我卡在当前步骤了，下一步该怎么做？',
-                '帮我确认一下我现在的命令对不对',
-                '复现失败了，怎么排查？',
-                '这一章的验收标准是什么？',
+                t("我卡在当前步骤了，下一步该怎么做？"),
+                t("帮我确认一下我现在的命令对不对"),
+                t("复现失败了，怎么排查？"),
+                t("这一章的验收标准是什么？"),
               ]
-            : QUICK_QUESTIONS
+            : QUICK_QUESTIONS.map((question) => t(question))
           ).map((q, i) => (
             <button
               key={i}
@@ -359,7 +355,7 @@ const AiMentor = () => {
     if (pendingRepo) {
       setCurrentRepository(pendingRepo.owner, pendingRepo.repo)
       clearChat()
-      showToast('success', '已切换仓库', '对话已清空，开始新的对话吧')
+      showToast('success', t("已切换仓库"), t("对话已清空，开始新的对话吧"))
     }
     setShowSwitchConfirm(false)
     setPendingRepo(null)
@@ -369,7 +365,7 @@ const AiMentor = () => {
   const handleConfirmSwitchKeep = () => {
     if (pendingRepo) {
       setCurrentRepository(pendingRepo.owner, pendingRepo.repo)
-      showToast('info', '已切换仓库', '历史对话已保留，请注意上下文可能不一致')
+      showToast('info', t("已切换仓库"), t("历史对话已保留，请注意上下文可能不一致"))
     }
     setShowSwitchConfirm(false)
     setPendingRepo(null)
@@ -399,7 +395,7 @@ const AiMentor = () => {
     try {
       await sendMessage(content)
     } catch (err) {
-      showToast('error', '发送失败', getErrorMessage(err, '请稍后重试'))
+      showToast('error', t("发送失败"), getErrorMessage(err, t("请稍后重试")))
     }
   }
 
@@ -419,7 +415,7 @@ const AiMentor = () => {
     if (messages.length === 0 && !guideContext) return
     clearChat()
     autoSentRef.current = false
-    showToast('success', '已清空', '聊天记录已清空')
+    showToast('success', t("已清空"), t("聊天记录已清空"))
   }
 
   // 回车发送
@@ -431,11 +427,11 @@ const AiMentor = () => {
   }
 
   const hasMessages = messages.length > 0
-  const repoName = currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : '尚未选择仓库'
+  const repoName = currentOwner && currentRepoName ? `${currentOwner}/${currentRepoName}` : t("尚未选择仓库")
   const guideSummary = guideContext ? formatGuideSummary(guideContext) : null
 
   return (
-    <AppLayout breadcrumbs={[{ label: '学习中心' }, { label: 'AI 导师' }]}>
+    <AppLayout breadcrumbs={[{ label: t("学习中心") }, { label: t("AI 导师") }]}>
       <div className="app-page active ai-mentor-page">
         {/* 页面标题区 */}
         <div className="page-header">
@@ -446,15 +442,14 @@ const AiMentor = () => {
                 AI MENTOR
               </span>
               <h1 className="page-title">
-                AI 导师
-                <span className="badge badge-info" style={{ marginLeft: 8 }}>
+                {t("AI 导师")}<span className="badge badge-info" style={{ marginLeft: 8 }}>
                   Beta
                 </span>
               </h1>
               <p className="page-subtitle">
                 {guideSummary
-                  ? `已同步贡献指南进度 · ${guideSummary.phase}`
-                  : '有任何关于开源贡献的问题？随时问我'}
+                  ? t("已同步贡献指南进度 · {0}", [guideSummary.phase])
+                  : t("有任何关于开源贡献的问题？随时问我")}
               </p>
             </div>
             <div className="header-actions">
@@ -469,18 +464,16 @@ const AiMentor = () => {
                 disabled={isStreaming || (!hasMessages && !guideContext)}
               >
                 <TrashIcon />
-                清空对话
-              </Button>
+                {t("清空对话")}</Button>
             </div>
           </div>
         </div>
 
         {guideSummary && (
           <div className="chat-guide-context">
-            <strong>当前进度</strong>
+            <strong>{t("当前进度")}</strong>
             <span>
-              Issue {guideSummary.issue} · {guideSummary.phase} · 已完成章节：
-              {guideSummary.completed} · 当前步骤：{guideSummary.step}
+              Issue {guideSummary.issue} · {guideSummary.phase} {t("· 已完成章节：")}{guideSummary.completed} {t("· 当前步骤：")}{guideSummary.step}
             </span>
           </div>
         )}
@@ -505,10 +498,10 @@ const AiMentor = () => {
               <AiPageError
                 className="chat-error-panel"
                 kicker="SEND FAILED"
-                title="发送失败"
+                title={t("发送失败")}
                 message={error}
                 onRetry={() => useChatStore.setState({ error: null })}
-                retryLabel="关闭提示"
+                retryLabel={t("关闭提示")}
               />
             )}
 
@@ -520,8 +513,8 @@ const AiMentor = () => {
             <div className="chat-input-wrapper">
               <textarea
                 className="chat-input"
-                placeholder="描述你的问题或卡住的地方…"
-                aria-label="向 AI 导师提问"
+                placeholder={t("描述你的问题或卡住的地方…")}
+                aria-label={t("向 AI 导师提问")}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -529,7 +522,7 @@ const AiMentor = () => {
                 disabled={isStreaming}
               />
               <button
-                aria-label="发送问题"
+                aria-label={t("发送问题")}
                 className={clsx('chat-send-btn', {
                   disabled: isStreaming || !inputValue.trim(),
                 })}
@@ -540,11 +533,11 @@ const AiMentor = () => {
               </button>
             </div>
             <p className="chat-input-hint">
-              AI 回复仅供参考，请结合实际情况判断。当前对话基于 {repoName}
+              {t("AI 回复仅供参考，请结合实际情况判断。当前对话基于")}{repoName}
               {guideSummary
-                ? `，并已带上贡献指南第 ${guideContext!.phaseNumber} 章进度`
+                ? t("，并已带上贡献指南第 {0} 章进度", [guideContext!.phaseNumber])
                 : ''}
-              。
+              {t('。')}
             </p>
           </div>
         </div>
@@ -553,9 +546,9 @@ const AiMentor = () => {
           <NextStepCard
             currentStep={4}
             totalSteps={6}
-            title="准备动手了吗？"
-            description="改完代码后先做一次代码审查，通过了再生成 PR 描述。"
-            buttonText="开始代码审查"
+            title={t("准备动手了吗？")}
+            description={t("改完代码后先做一次代码审查，通过了再生成 PR 描述。")}
+            buttonText={t("开始代码审查")}
             nextPath="/code-review"
           />
         )}
@@ -564,7 +557,7 @@ const AiMentor = () => {
       {/* 切换仓库确认弹窗 */}
       <Modal
         visible={showSwitchConfirm}
-        title="已切换仓库"
+        title={t("已切换仓库")}
         icon={
           <svg
             viewBox="0 0 24 24"
@@ -583,11 +576,9 @@ const AiMentor = () => {
         footer={
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <Button variant="ghost" onClick={handleConfirmSwitchKeep}>
-              保留对话
-            </Button>
+              {t("保留对话")}</Button>
             <Button variant="primary" onClick={handleConfirmSwitchAndClear}>
-              清空并切换
-            </Button>
+              {t("清空并切换")}</Button>
           </div>
         }
       >
@@ -599,9 +590,9 @@ const AiMentor = () => {
             lineHeight: 1.7,
           }}
         >
-          检测到当前仓库已从{' '}
+          {t("检测到当前仓库已从")}{' '}
           <strong style={{ color: 'var(--ink)' }}>{originalRepo || '—'}</strong>{' '}
-          切换为{' '}
+          {t("切换为")}{' '}
           <strong style={{ color: 'var(--accent)' }}>
             {pendingRepo ? `${pendingRepo.owner}/${pendingRepo.repo}` : '—'}
           </strong>
@@ -615,8 +606,7 @@ const AiMentor = () => {
             lineHeight: 1.6,
           }}
         >
-          是否清空之前的对话记录？保留对话可能导致 AI 回复上下文不一致。
-        </p>
+          {t("是否清空之前的对话记录？保留对话可能导致 AI 回复上下文不一致。")}</p>
       </Modal>
     </AppLayout>
   )

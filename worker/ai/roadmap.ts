@@ -1,4 +1,5 @@
 import { ApiError } from '../http'
+import { localizeGenerated } from '../../shared/generatedLocale'
 import type { AIClient } from './client'
 import { parseJsonSafely } from './json'
 import { systemPrompt } from './prompts/explain'
@@ -84,7 +85,7 @@ export async function generateRoadmapPhase(
     })
 
   const parseAndValidate = (content: string): RoadmapPhase =>
-    validateRoadmapPhaseResult(parseJsonSafely(content), params.phaseNumber)
+    localizeGenerated(validateRoadmapPhaseResult(parseJsonSafely(content), params.phaseNumber), client.locale ?? 'zh-CN')
 
   try {
     let firstRaw = ''
@@ -179,10 +180,10 @@ export async function streamRoadmapPhase(
       await params.onDelta(delta)
     }
 
-    return validateRoadmapPhaseResult(
+    return localizeGenerated(validateRoadmapPhaseResult(
       parseJsonSafely(content),
       params.phaseNumber,
-    )
+    ), client.locale ?? 'zh-CN')
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error'
     if (message.includes('内容不完整')) {
@@ -247,7 +248,7 @@ export async function generateRoadmap(
       timeoutMs: 120_000,
       responseFormat: { type: 'json_object' },
     })
-    return validateRoadmapResult(parseJsonSafely(content))
+    return localizeGenerated(validateRoadmapResult(parseJsonSafely(content)), client.locale ?? 'zh-CN')
   } catch (error) {
     if (error instanceof ApiError) throw error
     console.error(

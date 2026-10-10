@@ -1,5 +1,7 @@
 import { ErrorCode, normalizeErrorCode } from '../shared/errors'
 import { redactSecrets } from '../shared/byok'
+import { localizedErrorMessage } from '../shared/errors'
+import type { Locale } from '../shared/locale'
 
 export class ApiError extends Error {
   readonly status: number
@@ -68,7 +70,7 @@ export function failure(
   )
 }
 
-export function toErrorResponse(error: unknown): Response {
+export function toErrorResponse(error: unknown, locale: Locale = 'zh-CN'): Response {
   if (error instanceof ApiError) {
     const extra: Record<string, unknown> = {
       errorCode: error.errorCode,
@@ -77,12 +79,12 @@ export function toErrorResponse(error: unknown): Response {
     if (error.rateLimitReset !== undefined) {
       extra.rateLimitReset = error.rateLimitReset
     }
-    return failure(error.message, error.status, extra)
+    return failure(localizedErrorMessage(error.message, error.errorCode, locale), error.status, extra)
   }
 
   const rawMessage =
     error instanceof Error ? error.message : '服务器内部错误'
-  return failure(redactSecrets(rawMessage), 500, {
+  return failure(localizedErrorMessage(redactSecrets(rawMessage), ErrorCode.INTERNAL_ERROR, locale), 500, {
     errorCode: ErrorCode.INTERNAL_ERROR,
     githubErrorCode: ErrorCode.INTERNAL_ERROR,
   })
