@@ -28,12 +28,14 @@ test('onboarding persists without a login and never guesses missing experience',
     assert.equal((await store.get()).profile, null);
   } finally { await host.close(); await server.close(); await rm(dir, { recursive: true }); }
 });
-test('browser callback validates state, keeps credentials private, and does not upload local data', async () => {
+test('cloud authorization needs no loopback, survives restart and keeps proof private', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'mentor-connect-'));
   const calls = [];
+  let approved = false;
   const client = new MentorClient({ OSM_STATE_DIR: dir, OSM_BASE_URL: 'https://mentor.example' }, async (url, init) => {
     calls.push({ url, init });
-    if (url.pathname.endsWith('/exchange')) return Response.json({ success: true, data: { token: 'private-test-credential', expiresAt: 9999999999 } });
+    if (url.pathname.endsWith('/start')) return Response.json({ success: true, data: { requestToken: 'signed-request', authorizationUrl: 'https://mentor.example/api/mcp/connect?request=signed-request', confirmationCode: 'ABCD1234', expiresAt: 9999999999, interval: 5 } });
+    if (url.pathname.endsWith('/poll')) return Response.json({ success: true, data: approved ? { status: 'connected', token: 'private-test-credential', expiresAt: 9999999999 } : { status: 'awaiting_browser' } });
     return Response.json({ success: true, data: { profile: null, username: 'new-account' } });
   });
   const store = new ProfileStore(client);
@@ -41,22 +43,41 @@ test('browser callback validates state, keeps credentials private, and does not 
     await store.save(profile, false);
     const start = await store.connect('zh-CN');
     const url = new URL(start.authorizationUrl);
-    const callback = new URL(url.searchParams.get('callback'));
-    callback.searchParams.set('code', 'private-code'); callback.searchParams.set('state', 'wrong');
-    assert.equal((await fetch(callback)).status, 400);
-    callback.searchParams.set('state', url.searchParams.get('state'));
-    assert.equal((await fetch(callback)).status, 200);
-    const status = await store.status();
+    assert.equal(url.origin, 'https://mentor.example');
+    assert.equal(url.searchParams.has('callback'), false);
+    assert.equal(start.confirmationCode, 'ABCD1234');
+    assert.ok(!JSON.stringify(start).includes('verifier'));
+    const resumed = new ProfileStore(client);
+    assert.equal((await resumed.connect()).authorizationUrl, start.authorizationUrl);
+    assert.equal(calls.filter(c => c.url.pathname.endsWith('/start')).length, 1);
+    assert.equal((await resumed.status()).status, 'awaiting_browser');
+    assert.equal((await resumed.status()).status, 'awaiting_browser');
+    assert.equal(calls.filter(c => c.url.pathname.endsWith('/poll')).length, 1);
+    const pending = await resumed.read();
+    approved = true;
+    await resumed.write({ ...pending, pendingConnection: { ...pending.pendingConnection, nextPollAt: 0 } });
+    const status = await resumed.status();
     assert.equal(status.status, 'connected');
     assert.ok(!JSON.stringify(status).includes('private-test-credential'));
-    assert.equal((await store.get()).profile, null);
+    assert.equal((await resumed.get()).profile, null);
     assert.ok(calls.every(c => c.init.method !== 'PUT'));
-    const exchange = JSON.parse(calls[0].init.body);
-    assert.equal(exchange.verifier.length, 43);
-    assert.equal(exchange.code, 'private-code');
-    await store.save(profile, true);
+    assert.equal(JSON.parse(calls.find(c => c.url.pathname.endsWith('/poll')).init.body).verifier.length, 43);
+    await resumed.save(profile, true);
     assert.equal(calls.at(-1).init.method, 'PUT');
-    await store.disconnect();
+    await resumed.disconnect();
     assert.equal(calls.at(-1).init.method, 'DELETE');
+  } finally { await rm(dir, { recursive: true }); }
+});
+test('denied and expired authorizations do not create credentials', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'mentor-denied-'));
+  const client = new MentorClient({ OSM_STATE_DIR: dir }, async () => Response.json({ success: true, data: { status: 'denied' } }));
+  const store = new ProfileStore(client);
+  try {
+    const pendingConnection = { verifier: 'v', requestToken: 'r', expiresAt: 9999999999, interval: 5, nextPollAt: 0 };
+    await store.write({ pendingConnection });
+    assert.equal((await store.status()).status, 'denied');
+    assert.equal((await store.read()).token, undefined);
+    await store.write({ pendingConnection: { ...pendingConnection, expiresAt: 1 } });
+    assert.equal((await store.status()).status, 'expired');
   } finally { await rm(dir, { recursive: true }); }
 });

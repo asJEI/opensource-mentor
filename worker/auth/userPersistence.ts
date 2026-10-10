@@ -471,7 +471,7 @@ async function patchProfileSnapshot(
   const corePatch = compactPatch({
     profile_status: profileStatus,
     github_profile: githubProfile,
-    developer_profile: { ...(structured ?? (isRecord(developerProfile) ? developerProfile : {})), ...('mentorPreferences' in mentorMetadata ? { mentorPreferences: mentorMetadata.mentorPreferences } : {}), ...('mentorConnectionId' in mentorMetadata ? { mentorConnectionId: mentorMetadata.mentorConnectionId } : {}) },
+    developer_profile: { ...(structured ?? (isRecord(developerProfile) ? developerProfile : {})), ...('mentorPreferences' in mentorMetadata ? { mentorPreferences: mentorMetadata.mentorPreferences } : {}), ...('mentorConnectionId' in mentorMetadata ? { mentorConnectionId: mentorMetadata.mentorConnectionId } : {}), ...Object.fromEntries(['mentorPendingRequestId', 'mentorPendingDecision', 'mentorConsumedRequestId'].filter(k => k in mentorMetadata).map(k => [k, mentorMetadata[k]])) },
     updated_at: new Date().toISOString(),
   })
   const fullPatch = {

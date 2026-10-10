@@ -31,8 +31,8 @@ export function validateCallback(raw: string) {
   if (u.protocol !== 'http:' || u.hostname !== '127.0.0.1' || Number(u.port) < 1024 || !u.port || u.pathname !== '/callback' || u.search || u.hash || u.username || u.password) throw new ApiError('Invalid local callback', 400)
   return u
 }
-const record = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {}
-async function readJson(request: Request): Promise<unknown> {
+export const record = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {}
+export async function readJson(request: Request): Promise<unknown> {
   const reader = request.body?.getReader()
   if (!reader) throw new ApiError('JSON body required', 400)
   let text = '', size = 0
@@ -46,21 +46,22 @@ async function readJson(request: Request): Promise<unknown> {
   }
   try { return JSON.parse(text + decoder.decode()) } catch { throw new ApiError('Invalid JSON', 400) }
 }
-async function current(env: PlatformEnv, grant: Pick<Grant, 'userId' | 'githubId'>) {
+export async function current(env: PlatformEnv, grant: Pick<Grant, 'userId' | 'githubId'>) {
   const user = await readCurrentUser(env, grant.githubId)
   if (!user || user.appUser.id !== grant.userId) throw new ApiError('Account unavailable', 401)
   return user
 }
 // Reuse the existing JSON column, preserving the generated GitHub ability profile.
-async function patch(env: PlatformEnv, user: Awaited<ReturnType<typeof current>>, data: Record<string, unknown>, extra = {}) {
+export async function patch(env: PlatformEnv, user: Awaited<ReturnType<typeof current>>, data: Record<string, unknown>, extra = {}, pendingRequest?: string) {
   const row = user.developerProfile
   const relation = row.user_id ? 'user_id' : 'app_user_id'
   const previous = record(row.developer_profile).mentorConnectionId
   const condition = typeof previous === 'string' ? `&developer_profile->>mentorConnectionId=eq.${encodeURIComponent(previous)}` : '&developer_profile->>mentorConnectionId=is.null'
-  const rows = await createSupabaseClient(env).request<Array<{ developer_profile: unknown }>>(`/developer_profiles?${relation}=eq.${encodeURIComponent(user.appUser.id)}${condition}&select=developer_profile`, { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ developer_profile: data, ...extra }) })
+  const pendingCondition = pendingRequest ? `&developer_profile->>mentorPendingRequestId=eq.${encodeURIComponent(pendingRequest)}` : ''
+  const rows = await createSupabaseClient(env).request<Array<{ developer_profile: unknown }>>(`/developer_profiles?${relation}=eq.${encodeURIComponent(user.appUser.id)}${condition}${pendingCondition}&select=developer_profile`, { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ developer_profile: data, ...extra }) })
   if (!rows.length) throw new ApiError('Profile was not saved', 502)
 }
-const secureHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
+export const secureHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
 export async function handleMentor(request: Request, env: PlatformEnv): Promise<Response> {
   const url = new URL(request.url)
   if (url.pathname === '/api/mcp/connect') {

@@ -1,14 +1,12 @@
 import { readFile, mkdir, writeFile, rename } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { createServer } from 'node:http';
 import { randomBytes, createHash } from 'node:crypto';
 
 export class ProfileStore {
   constructor(client) {
     this.client = client;
     this.path = join(client.env.OSM_STATE_DIR || join(homedir(), '.opensource-mentor'), createHash('sha256').update(client.base.origin).digest('hex').slice(0, 16) + '.json');
-    this.pending = null;
     this.queue = Promise.resolve();
   }
   async read() {
@@ -51,44 +49,60 @@ export class ProfileStore {
     return { profile, storage: sync ? 'website' : 'local', synced: sync };
   }
   async connect(locale = 'en-US') {
-    if (this.pending) return { authorizationUrl: this.pending.url, status: this.pending.status };
-    const verifier = randomBytes(32).toString('base64url');
-    const state = randomBytes(32).toString('base64url');
-    const pending = { status: 'awaiting_browser', url: '' };
-    const listener = createServer(async (req, res) => {
-      const url = new URL(req.url, 'http://127.0.0.1');
-      res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      if (req.method !== 'GET' || url.pathname !== '/callback' || url.searchParams.get('state') !== state || !url.searchParams.get('code') || pending.status !== 'awaiting_browser') { res.writeHead(400); res.end('Invalid connection callback'); return; }
-      pending.status = 'connecting';
-      try {
-        const { data } = await this.client.json(new URL('/api/mcp/exchange', this.client.base), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: url.searchParams.get('code'), verifier }) });
-        const remote = await this.remote(data);
-        await this.write({ token: data.token, expiresAt: data.expiresAt, profile: remote.profile, username: remote.username });
-        pending.status = 'connected';
-        res.end(locale === 'zh-CN' ? '连接成功。返回 Agent 继续填写画像。' : 'Connected. Return to your Agent to continue onboarding.');
-      } catch { pending.status = 'failed'; res.writeHead(502); res.end('Connection failed. Return to the Agent and retry.'); }
-      finally { clearTimeout(timer); listener.close(); }
-    });
-    await new Promise((resolve, reject) => { listener.once('error', reject); listener.listen(0, '127.0.0.1', resolve); });
-    const url = new URL('/api/mcp/connect', this.client.base);
-    url.searchParams.set('callback', `http://127.0.0.1:${listener.address().port}/callback`);
-    url.searchParams.set('state', state); url.searchParams.set('challenge', createHash('sha256').update(verifier).digest('base64url')); url.searchParams.set('locale', locale);
-    pending.url = url.toString(); this.pending = pending;
-    const timer = setTimeout(() => { pending.status = 'expired'; listener.close(); }, 10 * 60 * 1000); timer.unref(); listener.unref();
-    return { authorizationUrl: pending.url, status: pending.status, instructions: 'Open this link on the same computer as the MCP process, sign in with GitHub, approve profile access, then call account_connection_status. Do not paste credentials into chat. No local profile is uploaded automatically.' };
+    const state = await this.read();
+    let pending = state.pendingConnection;
+    if (!pending || pending.expiresAt <= Date.now() / 1000) {
+      const verifier = randomBytes(32).toString('base64url');
+      const { data } = await this.client.json(new URL('/api/mcp/device/start', this.client.base), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challenge: createHash('sha256').update(verifier).digest('base64url'), locale }),
+      });
+      const authorization = new URL(data.authorizationUrl);
+      if (authorization.origin !== this.client.base.origin || authorization.pathname !== '/api/mcp/connect') throw new Error('Invalid authorization URL returned by the service.');
+      pending = { verifier, requestToken: data.requestToken, url: authorization.toString(), confirmationCode: data.confirmationCode, expiresAt: data.expiresAt, nextPollAt: 0, interval: Math.max(5, Number(data.interval) || 5) };
+      await this.write({ ...state, pendingConnection: pending });
+    }
+    return { authorizationUrl: pending.url, confirmationCode: pending.confirmationCode, status: 'awaiting_browser', expiresAt: pending.expiresAt, instructions: 'Open this link in any browser, sign in with GitHub, verify the displayed connection code, approve profile access, then call account_connection_status. The Agent can run locally or in the cloud. Do not paste credentials into chat. No local profile is uploaded automatically.' };
   }
   async status() {
-    if (this.pending && ['failed', 'expired'].includes(this.pending.status)) { const status = this.pending.status; this.pending = null; return { status }; }
-    if (this.pending?.status === 'connected') this.pending = null;
     const state = await this.read();
-    return { status: this.pending?.status || (state.token ? state.expiresAt <= Date.now() / 1000 ? 'expired' : 'connected' : 'disconnected'), username: state.username || null, expiresAt: state.expiresAt || null };
+    const pending = state.pendingConnection;
+    if (pending) {
+      if (pending.expiresAt <= Date.now() / 1000) {
+        await this.write({ ...state, pendingConnection: null });
+        return { status: 'expired' };
+      }
+      if (pending.nextPollAt > Date.now()) return { status: 'awaiting_browser', retryAfterSeconds: Math.ceil((pending.nextPollAt - Date.now()) / 1000) };
+      // Enforce a polling interval, including when the network fails; never loop in a tool call.
+      await this.write({ ...state, pendingConnection: { ...pending, nextPollAt: Date.now() + pending.interval * 1000 } });
+      let result;
+      try {
+        result = (await this.client.json(new URL('/api/mcp/device/poll', this.client.base), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requestToken: pending.requestToken, verifier: pending.verifier }),
+        })).data;
+      } catch (error) {
+        throw new Error(String(error.message).split(pending.verifier).join('[redacted]').split(pending.requestToken).join('[redacted]'));
+      }
+      if (result.status === 'denied') {
+        await this.write({ ...state, pendingConnection: null });
+        return { status: 'denied' };
+      }
+      if (result.status === 'connected') {
+        // Persist the credential before a subsequent profile read can fail; discard the old account's cache.
+        await this.write({ token: result.token, expiresAt: result.expiresAt, profile: null });
+        const remote = await this.remote(result);
+        await this.write({ token: result.token, expiresAt: result.expiresAt, profile: remote.profile, username: remote.username });
+        return { status: 'connected', username: remote.username, expiresAt: result.expiresAt };
+      }
+      return { status: 'awaiting_browser', retryAfterSeconds: pending.interval };
+    }
+    return { status: state.token ? state.expiresAt <= Date.now() / 1000 ? 'expired' : 'connected' : 'disconnected', username: state.username || null, expiresAt: state.expiresAt || null };
   }
   async disconnect() {
-    if (this.pending && !['connected', 'expired', 'failed'].includes(this.pending.status)) throw new Error('Finish or let the pending browser connection expire before disconnecting.');
     const state = await this.read();
     let revoked = !state.token;
     if (state.token) { try { await this.remote(state, 'DELETE'); revoked = true; } catch { /* Clear local credentials even when offline or expired; disclose failed revocation. */ } }
-    this.pending = null;
     await this.write({});
     return { disconnected: true, localProfileCleared: true, revoked, ...(!revoked ? { warning: 'Server revocation failed. Local credentials were removed; the existing grant expires after seven days or is invalidated by a new browser connection.' } : {}) };
   }

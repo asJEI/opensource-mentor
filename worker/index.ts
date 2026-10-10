@@ -1,3 +1,4 @@
+import { handleMentorDevice } from './auth/mentorDevice'
 /**
  * Cloudflare Worker API entry.
  * Task 4: GitHub APIs. Task 5–6: AI + code-review endpoints.
@@ -56,6 +57,11 @@ export default {
     const url = new URL(request.url)
 
     try {
+      if (['/api/mcp/device/start', '/api/mcp/device/poll'].includes(url.pathname) || (url.pathname === '/api/mcp/connect' && url.searchParams.has('request'))) {
+        const response = await handleMentorDevice(request, env)
+        response.headers.set('Cache-Control', 'no-store')
+        return response
+      }
       if (['/api/mcp/connect', '/api/mcp/exchange', '/api/mcp/profile'].includes(url.pathname)) {
         const response = await handleMentor(request, env)
         response.headers.set('Cache-Control', 'no-store')
