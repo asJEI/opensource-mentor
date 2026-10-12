@@ -23,7 +23,7 @@ async function jsonBody(request) {
 }
 const failure = (status, message) => Response.json({ jsonrpc: '2.0', error: { code: -32000, message }, id: null }, { status, headers: status === 401 ? { 'WWW-Authenticate': 'Bearer realm="opensource-mentor-remote"' } : {} });
 
-export function createRemoteHandler(fetcher = fetch) {
+export function createRemoteHandler(fetcher = (url, init) => globalThis.fetch(url, { ...init, redirect: 'manual' })) {
   return async (request, env) => {
     let server, transport, stub, lease;
     const origin = request.headers.get('Origin');

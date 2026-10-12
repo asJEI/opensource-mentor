@@ -50,6 +50,7 @@ export async function oauthStore(env, op, data = {}) {
   const stub = env.REMOTE_OAUTH.get(env.REMOTE_OAUTH.idFromName('oauth-v1'));
   const response = await stub.fetch(new Request('https://internal/' + op, { method: 'POST', body: JSON.stringify(data) }));
   const result = await response.json();
+  if (result.diagnostics) console.warn('[remote-oauth] dependency failed', result.diagnostics);
   if (!response.ok) throw new RemoteError(response.status, result.error || 'OAuth unavailable');
   return result;
 }
@@ -62,7 +63,10 @@ export async function oauthIdentity(token, env) {
 
 /** Private authorization records; no public endpoint exposes this binding. */
 export class RemoteOAuthState {
-  constructor(state, env, fetcher = fetch) { this.state = state; this.env = env; this.queue = Promise.resolve(); this.fetcher = (url, init) => fetcher(url, { ...init, signal: AbortSignal.timeout(10000) }); }
+  constructor(state, env, fetcher = (url, init) => globalThis.fetch(url, { ...init, redirect: 'manual' })) {
+    this.state = state; this.env = env; this.queue = Promise.resolve();
+    this.fetcher = (url, init) => fetcher(url, { ...init, signal: AbortSignal.timeout(10000) });
+  }
   fetch(request) {
     // Serialize network-spanning approval consumption as well as storage transactions.
     const work = this.queue.then(() => this.handle(request));
@@ -70,6 +74,7 @@ export class RemoteOAuthState {
     return work;
   }
   async handle(request) {
+    let stage = 'storage';
     try {
       const data = await request.json(), op = new URL(request.url).pathname.slice(1), storage = this.state.storage;
       const read = async key => { const row = await storage.get(key); return row?.exp > now() ? row : null; };
@@ -94,6 +99,7 @@ export class RemoteOAuthState {
         await storage.put('flow-admission', { day, count: count + 1 });
         const verifier = random();
         const client = new MentorClient({ OSM_BASE_URL: this.env.WEBSITE_ORIGIN }, this.fetcher);
+        stage = 'website-device-start';
         const { data: device } = await client.json(new URL('/api/mcp/device/start', client.base), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ challenge: await challenge(verifier), locale: data.locale }) });
         const target = new URL(device.authorizationUrl);
         if (target.origin !== client.base.origin || target.pathname !== '/api/mcp/connect') invalid('Invalid website authorization URL', 502);
@@ -178,7 +184,8 @@ export class RemoteOAuthState {
       }
       return json({ error: 'Not found' }, 404);
     } catch (error) {
-      return json({ error: error instanceof RemoteError ? error.message : 'temporarily_unavailable' }, error instanceof RemoteError ? error.status : 503);
+      if (!(error instanceof RemoteError)) console.warn('[remote-oauth] operation failed', { stage, name: error.name, upstreamStatus: String(error.message).match(/(?:HTTP\s*|\()(\d{3})/)?.[1] || null });
+      return json({ error: error instanceof RemoteError ? error.message : 'temporarily_unavailable', ...(!(error instanceof RemoteError) ? { diagnostics: { stage, name: error.name, upstreamStatus: String(error.message).match(/(?:HTTP\s*|\()(\d{3})/)?.[1] || null } } : {}) }, error instanceof RemoteError ? error.status : 503);
     }
   }
   async alarm() {

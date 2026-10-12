@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { auth } from '@modelcontextprotocol/sdk/client/auth.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
@@ -65,6 +65,23 @@ async function fixture() {
 }
 
 describe('Remote OAuth authorization', () => {
+  it('uses Cloudflare-compatible manual redirects without forwarding credentials to redirects', async () => {
+    const f = await fixture()
+    const native = vi.fn(async () => Response.json({ success: true, data: { requestToken: 'public-request', authorizationUrl: 'https://web.example/api/mcp/connect?request=public', confirmationCode: 'AABBCCDD' } }))
+    vi.stubGlobal('fetch', native)
+    try {
+      const object = new RemoteOAuthState({ storage: new Storage() }, f.env)
+      const response = await object.fetch(new Request('https://internal/start', { method: 'POST', body: JSON.stringify({ locale: 'en-US' }) }))
+      expect(response.status).toBe(200)
+      expect((native.mock.calls[0] as any)[1].redirect).toBe('manual')
+      native.mockImplementation(async () => new Response(null, { status: 302, headers: { Location: 'https://evil.example' } }))
+      const handler = createRemoteHandler()
+      const denied = await handler(new Request(resource, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_repository', arguments: { owner: 'a', repo: 'b' } } }) }), f.env)
+      expect((await denied.json() as any).result.isError).toBe(true)
+      expect(native).toHaveBeenCalledTimes(2)
+      expect((native.mock.calls[1] as any)[1].redirect).toBe('manual')
+    } finally { vi.unstubAllGlobals() }
+  })
   it('advertises resource metadata and challenges initial connection without manual credentials', async () => {
     const f = await fixture()
     const meta = await (await f.get('/.well-known/oauth-protected-resource/mcp')).json() as any

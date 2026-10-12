@@ -2,7 +2,7 @@
 
 ## OAuth update — 2026-10-12
 
-Branch `codex/remote-mcp-oauth`: project tests 103/20 files and stdio tests 16
+Branch `codex/remote-mcp-oauth`: project tests 104/20 files and stdio tests 16
 passed; typecheck, website build and remote dry-run passed. Local Cloudflare
 runtime returned resource metadata 200, DCR registration 201, initialization
 401 with OAuth discovery challenge, and invalid-code rejection 400. New tests
@@ -13,6 +13,12 @@ expiration, two verified website principals, denial and expired-record cleanup.
 Browser GitHub approval is mocked in automated tests and still requires an
 interactive host regression. No website code, Supabase schema, or platform AI
 configuration was changed for OAuth.
+
+Live independent Worker checks: SDK OAuth discovery/DCR returned REDIRECT,
+authorization page HTTP 200 with a valid website approval link and HttpOnly
+browser cookie; anonymous initialization returned 401 with resource discovery.
+Cloudflare fetch uses manual redirects and refuses redirected upstream responses;
+this has a regression test. No browser approval was performed by the assistant.
 
 The remainder records the earlier MVP validation, before OAuth deployment.
 

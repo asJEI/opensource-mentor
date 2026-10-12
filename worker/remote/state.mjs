@@ -9,7 +9,7 @@ class DurableProfiles extends ProfileSession {
 
 /** One object per immutable remote principal. Never keyed by MCP session ID or IP. */
 export class RemoteUserState {
-  constructor(state, env, fetcher = fetch) { this.state = state; this.env = env; this.fetcher = fetcher; this.queue = Promise.resolve(); }
+  constructor(state, env, fetcher = (url, init) => globalThis.fetch(url, { ...init, redirect: 'manual' })) { this.state = state; this.env = env; this.fetcher = fetcher; this.queue = Promise.resolve(); }
   async fetch(request) {
     const path = new URL(request.url).pathname;
     const input = await request.json();
