@@ -1,5 +1,7 @@
 # Remote MCP MVP
 
+> 当前接入方式已升级为 [浏览器 OAuth 自动授权](remote-mcp-oauth.zh-CN.md)，无需手动发凭证。以下保留 MVP 手动凭证方案供旧客户端参考，其“未部署”状态描述对应最初实现时点。
+
 [English](remote-mcp.md) · [架构审计](remote-mcp-audit.md)
 
 通过独立 Cloudflare Worker 的 `https://你的远程Worker/mcp` 提供现有 17 个工具，

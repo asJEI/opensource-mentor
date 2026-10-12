@@ -10,7 +10,7 @@ OpenSource Mentor connects these steps in one workspace. Recommendations use you
 
 You can also use the project's features inside an Agent through the local MCP server and Skill. See the [universal MCP installation guide](./docs/mcp-hosts.md) for Codex, Claude Code, Cursor, DeepSeek Harness and other stdio hosts, or the [local development guide](./docs/agent-installation.md).
 
-For HTTPS connections without a local clone, see the [Remote MCP MVP guide](./docs/remote-mcp.md). This independent Worker requires operator deployment; it is not enabled on the website by default.
+For HTTPS connections without a local clone, use [Remote MCP with browser OAuth](./docs/remote-mcp-oauth.md). Compatible hosts need only the remote URL; GitHub browser approval supplies the access token automatically. The remote service uses an independent Worker.
 
 - [Cloudflare version](https://hokkai.top/)
 

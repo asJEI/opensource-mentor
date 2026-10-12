@@ -3,7 +3,9 @@ import { createToolServer } from '../../packages/mentor-mcp/src/tools.mjs';
 import { MentorClient } from '../../packages/mentor-mcp/src/client.mjs';
 import { identity, authorizeTool, hash, RemoteError } from './policy.mjs';
 import { remoteProfiles } from './state.mjs';
+import { handleOAuth } from './oauth.mjs';
 export { RemoteUserState } from './state.mjs';
+export { RemoteOAuthState } from './oauth.mjs';
 
 const MAX_BODY = 128 * 1024;
 async function jsonBody(request) {
@@ -33,19 +35,23 @@ export function createRemoteHandler(fetcher = fetch) {
       // Explicit exact-origin allowlist. Requests from native clients normally have no Origin.
       const allowedOrigins = [env.REMOTE_ORIGIN, ...(env.ALLOWED_ORIGINS || '').split(',').filter(Boolean)];
       if (origin && !allowedOrigins.includes(origin)) throw new RemoteError(403, 'Origin not allowed');
-      if (url.pathname !== '/mcp') throw new RemoteError(404, 'Not found');
-      if (url.search) throw new RemoteError(400, 'Do not pass credentials or options in the MCP URL');
+      const oauth = url.pathname.startsWith('/oauth/') || url.pathname.startsWith('/.well-known/');
+      if (url.pathname !== '/mcp' && !oauth) throw new RemoteError(404, 'Not found');
+      if (url.search && !oauth) throw new RemoteError(400, 'Do not pass credentials or options in the MCP URL');
       if (!env.REMOTE_RATE_LIMITER) throw new RemoteError(503, 'Remote rate limiter required');
       const rate = await env.REMOTE_RATE_LIMITER.limit({ key: 'ip:' + (request.headers.get('CF-Connecting-IP') || 'local') });
       if (!rate.success) throw new RemoteError(429, 'Remote request rate exceeded');
       if (request.method === 'OPTIONS') {
-        response = new Response(null, { status: 204, headers: { 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, MCP-Protocol-Version, X-AI-Key, X-AI-Provider, X-AI-Model, X-User-GitHub-Token', 'Access-Control-Expose-Headers': 'WWW-Authenticate' } });
+        response = new Response(null, { status: 204, headers: { 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, MCP-Protocol-Version, X-AI-Key, X-AI-Provider, X-AI-Model, X-User-GitHub-Token, X-CSRF', 'Access-Control-Expose-Headers': 'WWW-Authenticate' } });
+      } else if (oauth) {
+        response = await handleOAuth(request, env);
       } else {
         if (request.method !== 'POST') throw new RemoteError(405, 'Stateless MCP supports POST only; SSE subscriptions are unavailable');
         if (request.headers.has('Mcp-Session-Id')) throw new RemoteError(400, 'Stateless MCP does not use session IDs');
         const user = await identity(request, env);
         const body = await jsonBody(request);
         if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RemoteError(400, 'JSON-RPC batches are not supported');
+        if (!user && env.REMOTE_OAUTH_REQUIRE_LOGIN === 'true' && body.method === 'initialize') throw new RemoteError(401, 'Sign in to connect OpenSource Mentor');
         const website = body.method === 'tools/call' ? authorizeTool(body.params?.name, body.params?.arguments, user, request) : false;
         if (user) {
           if (!env.REMOTE_USERS) throw new RemoteError(503, 'Per-user durable storage required');
@@ -84,6 +90,9 @@ export function createRemoteHandler(fetcher = fetch) {
       }
     } catch (error) {
       response = error instanceof RemoteError ? failure(error.status, error.message) : failure(503, 'Remote service unavailable; no credentials were logged or shared');
+      if (response.status === 401 && env.REMOTE_OAUTH) response.headers.set('WWW-Authenticate', `Bearer resource_metadata="${env.REMOTE_ORIGIN}/.well-known/oauth-protected-resource/mcp", scope="profile agent"`);
+      if (response.status === 403 && env.REMOTE_OAUTH && error.scope) response.headers.set('WWW-Authenticate', `Bearer error="insufficient_scope", resource_metadata="${env.REMOTE_ORIGIN}/.well-known/oauth-protected-resource/mcp", scope="${error.scope}"`);
+      if (new URL(request.url).pathname.startsWith('/oauth/')) response = Response.json({ error: error instanceof RemoteError && ['invalid_grant', 'invalid_client', 'invalid_target', 'unsupported_grant_type', 'temporarily_unavailable'].includes(error.message) ? error.message : 'invalid_request' }, { status: error instanceof RemoteError ? error.status : 503 });
     } finally {
       if (server) await server.close();
       if (lease && stub) { try { await stub.fetch(new Request('https://internal/release', { method: 'POST', body: JSON.stringify({ lease }) })); } catch { /* Lease expires; never refund charged attempts. */ } }

@@ -9,10 +9,20 @@ class DurableProfiles extends ProfileSession {
 
 /** One object per immutable remote principal. Never keyed by MCP session ID or IP. */
 export class RemoteUserState {
-  constructor(state, env) { this.state = state; this.env = env; this.queue = Promise.resolve(); }
+  constructor(state, env, fetcher = fetch) { this.state = state; this.env = env; this.fetcher = fetcher; this.queue = Promise.resolve(); }
   async fetch(request) {
     const path = new URL(request.url).pathname;
     const input = await request.json();
+    if (path === '/bind') {
+      const work = this.queue.then(async () => {
+        const previous = await this.state.storage.get('profile') || {};
+        // Login only attaches website access; never upload an earlier cached profile.
+        await this.state.storage.put('profile', { ...previous, token: input.token, expiresAt: input.expiresAt, pendingConnection: null });
+        return Response.json({ ok: true });
+      });
+      this.queue = work.catch(() => {});
+      return work;
+    }
     if (path === '/charge') {
       const result = await this.state.storage.transaction(async tx => {
         const now = Date.now();
@@ -40,7 +50,7 @@ export class RemoteUserState {
     // Serialize profile transactions spanning network requests, so a stale read cannot restore a revoked token.
     const work = this.queue.then(async () => {
       try {
-        const client = new MentorClient({ OSM_BASE_URL: this.env.WEBSITE_ORIGIN });
+        const client = new MentorClient({ OSM_BASE_URL: this.env.WEBSITE_ORIGIN }, this.fetcher);
         const profiles = new DurableProfiles(client, this.state.storage);
         const result = await profiles[operation](...(input.args || []));
         if (result.storage === 'local') result.storage = 'remote-private';

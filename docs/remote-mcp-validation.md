@@ -1,5 +1,21 @@
 # Remote MCP MVP validation — 2026-10-10
 
+## OAuth update — 2026-10-12
+
+Branch `codex/remote-mcp-oauth`: project tests 103/20 files and stdio tests 16
+passed; typecheck, website build and remote dry-run passed. Local Cloudflare
+runtime returned resource metadata 200, DCR registration 201, initialization
+401 with OAuth discovery challenge, and invalid-code rejection 400. New tests
+exercise the real SDK OAuth client through discovery, registration, S256 PKCE
+exchange and a protected profile call, plus exact redirects, audience binding,
+browser CSRF/cookie proof, code replay, refresh rotation/reuse, revocation,
+expiration, two verified website principals, denial and expired-record cleanup.
+Browser GitHub approval is mocked in automated tests and still requires an
+interactive host regression. No website code, Supabase schema, or platform AI
+configuration was changed for OAuth.
+
+The remainder records the earlier MVP validation, before OAuth deployment.
+
 Branch: `codex/remote-mcp-mvp`. No push, online deployment, production
 configuration update, or production database write was performed.
 

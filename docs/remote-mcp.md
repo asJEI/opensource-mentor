@@ -1,5 +1,7 @@
 # Remote MCP MVP
 
+> Current setup: [browser OAuth authorization](remote-mcp-oauth.md), without manual token issuance. This page retains the legacy MVP setup; its undeployed status describes the original implementation date.
+
 [简体中文](remote-mcp.zh-CN.md) · [Architecture audit](remote-mcp-audit.md)
 
 This MVP exposes the existing 17 tools through stateless Streamable HTTP at

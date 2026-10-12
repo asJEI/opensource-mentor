@@ -6,12 +6,13 @@
   "workers_dev": true,
   "vars": {
     "WEBSITE_ORIGIN": "https://hokkai.top",
-    "REMOTE_ORIGIN": "https://replace-with-your-remote-worker.workers.dev"
+    "REMOTE_ORIGIN": "https://opensource-mentor-remote-mvp.316920080dd.workers.dev",
+    "REMOTE_OAUTH_REQUIRE_LOGIN": "true"
   },
-  "durable_objects": { "bindings": [{ "name": "REMOTE_USERS", "class_name": "RemoteUserState" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RemoteUserState"] }],
+  "durable_objects": { "bindings": [{ "name": "REMOTE_USERS", "class_name": "RemoteUserState" }, { "name": "REMOTE_OAUTH", "class_name": "RemoteOAuthState" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RemoteUserState"] }, { "tag": "v2", "new_sqlite_classes": ["RemoteOAuthState"] }],
   "ratelimits": [{ "name": "REMOTE_RATE_LIMITER", "namespace_id": "2101", "simple": { "limit": 40, "period": 60 } }],
   "observability": { "enabled": false }
-  // Set REMOTE_ACCESS_TOKENS with wrangler secret put --config wrangler.remote.jsonc.
+  // OAuth needs no manually issued tokens or new secrets. Legacy personal tokens remain optional.
   // This config has no custom-domain route and does not modify the existing website Worker.
 }
