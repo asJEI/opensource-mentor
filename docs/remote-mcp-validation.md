@@ -2,6 +2,26 @@
 
 ## OAuth update — 2026-10-12
 
+### Live Codex checkpoint
+
+- Real GitHub browser approval and Codex OAuth login completed successfully.
+- A fresh Codex App Server connection reported `authStatus: oAuth` and 17 tools.
+- The remote `get_user_profile` call succeeded for GitHub account `asJEI`:
+  `connected: true`, `storage: website`, `profile: null`, `onboardingRequired: true`.
+  No onboarding preferences were saved or synced during this check.
+- Unauthenticated GET probes and POST initialization now return an OAuth 401
+  challenge with an OAuth error body. Connection compatibility regression passed.
+- Website approval forms use `Referrer-Policy: origin` so browser POST retains
+  its Origin without disclosing the grant-bearing URL. Exact Origin checks remain;
+  foreign and null origins are rejected. The website fix was deployed and verified.
+- Cursor still reported an empty connection error before browser authorization;
+  its complete host flow remains unresolved. DSH testing is pending the user's
+  next session. Codex success does not establish compatibility with these hosts.
+
+The temporary Codex test used an ephemeral protocol context with no model turn
+or persisted conversation. Diagnostic scripts and generated protocol bindings
+are ignored local artifacts, not installation requirements.
+
 Branch `codex/remote-mcp-oauth`: project tests 104/20 files and stdio tests 16
 passed; typecheck, website build and remote dry-run passed. Local Cloudflare
 runtime returned resource metadata 200, DCR registration 201, initialization
