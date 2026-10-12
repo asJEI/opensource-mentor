@@ -46,9 +46,11 @@ export function createRemoteHandler(fetcher = (url, init) => globalThis.fetch(ur
       } else if (oauth) {
         response = await handleOAuth(request, env);
       } else {
+        const user = await identity(request, env);
+        // OAuth hosts may probe with GET before POST initialize. Challenge before method rejection.
+        if (!user && env.REMOTE_OAUTH_REQUIRE_LOGIN === 'true' && request.method !== 'POST') throw new RemoteError(401, 'Sign in to connect OpenSource Mentor');
         if (request.method !== 'POST') throw new RemoteError(405, 'Stateless MCP supports POST only; SSE subscriptions are unavailable');
         if (request.headers.has('Mcp-Session-Id')) throw new RemoteError(400, 'Stateless MCP does not use session IDs');
-        const user = await identity(request, env);
         const body = await jsonBody(request);
         if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RemoteError(400, 'JSON-RPC batches are not supported');
         if (!user && env.REMOTE_OAUTH_REQUIRE_LOGIN === 'true' && body.method === 'initialize') throw new RemoteError(401, 'Sign in to connect OpenSource Mentor');
@@ -90,7 +92,7 @@ export function createRemoteHandler(fetcher = (url, init) => globalThis.fetch(ur
       }
     } catch (error) {
       response = error instanceof RemoteError ? failure(error.status, error.message) : failure(503, 'Remote service unavailable; no credentials were logged or shared');
-      if (response.status === 401 && env.REMOTE_OAUTH) response.headers.set('WWW-Authenticate', `Bearer resource_metadata="${env.REMOTE_ORIGIN}/.well-known/oauth-protected-resource/mcp", scope="profile agent"`);
+      if (response.status === 401 && env.REMOTE_OAUTH) response = Response.json({ error: 'invalid_token', error_description: error.message }, { status: 401, headers: { 'WWW-Authenticate': `Bearer resource_metadata="${env.REMOTE_ORIGIN}/.well-known/oauth-protected-resource/mcp", scope="profile agent"` } });
       if (response.status === 403 && env.REMOTE_OAUTH && error.scope) response.headers.set('WWW-Authenticate', `Bearer error="insufficient_scope", resource_metadata="${env.REMOTE_ORIGIN}/.well-known/oauth-protected-resource/mcp", scope="${error.scope}"`);
       if (new URL(request.url).pathname.startsWith('/oauth/')) response = Response.json({ error: error instanceof RemoteError && ['invalid_grant', 'invalid_client', 'invalid_target', 'unsupported_grant_type', 'temporarily_unavailable'].includes(error.message) ? error.message : 'invalid_request' }, { status: error instanceof RemoteError ? error.status : 503 });
     } finally {
