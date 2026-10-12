@@ -40,6 +40,7 @@ describe('Agent profile authorization', () => {
     const url = `https://mentor.example/api/mcp/connect?${query}`
     vi.mocked(readSession).mockResolvedValue(null)
     const page = await handleMentor(new Request(url), env)
+    expect(page.headers.get('Referrer-Policy')).toBe('origin')
     expect(await page.text()).toContain('GitHub Login')
     await expect(handleMentor(new Request(url, { method: 'POST', headers: { Origin: 'https://evil.example' } }), env)).rejects.toThrow()
     await expect(handleMentor(new Request(url, { method: 'POST', headers: { Origin: 'https://mentor.example' } }), env)).rejects.toThrow('Sign in first')

@@ -42,11 +42,13 @@ describe('cloud Agent browser authorization', () => {
     expect(writes).toHaveLength(0)
     expect(await (await poll(s)).json()).toMatchObject({ data: { status: 'awaiting_browser' } })
     const page = await handleMentorDevice(new Request(s.authorizationUrl), env)
+    expect(page.headers.get('Referrer-Policy')).toBe('origin')
     expect(await page.text()).toContain(s.confirmationCode)
   })
   it('requires browser login and same-origin explicit approval', async () => {
     const s = await start()
     await expect(approve(s, 'approve', 'https://evil.example')).rejects.toThrow('Confirm connection')
+    await expect(approve(s, 'approve', 'null')).rejects.toThrow('Confirm connection')
     vi.mocked(readSession).mockResolvedValue(null)
     expect(await (await handleMentorDevice(new Request(s.authorizationUrl), env)).text()).toContain('GitHub Login')
     await expect(approve(s)).rejects.toThrow('Sign in first')

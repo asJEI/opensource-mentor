@@ -61,7 +61,9 @@ export async function patch(env: PlatformEnv, user: Awaited<ReturnType<typeof cu
   const rows = await createSupabaseClient(env).request<Array<{ developer_profile: unknown }>>(`/developer_profiles?${relation}=eq.${encodeURIComponent(user.appUser.id)}${condition}${pendingCondition}&select=developer_profile`, { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ developer_profile: data, ...extra }) })
   if (!rows.length) throw new ApiError('Profile was not saved', 502)
 }
-export const secureHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
+// no-referrer makes native form POST Origin opaque (null). Send only the public
+// origin, never the grant-bearing URL, while retaining exact Origin validation.
+export const secureHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'origin', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
 export async function handleMentor(request: Request, env: PlatformEnv): Promise<Response> {
   const url = new URL(request.url)
   if (url.pathname === '/api/mcp/connect') {
