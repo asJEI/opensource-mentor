@@ -10,7 +10,7 @@ OpenSource Mentor supports a local **stdio MCP server** and a hosted **Streamabl
 | Streamable HTTP with custom headers, without OAuth | Operator-issued personal static credential; see [non-OAuth setup](./remote-mcp-oauth.md#hosts-without-oauth) |
 | stdio | Clone the repository, install MCP dependencies and configure Node |
 
-The source for Remote OAuth is on `codex/remote-mcp-oauth`; a default clone of `main` may still contain the earlier stdio-only guide until that branch is merged. The deployed remote service is independent of the branch a local clone uses.
+The Remote OAuth implementation and these installation guides are included on `main`. The deployed remote service is independent of the branch a local clone uses.
 
 ## Common installation
 

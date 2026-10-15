@@ -17,4 +17,4 @@ Remote HTTPS connections do not need this package or a local clone:
 https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp
 
 Hosts must support OAuth or use an operator-issued personal static credential.
-See the repository's [installation guide](https://github.com/asJEI/opensource-mentor/blob/codex/remote-mcp-oauth/docs/mcp-hosts.md).
+See the repository's [installation guide](https://github.com/asJEI/opensource-mentor/blob/main/docs/mcp-hosts.md).

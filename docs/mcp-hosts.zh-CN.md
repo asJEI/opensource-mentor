@@ -10,7 +10,7 @@
 | Streamable HTTP + 自定义请求头，无 OAuth | 运营者逐用户发放静态凭证，见[非 OAuth 宿主](./remote-mcp-oauth.zh-CN.md#不支持-oauth-的宿主) |
 | stdio | 克隆仓库，安装 MCP 依赖，配置 Node 启动 |
 
-Remote OAuth 源码目前在 `codex/remote-mcp-oauth` 分支，合并前默认克隆 main 可能仍看到旧的本地安装说明。线上远程服务独立于用户克隆的分支。下文主要说明本地接入。
+Remote OAuth 实现与更新后的安装说明已纳入 main。线上远程服务独立于用户克隆的分支。下文主要说明本地接入。
 
 ## 1. 安装程序
 
