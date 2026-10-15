@@ -1,7 +1,7 @@
 {
   "name": "opensource-mentor-mcp",
   "version": "0.1.0",
-  "license": "AGPL-3.0-only",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "bin": {
@@ -9,8 +9,7 @@
   },
   "files": [
     "src",
-    "LICENSE",
-    "LICENSING.md"
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"

@@ -4,9 +4,9 @@ This package provides the local stdio server. It is not published to npm yet;
 `private: true` intentionally blocks publication pending release approval.
 The executable mapping and source-file whitelist are prepared here.
 
-The public distribution is AGPL-3.0-only; an alternative commercial license
-requires a separate written agreement. See LICENSE and LICENSING.md in this
-package. AGPL permits commercial use when its conditions are met.
+This package is licensed under MIT. Commercial use and proprietary derivatives
+are permitted subject to the copyright and license notice requirements. See
+LICENSE in this package. Third-party dependencies retain their own licenses.
 
 Clone the repository, then run `npm ci` in this directory. Your MCP host starts
 `node /absolute/path/opensource-mentor/packages/mentor-mcp/src/stdio.mjs`.

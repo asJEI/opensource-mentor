@@ -138,11 +138,10 @@ Cloudflare configuration, GitHub Actions, and production checks: [DEPLOY-CLOUDFL
 
 ## Licensing
 
-OpenSource Mentor is available under **AGPL-3.0-only**, with an alternative
-commercial license available by separate written agreement for uses that cannot
-comply with AGPL. AGPL permits commercial use subject to its conditions; it is
-not a non-commercial license. See [LICENSE](./LICENSE) and [licensing and
-commercial inquiries](./LICENSING.md). Third-party licenses remain applicable.
+OpenSource Mentor is licensed under the **MIT License**. Commercial use,
+modification and redistribution, including proprietary derivatives, are permitted
+subject to retaining the required copyright and license notices. See
+[LICENSE](./LICENSE). Third-party dependencies retain their respective licenses.
 
 ## Security and project scope
 
