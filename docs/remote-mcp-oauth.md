@@ -29,6 +29,49 @@ requires a new authorization with `byok` scope and the user's own X-AI-Key.
 OAuth never supplies the platform AI key. Default requested scopes are profile
 and agent.
 
+## Hosts without OAuth
+
+The deployed server also accepts operator-issued personal static credentials.
+Hosts with Streamable HTTP and custom headers do not need to manually extract
+an OAuth access token. This is an operator-managed fallback, not self-service PAT
+management. In the current implementation these static credentials have no
+automatic expiration; operators revoke them by removing their digest.
+
+For DSH 44.0.0 / bridge 0.2.0-rc.2, insert into the profile's `cordis.patch.yml`:
+
+```yaml
+- insert:
+    - id: mcp-opensource-mentor-remote
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: opensource-mentor-remote
+        transport: streamable-http
+        url: https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp
+        headers:
+          Authorization: !!js '`Bearer ${process.env.OSM_REMOTE_TOKEN}`'
+        toolCallTimeoutMs: 240000
+```
+
+Set OSM_REMOTE_TOKEN in the environment that launches the host, or use its
+private credential facility. `headers` is separate from the stdio child `env`.
+Never commit a real token or share one user's token with another user. Remote
+initialization currently requires login, so a URL alone is insufficient for this
+bridge. Use explicit `modelSource: agent` with an `agent`-scoped credential.
+
+Operators generate a random token of at least 32 bytes and keep only its SHA-256
+hex digest in the REMOTE_ACCESS_TOKENS secret, with a unique stable user ID and
+the minimum scopes, for example `profile` and `agent`. See the [legacy operator
+setup](remote-mcp.md#operator-setup-and-deployment) for commands. Secret updates
+replace the entire registry: merge existing entries before uploading, or other
+users will lose access. Rotating a token should preserve that user's ID. Static
+IDs and OAuth website IDs are separate; existing profiles are not migrated merely
+by changing the authentication method.
+
+An OAuth access token lasts at most one hour; copying it into static headers is
+not the recommended fallback. The website's custom device approval endpoints
+are not an OAuth device-code grant. Adding a device-code grant alone would still
+require matching host support or a helper to authenticate and refresh tokens.
+
 ## Deployment
 
 Run `npm ci`, `npm run mcp:install`, `npm test`, `npm run test:mcp`,

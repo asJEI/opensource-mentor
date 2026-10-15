@@ -33,6 +33,41 @@
 X-AI-Key；OAuth 不会提供或复制平台公用模型密钥。默认授权范围为 profile agent，
 需要网页模型时应重新申请包含 byok 的授权，并由宿主安全配置用户自己的模型密钥。
 
+## 不支持 OAuth 的宿主
+
+现有远程服务也支持运营者逐用户发放静态访问凭证。支持 Streamable HTTP 和自定义
+请求头的宿主，无需手工提取 OAuth 访问令牌。这个方案仍需运营者管理，不是自助 PAT
+系统；当前静态凭证没有自动过期时间，运营者移除摘要即可撤销。
+
+DSH 44.0.0 / 桥接 0.2.0-rc.2 可在 profile 的 `cordis.patch.yml` 中加入：
+
+```yaml
+- insert:
+    - id: mcp-opensource-mentor-remote
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: opensource-mentor-remote
+        transport: streamable-http
+        url: https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp
+        headers:
+          Authorization: !!js '`Bearer ${process.env.OSM_REMOTE_TOKEN}`'
+        toolCallTimeoutMs: 240000
+```
+
+在启动宿主的环境中设置 OSM_REMOTE_TOKEN，或使用其私有凭证设施。HTTP 的 `headers`
+与 stdio 子进程的 `env` 是不同配置。不要提交真实凭证，不同用户不能共用凭证。
+当前远程初始化要求认证，该桥接只填 URL 不够。使用具有 agent 权限的凭证时，
+生成工具显式选择 `modelSource: agent`。
+
+运营者生成至少 32 字节的随机凭证，Secret REMOTE_ACCESS_TOKENS 只存其 SHA-256 摘要、
+唯一稳定用户 id 和最小权限，例如 profile、agent；命令见[旧版运营者步骤](remote-mcp.zh-CN.md#部署步骤)。
+更新 Secret 会替换整个注册表，必须合并已有条目后上传，否则会撤销其他用户的访问。
+轮换保留该用户 id。静态凭证身份与 OAuth 网页身份不同，切换认证方式不会自动迁移画像。
+
+OAuth access token 最长一小时，把它复制进静态请求头不是推荐方案。已有网页 device
+批准接口也不等于标准 OAuth device-code grant；即使增加后者，宿主或辅助程序仍需实现
+对应认证和刷新逻辑。
+
 ## 运营者发布
 
 本次不需要新的 GitHub OAuth App、GitHub 密钥或 Supabase 表。

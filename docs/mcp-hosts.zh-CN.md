@@ -2,7 +2,15 @@
 
 [English](./mcp-hosts.md) | 简体中文
 
-本版是**本地 stdio MCP + 在线网页 API**，适用于支持 stdio 的 Agent／harness。没有独立的远程 `/mcp` 地址，也尚未发布 npm 包。统一安装程序后，再按宿主配置启动命令和环境变量即可。
+目前支持**本地 stdio MCP**和**云端 Streamable HTTP MCP**。支持远程 OAuth 的宿主可以免克隆接入，见[浏览器授权教程](./remote-mcp-oauth.zh-CN.md)。npm 包尚未发布，暂不能使用 `npx opensource-mentor-mcp` 安装。
+
+| 宿主能力 | 接入方式 |
+| --- | --- |
+| Streamable HTTP + OAuth | 远程地址与浏览器授权 |
+| Streamable HTTP + 自定义请求头，无 OAuth | 运营者逐用户发放静态凭证，见[非 OAuth 宿主](./remote-mcp-oauth.zh-CN.md#不支持-oauth-的宿主) |
+| stdio | 克隆仓库，安装 MCP 依赖，配置 Node 启动 |
+
+Remote OAuth 源码目前在 `codex/remote-mcp-oauth` 分支，合并前默认克隆 main 可能仍看到旧的本地安装说明。线上远程服务独立于用户克隆的分支。下文主要说明本地接入。
 
 ## 1. 安装程序
 
@@ -100,28 +108,29 @@ claude mcp get opensource-mentor
 
 ### DeepSeek Harness
 
-针对官方 `deepseek-ai/deepseek-harness`，在当前使用的 profile 插件配置中，按其插件配置流程合并一条 `@deepseek-ai/dsh-mcp-client` 条目；若 profile 未加载此桥接插件，需先配置它。这不是 Cursor 的 `mcpServers` JSON：
+针对官方 `deepseek-ai/deepseek-harness`，在当前 profile 的 **`cordis.patch.yml` 补丁层**新增插件时，需要用 `insert:` 包裹。裸 `id:` 用于修改已有条目，条目不存在时可能只输出警告、不加载工具。基础插件清单则使用裸条目，不要套用补丁层的格式。
+
+已核对 DSH 44.0.0 内置桥接 `0.2.0-rc.2`：支持 stdio 和 HTTP 自定义请求头，但没有配置 OAuth provider。该版本应使用下方本地方案，或用独立静态凭证接入远程；只填远程 URL 无法自动登录。不能将此限制推广到所有版本。
 
 ```yaml
-- id: mcp-opensource-mentor
-  name: '@deepseek-ai/dsh-mcp-client'
-  config:
-    serverName: opensource-mentor
-    transport: stdio
-    command: node
-    args: ['D:/opensource-mentor/packages/mentor-mcp/src/stdio.mjs']
-    toolCallTimeoutMs: 240000
-    env:
-      OSM_BASE_URL: https://hokkai.top
-      OSM_LOCALE: zh-CN
-      OSM_MODEL_SOURCE: website
-      OSM_AI_PROVIDER: deepseek
-      OSM_AI_MODEL: deepseek-flash
-      OSM_AI_BASE_URL: https://api.deepseek.com
-      OSM_AI_KEY: !!js process.env.OSM_AI_KEY
+- insert:
+    - id: mcp-opensource-mentor
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: opensource-mentor
+        transport: stdio
+        command: node
+        args: ['D:/opensource-mentor/packages/mentor-mcp/src/stdio.mjs']
+        toolCallTimeoutMs: 240000
+        env:
+          OSM_BASE_URL: https://hokkai.top
+          OSM_LOCALE: zh-CN
+          OSM_MODEL_SOURCE: agent
 ```
 
-启动 harness 的环境中设置 `OSM_AI_KEY`，或使用该安装的本地凭据设施。官方 MCP 桥接会清洗父进程中的密钥变量，因此需要在 `env` 显式传入。工具会显示为 `mcp__opensource-mentor__<工具名>`。不同版本的 profile 编辑／插件加载方式以[官方桥接文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md)为准；同名第三方项目可能有不同配置。
+这个示例显式使用宿主模型，无需模型 API Key；生成工具返回 `awaiting_host` 上下文，由 DSH 完成生成。使用网页模型时，把 `OSM_MODEL_SOURCE` 改为 `website`，并在 `env` 配置供应商、模型及个人密钥，例如 `OSM_AI_KEY: !!js process.env.OSM_AI_KEY`。桥接先清洗父进程的密钥变量，再合并显式 `env`，所以只设置父进程密钥不够。不要把真实密钥写入被 Git 跟踪的配置。
+
+工具会显示为 `mcp__opensource-mentor__<工具名>`。该 DSH 版本支持 profile 热更新，编辑后检查工具列表；其他版本若未更新，再重连或重启。配置规则以对应版本的[官方桥接文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md)为准，同名第三方项目可能不同。
 
 ## 4. 可选安装 Skill
 
@@ -145,6 +154,6 @@ Skill 不会自动注册 MCP，也不会复制浏览器凭据。DeepSeek Harness
 
 网页模型调用使用用户自己的供应商余额。`AUTH_REQUIRED` 常见于未传入 Key；供应商 `401`、额度不足、模型名或地址错误需要检查个人配置。GitHub 限流可配置个人 GitHub Token。宿主超时时应调整其支持的工具超时设置。
 
-当前验证过协议和本地 Codex 使用；其他宿主按官方文档提供配置，尚待实机验证。发布前已验证在线网站健康及仓库查询，但不代表所有 AI 生成功能已经端到端验证。首版不包含账号进度同步、自动 GitHub 发布、npm 包发布或远程 MCP 托管。
+已验证本地协议与 Codex 使用，远程 Codex OAuth 登录和画像读取也已成功，共 17 个工具。用户报告 DSH 44.0.0 / 桥接 0.2.0-rc.2 的本地工具发现、仓库读取与宿主模型上下文调用成功，但这不代表自动远程 OAuth 或网页生成已通过。Cursor 远程登录在记录的测试中仍未解决。目前不包含贡献进度同步、自动 GitHub 发布或 npm 包发布。
 
 [首次画像、GitHub 账号连接与同步说明](./mcp-onboarding.zh-CN.md)

@@ -2,7 +2,15 @@
 
 English | [简体中文](./mcp-hosts.zh-CN.md)
 
-OpenSource Mentor 0.1 is a local **stdio MCP server** that can call the online website API. There is no hosted `/mcp` endpoint or published npm package in this release. All hosts use the same server executable and environment variables; only their configuration format differs. Node.js 20+ and Git are required.
+OpenSource Mentor supports a local **stdio MCP server** and a hosted **Streamable HTTP MCP server**. Compatible remote hosts can connect without cloning; see [browser OAuth setup](./remote-mcp-oauth.md). The npm package has not been published, so `npx opensource-mentor-mcp` is not an available installation method. The local instructions below require Node.js 20+ and Git.
+
+| Host capability | Connection method |
+| --- | --- |
+| Streamable HTTP with OAuth | Hosted URL and browser authorization |
+| Streamable HTTP with custom headers, without OAuth | Operator-issued personal static credential; see [non-OAuth setup](./remote-mcp-oauth.md#hosts-without-oauth) |
+| stdio | Clone the repository, install MCP dependencies and configure Node |
+
+The source for Remote OAuth is on `codex/remote-mcp-oauth`; a default clone of `main` may still contain the earlier stdio-only guide until that branch is merged. The deployed remote service is independent of the branch a local clone uses.
 
 ## Common installation
 
@@ -15,7 +23,7 @@ npm run test:mcp
 
 On Windows PowerShell use `npm.cmd` if execution policy blocks `npm.ps1`. Existing checkout: run `git pull --ff-only` with a clean working tree instead of cloning again. Install only MCP dependencies; frontend installation/build is not required for the online API.
 
-Use `node /absolute/path/opensource-mentor/packages/mentor-mcp/src/stdio.mjs` as the launch command. The host starts it automatically; do not run it in a separate terminal. Replace all paths below. For online operation set `OSM_BASE_URL=https://hokkai.top`; for local development set `http://localhost:5173` and start the web project separately. The website origin is **not** a remote MCP URL.
+Use `node /absolute/path/opensource-mentor/packages/mentor-mcp/src/stdio.mjs` as the local launch command. The host starts it automatically; do not run it in a separate terminal. Replace all paths below. For online operation set `OSM_BASE_URL=https://hokkai.top`; for local development set `http://localhost:5173` and start the web project separately. The website API origin is distinct from the remote MCP endpoint: `https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp`.
 
 ## Common environment
 
@@ -94,28 +102,29 @@ Then add the common environment values to that server's `env` in the user MCP en
 
 ## DeepSeek Harness
 
-For the official `deepseek-ai/deepseek-harness`, add one `@deepseek-ai/dsh-mcp-client` entry to the plugin configuration of the profile you use. Merge it using that installation's profile/plugin configuration workflow; it is not a Cursor-style `mcpServers` block. Configure the MCP bridge if your profile does not already include it.
+For the official `deepseek-ai/deepseek-harness`, add one `@deepseek-ai/dsh-mcp-client` entry to the profile you use. In a **`cordis.patch.yml` patch layer**, adding a new plugin requires `insert:` as below. A bare `id:` patch updates an existing entry; it does not add a missing one and may only produce a warning. A base plugin list uses bare entries instead: do not apply the patch wrapper to that format.
+
+The installed DSH 44.0.0 bridge `0.2.0-rc.2` supports stdio and HTTP custom headers, but has no configured OAuth provider. Use local stdio below or a personal static credential for remote HTTP, not an unauthenticated remote URL. This limitation is version-specific.
 
 ```yaml
-- id: mcp-opensource-mentor
-  name: '@deepseek-ai/dsh-mcp-client'
-  config:
-    serverName: opensource-mentor
-    transport: stdio
-    command: node
-    args: ['/absolute/path/opensource-mentor/packages/mentor-mcp/src/stdio.mjs']
-    toolCallTimeoutMs: 240000
-    env:
-      OSM_BASE_URL: https://hokkai.top
-      OSM_LOCALE: en-US
-      OSM_MODEL_SOURCE: website
-      OSM_AI_PROVIDER: deepseek
-      OSM_AI_MODEL: deepseek-flash
-      OSM_AI_BASE_URL: https://api.deepseek.com
-      OSM_AI_KEY: !!js process.env.OSM_AI_KEY
+- insert:
+    - id: mcp-opensource-mentor
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: opensource-mentor
+        transport: stdio
+        command: node
+        args: ['/absolute/path/opensource-mentor/packages/mentor-mcp/src/stdio.mjs']
+        toolCallTimeoutMs: 240000
+        env:
+          OSM_BASE_URL: https://hokkai.top
+          OSM_LOCALE: en-US
+          OSM_MODEL_SOURCE: agent
 ```
 
-Set `OSM_AI_KEY` in the environment that starts the harness, or use your installation's local credential configuration. The official bridge scrubs ambient secret variables; explicitly forwarding the key through `env` is necessary. It exposes tools named `mcp__opensource-mentor__<tool>`. Follow the [official MCP bridge reference](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md) for your version's plugin loading workflow. Third-party products with the same name may use different configuration.
+This key-free example explicitly selects the host model: generation returns `awaiting_host` context for DSH to synthesize. For website generation, set `OSM_MODEL_SOURCE: website` and configure your provider/model and `OSM_AI_KEY` in `env`, for example `OSM_AI_KEY: !!js process.env.OSM_AI_KEY`. The bridge scrubs ambient secrets before merging explicit `env`; setting a key only in the parent environment is insufficient. Never put real keys in tracked profile files.
+
+The bridge exposes tools named `mcp__opensource-mentor__<tool>`. This DSH version supports in-place profile reload; check the tools after editing, and reconnect/restart if your version does not reload. Follow the [official MCP bridge reference](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md) for your version. Third-party products with the same name may differ.
 
 ## Optional Skill
 
@@ -139,6 +148,6 @@ Installing a Skill does not register MCP or copy browser credentials. DeepSeek H
 
 AI calls use your provider balance. Errors such as `AUTH_REQUIRED` usually mean the MCP key was not passed, `401` may indicate an invalid key, and provider errors need balance/model/base URL checks. GitHub limits may require a personal GitHub token. Hosts can have shorter tool timeouts than model generation; adjust the host's supported timeout setting. Host-model review context covers a bounded diff, not guaranteed full-repository analysis.
 
-Compatibility status: MCP protocol and local Codex usage have been tested; the other configurations are based on official docs and await real host testing. Online health and repository reads were verified before this release; that does not establish end-to-end AI generation. No progress synchronization, automatic GitHub publication, npm registry release, or hosted remote MCP is included.
+Compatibility status: local MCP protocol and Codex usage have been tested. Remote Codex OAuth login and profile retrieval succeeded with 17 tools. DSH 44.0.0 / bridge 0.2.0-rc.2 local discovery, repository retrieval and host-model context were reported successful; this does not establish automatic remote OAuth or end-to-end website generation. Cursor remote login remains unresolved in the recorded test. No contribution-progress synchronization, automatic GitHub publication or npm registry release is included.
 
 [Onboarding, GitHub account connection and profile sync](./mcp-onboarding.md)
