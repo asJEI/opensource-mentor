@@ -136,6 +136,14 @@ Docker configuration and troubleshooting: [DEPLOY.md](./DEPLOY.md).
 
 Cloudflare configuration, GitHub Actions, and production checks: [DEPLOY-CLOUDFLARE.md](./DEPLOY-CLOUDFLARE.md).
 
+## Licensing
+
+OpenSource Mentor is available under **AGPL-3.0-only**, with an alternative
+commercial license available by separate written agreement for uses that cannot
+comply with AGPL. AGPL permits commercial use subject to its conditions; it is
+not a non-commercial license. See [LICENSE](./LICENSE) and [licensing and
+commercial inquiries](./LICENSING.md). Third-party licenses remain applicable.
+
 ## Security and project scope
 
 BYOK credentials are sent per request and are not persisted by the server. Platform mode uses server-defined provider endpoints and models. Platform AI applies its own quota; BYOK uses your provider's quota.

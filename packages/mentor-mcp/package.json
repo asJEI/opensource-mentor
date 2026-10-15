@@ -1,13 +1,16 @@
 {
   "name": "opensource-mentor-mcp",
   "version": "0.1.0",
+  "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
   "bin": {
     "opensource-mentor-mcp": "src/stdio.mjs"
   },
   "files": [
-    "src"
+    "src",
+    "LICENSE",
+    "LICENSING.md"
   ],
   "publishConfig": {
     "access": "public"

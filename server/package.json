@@ -1,6 +1,7 @@
 {
   "name": "opensource-mentor-server",
   "version": "1.0.0",
+  "license": "AGPL-3.0-only",
   "description": "OpenSource Mentor Backend - BFF Layer",
   "main": "dist/server/src/app.js",
   "scripts": {

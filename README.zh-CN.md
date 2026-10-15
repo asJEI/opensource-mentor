@@ -180,6 +180,13 @@ opensource-mentor/
 └─ DEPLOY-CLOUDFLARE.md    # Cloudflare 部署
 ```
 
+## 授权方式
+
+本项目采用 **AGPL-3.0-only＋另行协商的商业授权**。遵守 AGPL 条件即可使用，
+包括商用；如需不遵循 AGPL 条件的闭源分发或其他专有使用，应事先取得单独书面商业许可。
+AGPL 不是“禁止商用”协议。详见 [LICENSE](./LICENSE) 和[双重授权说明](./LICENSING.md)。
+第三方依赖仍适用其各自许可证。
+
 ## 安全说明
 
 - BYOK 密钥保留在当前页面内存中，并按请求传递；服务端不持久化用户密钥。
