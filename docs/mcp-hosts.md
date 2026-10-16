@@ -2,6 +2,8 @@
 
 English | [简体中文](./mcp-hosts.zh-CN.md)
 
+**Start with [Remote MCP](./remote-mcp-oauth.md)**: add the HTTPS URL and authorize in your browser; no npm installation is needed. The clone commands below are only a local stdio fallback, not a prerequisite for remote connections.
+
 OpenSource Mentor supports a local **stdio MCP server** and a hosted **Streamable HTTP MCP server**. Compatible remote hosts can connect without cloning; see [browser OAuth setup](./remote-mcp-oauth.md). The npm package has not been published, so `npx opensource-mentor-mcp` is not an available installation method. The local instructions below require Node.js 20+ and Git.
 
 | Host capability | Connection method |

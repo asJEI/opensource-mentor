@@ -2,6 +2,18 @@
 
 [English](remote-mcp-oauth.md)
 
+这是推荐的安装方式，无需 npm 账号、克隆仓库或在本机启动 MCP。客户端必须支持 Streamable HTTP 和 OAuth；仅支持本地 stdio 的客户端请使用[本地安装](mcp-hosts.zh-CN.md)。安装 MCP 不会自动安装 Skill。
+
+## 让 Agent 帮你配置
+
+将下面这段话发送给目标 Agent：
+
+> 请阅读 https://github.com/asJEI/opensource-mentor 的 docs/remote-mcp-oauth.zh-CN.md，为当前客户端配置 OpenSource Mentor Remote MCP。连接地址为 https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp 。使用远程连接，无需克隆仓库或启动本地服务；保留其他 MCP 配置，不重复添加已有条目。引导我完成 OAuth 登录，然后调用 get_repository 获取 asJEI/opensource-mentor，验证连接。若当前客户端不支持远程 MCP 或 OAuth，请明确说明，不要自动改为本地安装。
+
+Agent 需要有修改宿主配置的权限；否则在客户端 MCP 设置中手动添加地址。GitHub 登录和批准由用户在浏览器中完成。首次连接需要授权，安装成功不会自动弹出画像问卷；在首次使用时读取画像并询问缺失信息。
+
+## 远程配置
+
 支持 MCP OAuth 的 Agent 只需配置远程地址，不再需要个人凭证请求头：
 
 ```json

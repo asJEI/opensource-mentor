@@ -8,9 +8,15 @@ OpenSource Mentor connects these steps in one workspace. Recommendations use you
 
 ## Try it
 
-You can also use the project's features inside an Agent through the local MCP server and Skill. See the [universal MCP installation guide](./docs/mcp-hosts.md) for Codex, Claude Code, Cursor, DeepSeek Harness and other stdio hosts, or the [local development guide](./docs/agent-installation.md).
+Use **Remote MCP** in your Agent without cloning the repository, installing an npm package, or running a local server. Add this URL in a host supporting Streamable HTTP and OAuth, then complete GitHub browser authorization:
 
-For HTTPS connections without a local clone, use [Remote MCP with browser OAuth](./docs/remote-mcp-oauth.md). Compatible hosts need only the remote URL; GitHub browser approval supplies the access token automatically. The remote service uses an independent Worker.
+```text
+https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp
+```
+
+> Ask your Agent: Configure OpenSource Mentor Remote MCP using the URL above, guide me through OAuth sign-in, then call `get_repository` for `asJEI/opensource-mentor` to verify the connection. Use the remote service without cloning or starting a local server.
+
+See [remote setup and an installation prompt for your Agent](./docs/remote-mcp-oauth.md) for configuration, authorization, and verification. Hosts supporting only stdio can use the [local MCP fallback](./docs/mcp-hosts.md). [Skill and local development instructions](./docs/agent-installation.md) are available separately.
 
 - [Cloudflare version](https://hokkai.top/)
 

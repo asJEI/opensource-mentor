@@ -2,6 +2,8 @@
 
 [English](./mcp-hosts.md) | 简体中文
 
+**推荐先用[远程 MCP 连接](./remote-mcp-oauth.zh-CN.md)**：添加 HTTPS 地址并在浏览器授权，不需要 npm 安装。下方克隆命令仅用于本地 stdio 兼容方案，不是远程接入的前置步骤。
+
 目前支持**本地 stdio MCP**和**云端 Streamable HTTP MCP**。支持远程 OAuth 的宿主可以免克隆接入，见[浏览器授权教程](./remote-mcp-oauth.zh-CN.md)。npm 包尚未发布，暂不能使用 `npx opensource-mentor-mcp` 安装。
 
 | 宿主能力 | 接入方式 |

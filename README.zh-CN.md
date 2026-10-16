@@ -6,9 +6,15 @@
 
 ## 在线体验
 
-也可通过本地 MCP 与 Skill 在 Agent 中调用项目功能，详见 [MCP 通用安装教程](./docs/mcp-hosts.zh-CN.md)（Codex、Claude Code、Cursor、DeepSeek Harness 等），或 [本地开发说明](./docs/agent-installation.zh-CN.md)。
+推荐通过 **远程 MCP** 在 Agent 中使用，无需克隆仓库、安装 npm 包或运行本地服务。支持 Streamable HTTP 和 OAuth 的客户端添加以下地址，再按提示完成 GitHub 登录授权：
 
-无需本地克隆的 HTTPS 接入方案见 [Remote MCP 浏览器自动授权](./docs/remote-mcp-oauth.zh-CN.md)。兼容宿主只需配置远程地址，浏览器登录 GitHub 并批准后自动取得凭证。远程服务使用独立 Worker。
+```text
+https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp
+```
+
+> 可以直接发给 Agent：请使用上方地址配置 OpenSource Mentor 远程 MCP，引导我完成 OAuth 登录，再调用 `get_repository` 获取 `asJEI/opensource-mentor` 验证连接。使用远程服务，无需克隆仓库或启动本地服务。
+
+[远程连接与 Agent 安装指令](./docs/remote-mcp-oauth.zh-CN.md)包含配置、授权和验证步骤。仅支持 stdio 的宿主仍可使用[本地 MCP 安装](./docs/mcp-hosts.zh-CN.md)；[Skill 与本地开发说明](./docs/agent-installation.zh-CN.md)单独提供。
 
 - Cloudflare Workers：[https://hokkai.top](https://hokkai.top/)
 

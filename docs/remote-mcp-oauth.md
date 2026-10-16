@@ -2,6 +2,18 @@
 
 [简体中文](remote-mcp-oauth.zh-CN.md)
 
+This is the recommended installation path. No npm account, repository clone, or local MCP process is needed. The host must support Streamable HTTP and OAuth; stdio-only hosts should use the [local fallback](mcp-hosts.md). Connecting MCP does not install the Skill automatically.
+
+## Ask your Agent to configure the connection
+
+Send this prompt to the target Agent:
+
+> Read docs/remote-mcp-oauth.md in https://github.com/asJEI/opensource-mentor and configure OpenSource Mentor Remote MCP for this client. Use https://opensource-mentor-remote-mvp.316920080dd.workers.dev/mcp without cloning the repository or starting a local server. Preserve other MCP settings and avoid duplicate entries. Guide me through OAuth sign-in, then call get_repository for asJEI/opensource-mentor to verify the connection. If this client does not support remote MCP or OAuth, explain the limitation rather than automatically installing locally.
+
+The Agent needs permission to edit the host configuration; otherwise add the URL manually in the host MCP settings. The user completes GitHub sign-in and approval in the browser. Installation does not automatically open a profile questionnaire: read the profile and ask for missing answers on first use.
+
+## Remote configuration
+
 Configure only the URL in an MCP OAuth-capable host; remove legacy Authorization headers:
 
 ```json
